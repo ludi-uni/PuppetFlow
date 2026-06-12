@@ -1,0 +1,38 @@
+{
+  "name": "Curious",
+  "version": 2,
+  "behavior": {
+    "type": "Block",
+    "statements": [
+      { "type": "Builtin", "id": "attention", "config": { "leanGain": 0.25, "tiltGain": 0.2 } },
+      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.04 } }
+    ]
+  },
+  "graph": {
+    "nodes": [
+      { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
+      { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.5 } },
+      { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } },
+      { "id": "in-interest-tilt", "type": "stateInput", "data": { "key": "interest" } },
+      { "id": "mul-tilt", "type": "multiply", "data": { "gain": 0.15 } },
+      { "id": "out-tilt", "type": "output", "data": { "key": "headTilt" } },
+      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
+      { "id": "mul-facePitch", "type": "multiply", "data": { "gain": 0.8 } },
+      { "id": "out-facePitch", "type": "output", "data": { "key": "facePitch" } }
+    ],
+    "edges": [
+      { "id": "e1", "source": "in-interest-mouthX", "target": "mul-mouthX" },
+      { "id": "e2", "source": "mul-mouthX", "target": "out-mouthX" },
+      { "id": "e3", "source": "in-interest-tilt", "target": "mul-tilt" },
+      { "id": "e4", "source": "mul-tilt", "target": "out-tilt" },
+      { "id": "e5", "source": "in-energy-facePitch", "target": "mul-facePitch" },
+      { "id": "e6", "source": "mul-facePitch", "target": "out-facePitch" }
+    ]
+  },
+  "modifiers": [
+    { "id": "breath", "config": { "period": 4.5, "amplitude": 0.04 } },
+    { "id": "noise", "config": { "amplitude": 0.008, "keys": ["mouthX"] } },
+    { "id": "smoothing", "config": { "factor": 0.1 } }
+  ],
+  "modifierOrder": ["breath", "noise", "smoothing"]
+}

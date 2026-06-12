@@ -1,0 +1,22 @@
+[
+  {
+    "input": "interest",
+    "output": "smile",
+    "gain": 0.5
+  },
+  {
+    "input": "energy",
+    "output": "eyeOpen",
+    "gain": 0.8
+  },
+  {
+    "input": "stress",
+    "output": "browDown",
+    "gain": 0.7
+  },
+  {
+    "input": "interest",
+    "output": "headTilt",
+    "gain": 0.15
+  }
+]

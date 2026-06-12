@@ -1,0 +1,37 @@
+{
+  "name": "@puppetflow/preset",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --dir ."
+  },
+  "dependencies": {
+    "@puppetflow/behavior": "workspace:*",
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/modifier": "workspace:*",
+    "@puppetflow/modifier-core": "workspace:*",
+    "@puppetflow/motion-graph": "workspace:*",
+    "@puppetflow/plugin-attention": "workspace:*",
+    "@puppetflow/plugin-blink": "workspace:*",
+    "@puppetflow/plugin-emotion": "workspace:*",
+    "@puppetflow/plugin-gaze": "workspace:*",
+    "@puppetflow/plugin-idle": "workspace:*",
+    "@puppetflow/plugin-rule": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@puppetflow/adapter-vmc",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./mappings/default.json": "./mappings/default.json"
+  },
+  "files": [
+    "dist",
+    "mappings"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/node.ts --format esm --dts --clean",
+    "test": "vitest run --dir ."
+  },
+  "dependencies": {
+    "@puppetflow/adapter-core": "workspace:*",
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/motion-mapper": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@tauri-apps/api": "^2.5.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  }
+}

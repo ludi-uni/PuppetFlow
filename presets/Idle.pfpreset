@@ -1,0 +1,34 @@
+{
+  "name": "Idle",
+  "version": 2,
+  "behavior": {
+    "type": "Block",
+    "statements": [
+      { "type": "Builtin", "id": "blink" },
+      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.3 } },
+      { "type": "Builtin", "id": "idle", "config": { "interestThreshold": 0.35 } }
+    ]
+  },
+  "graph": {
+    "nodes": [
+      { "id": "in-stress-facePitch", "type": "stateInput", "data": { "key": "stress" } },
+      { "id": "mul-stress-facePitch", "type": "multiply", "data": { "gain": 0.3 } },
+      { "id": "out-stress-facePitch", "type": "output", "data": { "key": "facePitch" } },
+      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
+      { "id": "mul-energy-facePitch", "type": "multiply", "data": { "gain": 0.7 } },
+      { "id": "out-energy-facePitch", "type": "output", "data": { "key": "facePitch" } }
+    ],
+    "edges": [
+      { "id": "e1", "source": "in-stress-facePitch", "target": "mul-stress-facePitch" },
+      { "id": "e2", "source": "mul-stress-facePitch", "target": "out-stress-facePitch" },
+      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
+      { "id": "e4", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" }
+    ]
+  },
+  "modifiers": [
+    { "id": "breath", "config": { "period": 5.5, "amplitude": 0.045 } },
+    { "id": "noise", "config": { "amplitude": 0.012, "keys": ["facePitch"] } },
+    { "id": "smoothing", "config": { "factor": 0.08 } }
+  ],
+  "modifierOrder": ["breath", "noise", "smoothing"]
+}

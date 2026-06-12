@@ -1,0 +1,28 @@
+{
+  "name": "@puppetflow/source-discord",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean"
+  },
+  "dependencies": {
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/source-core": "workspace:*",
+    "discord.js": "^14.21.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  }
+}

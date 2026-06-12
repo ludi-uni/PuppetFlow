@@ -1,0 +1,153 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: #11151c;
+  color: #f4f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+}
+
+header p {
+  margin: 0 0 2rem;
+  color: #9aa7b8;
+}
+
+section + section,
+.controls {
+  margin-top: 1.5rem;
+}
+
+section h2,
+.panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7f8ea3;
+}
+
+.row,
+.control-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr 3rem;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.control-row {
+  grid-template-columns: 8rem 1fr;
+}
+
+.label,
+.value {
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  width: 100%;
+}
+
+.slider:disabled {
+  opacity: 0.85;
+}
+
+.text-input,
+select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #2d3748;
+  background: #1a202c;
+  color: inherit;
+}
+
+.apply-button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #3b82f6;
+  background: #1d4ed8;
+  color: white;
+  cursor: pointer;
+}
+
+.apply-button:hover {
+  background: #2563eb;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: #7f8ea3;
+  font-size: 0.85rem;
+}
+
+.http-status {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.http-status.ok {
+  background: #14532d;
+  border: 1px solid #22c55e;
+}
+
+.http-status.error {
+  background: #450a0a;
+  border: 1px solid #ef4444;
+}
+
+.apply-button.dirty {
+  background: #2563eb;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+.apply-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.inspectors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.panel {
+  background: #171c26;
+  border: 1px solid #2a3344;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.json {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  overflow: auto;
+  max-height: 220px;
+}

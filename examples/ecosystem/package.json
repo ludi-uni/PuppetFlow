@@ -1,0 +1,24 @@
+{
+  "name": "@puppetflow/example-ecosystem",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@puppetflow/adapter-live2d": "workspace:*",
+    "@puppetflow/adapter-logger": "workspace:*",
+    "@puppetflow/adapter-vmc": "workspace:*",
+    "@puppetflow/adapter-vrm": "workspace:*",
+    "@puppetflow/adapter-websocket": "workspace:*",
+    "@puppetflow/behavior-packs": "workspace:*",
+    "@puppetflow/motion-mapper": "workspace:*",
+    "@puppetflow/preset": "workspace:*",
+    "@puppetflow/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}

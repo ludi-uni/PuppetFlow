@@ -1,0 +1,28 @@
+{
+  "name": "puppetflow",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "pnpm --filter @puppetflow/playground dev",
+    "dev:editor": "pnpm --filter @puppetflow/editor dev",
+    "dev:studio": "pnpm --filter @puppetflow/studio dev",
+    "dev:viewer": "pnpm --filter @puppetflow/viewer dev",
+    "example:ecosystem": "pnpm --filter @puppetflow/example-ecosystem start"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@types/node": "^22.15.21",
+    "eslint": "^9.28.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.2.1"
+  }
+}

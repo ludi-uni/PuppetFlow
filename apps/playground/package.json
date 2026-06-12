@@ -1,0 +1,34 @@
+{
+  "name": "@puppetflow/playground",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "vite build",
+    "tauri:build": "tauri build",
+    "vite:dev": "vite",
+    "vite:build": "vite build"
+  },
+  "dependencies": {
+    "@puppetflow/adapter-logger": "workspace:*",
+    "@puppetflow/adapter-vmc": "workspace:*",
+    "@puppetflow/behavior-packs": "workspace:*",
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/preset": "workspace:*",
+    "@puppetflow/runtime": "workspace:*",
+    "@puppetflow/source-http": "workspace:*",
+    "@tauri-apps/api": "^2.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

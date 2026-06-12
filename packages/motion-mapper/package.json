@@ -1,0 +1,31 @@
+{
+  "name": "@puppetflow/motion-mapper",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./profiles/vmc.json": "./profiles/vmc.json",
+    "./profiles/live2d.json": "./profiles/live2d.json",
+    "./profiles/vrm.json": "./profiles/vrm.json"
+  },
+  "files": [
+    "dist",
+    "profiles"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --dir ."
+  },
+  "dependencies": {
+    "@puppetflow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  }
+}

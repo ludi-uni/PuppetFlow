@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Tauri
+apps/playground/src-tauri/target/
+apps/studio/src-tauri/target/
+
+# IDE
+.idea/
+.vscode/

@@ -1,0 +1,9 @@
+{
+  "default": {
+    "identifier": "default",
+    "description": "Default capabilities for PuppetFlow Playground",
+    "local": true,
+    "windows": ["main"],
+    "permissions": ["core:default"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "faceYaw": "ParamAngleY",
+  "facePitch": "ParamAngleX",
+  "faceRoll": "ParamAngleZ",
+  "bodyYaw": "ParamBodyAngleY",
+  "bodyPitch": "ParamBodyAngleX",
+  "bodyRoll": "ParamBodyAngleZ",
+  "eyeYaw": "ParamEyeBallX",
+  "eyePitch": "ParamEyeBallY",
+  "eyeX": "ParamEyeBallX",
+  "eyeY": "ParamEyeBallY",
+  "mouthX": "ParamMouthForm",
+  "mouthY": "ParamMouthOpenY",
+  "headTilt": "ParamAngleZ",
+  "bodyLean": "ParamBodyAngleX",
+  "lookX": "ParamEyeBallX",
+  "lookY": "ParamEyeBallY"
+}

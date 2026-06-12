@@ -1,0 +1,19 @@
+{
+  "name": "@puppetflow/example-minimal",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@puppetflow/adapter-vmc": "workspace:*",
+    "@puppetflow/behavior-packs": "workspace:*",
+    "@puppetflow/preset": "workspace:*",
+    "@puppetflow/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}
