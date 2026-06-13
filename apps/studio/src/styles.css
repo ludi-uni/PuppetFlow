@@ -181,6 +181,38 @@ button {
   font-size: 0.8rem;
 }
 
+.plugin-motion-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.plugin-motion-card {
+  padding: 0.85rem 1rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.plugin-parameter-grid {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.plugin-motion-output {
+  margin: 0 0 0.25rem;
+}
+
+.plugin-param-row .hint {
+  display: block;
+  font-size: 0.75rem;
+}
+
 .active-plugins-panel {
   margin: 0.75rem 0 1rem;
   padding: 0.75rem 1rem;
@@ -480,6 +512,33 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.node-extension {
+  min-width: 180px;
+  border-color: #6366f1;
+  background: linear-gradient(180deg, #1e1b4b 0%, #1e293b 100%);
+}
+
+.node-extension-title {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: #c7d2fe;
+}
+
+.node-field-value {
+  grid-column: 2;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.graph-toolbar-extension {
+  border-color: #6366f1;
+  background: #4338ca;
+}
+
+.graph-toolbar-extension:hover {
+  background: #4f46e5;
+}
+
 .scratch-editor .scratch-canvas {
   height: 480px;
   margin-bottom: 1rem;
@@ -655,4 +714,203 @@ button:disabled {
   border-radius: 6px;
   background: rgba(37, 99, 235, 0.1);
   border: 1px solid #334155;
+}
+
+.studio-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.studio-mode-toggle {
+  display: inline-flex;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  border: none;
+  border-radius: 0;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 0.4rem 0.85rem;
+}
+
+.mode-btn.active {
+  background: #2563eb;
+}
+
+.preset-card-grid,
+.viewer-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.preset-card,
+.viewer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #111827;
+  text-align: left;
+}
+
+.preset-card.active,
+.viewer-card.active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.preset-card h3,
+.viewer-card strong {
+  margin: 0;
+}
+
+.preset-card-mood {
+  color: #93c5fd;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.preset-card-desc,
+.viewer-card span {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.simple-preset-actions {
+  margin-top: 1rem;
+}
+
+.mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mapping-table th,
+.mapping-table td {
+  border-bottom: 1px solid #334155;
+  padding: 0.5rem;
+  vertical-align: middle;
+}
+
+.mapping-table select,
+.mapping-table input[type="range"] {
+  width: 100%;
+}
+
+.mapping-gain {
+  display: inline-block;
+  min-width: 2.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mapping-actions,
+.mapper-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.mapping-lipsync {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #111827;
+}
+
+.lipsync-toggle {
+  grid-template-columns: 1fr auto;
+}
+
+.ghost-btn {
+  background: transparent;
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.viewer-summary {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #1e293b;
+}
+
+.next-step-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid #3b82f6;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.next-step-bar-ready {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.next-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.next-step-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.next-step-bar-ready .next-step-label {
+  color: #86efac;
+}
+
+.next-step-message {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.next-step-detail {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.next-step-action {
+  flex-shrink: 0;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.config-summary-details {
+  margin: 0.5rem 0 1rem;
+}
+
+.config-summary-details summary {
+  cursor: pointer;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.mouth-status-hint {
+  margin: 0.5rem 0 0;
 }

@@ -1,17 +1,14 @@
 import { parseBehaviorRoot } from "@puppetflow/behavior";
 import type { BehaviorPlugin } from "@puppetflow/core";
-import { createModifiers } from "@puppetflow/modifier";
-import { DEFAULT_MODIFIER_ORDER } from "@puppetflow/modifier-core";
 import type { BehaviorBlock } from "@puppetflow/behavior";
-import type { MotionModifier } from "@puppetflow/modifier-core";
+import type { PresetExtensions } from "@puppetflow/extension-core";
 import { parseMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
-import {
-  createRulePlugin,
-  isMotionStateKey,
-  type RuleConfig,
-} from "@puppetflow/plugin-rule";
 import type { PuppetFlowPreset } from "./types.js";
 import { createBehaviorPlugins, type BehaviorPluginConfig } from "./plugin-factory.js";
+
+export const MAX_PRESET_JSON_BYTES = 1_048_576;
+
+const DEPRECATED_PRESET_FIELDS = ["rules", "modifiers", "modifierOrder"] as const;
 
 export interface LoadedPreset {
   name: string;
@@ -19,41 +16,37 @@ export interface LoadedPreset {
   graph: MotionGraphDocument;
   plugins: BehaviorPlugin[];
   behaviorPlugins: BehaviorPluginConfig[];
-  rules: RuleConfig[];
-  modifiers: MotionModifier[];
-  modifierOrder: readonly string[];
+  extensions?: PresetExtensions;
 }
 
-function parseRules(raw: unknown): RuleConfig[] {
-  if (!Array.isArray(raw)) {
-    return [];
+function parseExtensions(raw: unknown): PresetExtensions | undefined {
+  if (typeof raw !== "object" || raw === null) {
+    return undefined;
   }
 
-  const rules: RuleConfig[] = [];
+  const ext = raw as PresetExtensions;
+  const packs = Array.isArray(ext.packs)
+    ? ext.packs
+        .filter(
+          (entry): entry is { id: string; config?: Record<string, number> } =>
+            typeof entry === "object" &&
+            entry !== null &&
+            typeof (entry as { id?: string }).id === "string",
+        )
+        .map((entry) => ({
+          id: entry.id,
+          config: entry.config,
+        }))
+    : undefined;
 
-  for (const entry of raw) {
-    if (typeof entry !== "object" || entry === null) {
-      continue;
-    }
-
-    const rule = entry as Partial<RuleConfig>;
-    if (
-      typeof rule.input !== "string" ||
-      typeof rule.output !== "string" ||
-      !isMotionStateKey(rule.output) ||
-      typeof rule.gain !== "number"
-    ) {
-      continue;
-    }
-
-    rules.push({
-      input: rule.input,
-      output: rule.output,
-      gain: rule.gain,
-    });
-  }
-
-  return rules;
+  return {
+    packs,
+    functions: Array.isArray(ext.functions) ? ext.functions : undefined,
+    parameterDefaults:
+      typeof ext.parameterDefaults === "object" && ext.parameterDefaults !== null
+        ? (ext.parameterDefaults as Record<string, number>)
+        : undefined,
+  };
 }
 
 function parseBehaviorPluginConfigs(raw: unknown): BehaviorPluginConfig[] {
@@ -85,58 +78,51 @@ function parseBehaviorPluginConfigs(raw: unknown): BehaviorPluginConfig[] {
   return entries;
 }
 
-function createPlugins(
-  rules: RuleConfig[],
-  behaviorPlugins: BehaviorPluginConfig[],
-): BehaviorPlugin[] {
-  const plugins: BehaviorPlugin[] = [];
-
-  if (rules.length > 0) {
-    plugins.push(createRulePlugin(rules));
+function rejectDeprecatedPresetFields(preset: Record<string, unknown>): void {
+  for (const field of DEPRECATED_PRESET_FIELDS) {
+    if (field in preset && preset[field] !== undefined) {
+      throw new Error(
+        `Preset field "${field}" is no longer supported. Use graph for mappings and behaviorPlugins for gaze/blink/etc.`,
+      );
+    }
   }
-
-  plugins.push(...createBehaviorPlugins(behaviorPlugins));
-  return plugins;
 }
 
 export function parsePreset(json: string): PuppetFlowPreset {
+  const byteLength = new TextEncoder().encode(json).length;
+  if (byteLength > MAX_PRESET_JSON_BYTES) {
+    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
+  }
+
   const parsed: unknown = JSON.parse(json);
 
   if (typeof parsed !== "object" || parsed === null) {
     throw new Error("Preset must be a JSON object");
   }
 
-  const preset = parsed as Partial<PuppetFlowPreset> & {
-    version?: number;
-    rules?: unknown;
-  };
+  const preset = parsed as Partial<PuppetFlowPreset> & Record<string, unknown>;
 
   if (typeof preset.name !== "string" || preset.name.length === 0) {
     throw new Error("Preset requires a non-empty name");
   }
 
-  if (preset.version !== 2) {
+  if (preset.version !== 3) {
     throw new Error(
-      `Unsupported preset version: ${String(preset.version)}. PuppetFlow requires version 2 with behavior and graph.`,
+      `Unsupported preset version: ${String(preset.version)}. PuppetFlow requires version 3.`,
     );
   }
 
-  if ("rules" in preset && !Array.isArray(preset.rules) && preset.rules !== undefined) {
-    throw new Error("Preset rules must be an array when provided");
-  }
+  rejectDeprecatedPresetFields(preset);
 
-  const rules = parseRules(preset.rules);
   const behaviorPlugins = parseBehaviorPluginConfigs(preset.behaviorPlugins);
 
   return {
     name: preset.name,
-    version: 2,
+    version: 3,
     behavior: parseBehaviorRoot(preset.behavior),
     graph: parseMotionGraph(preset.graph),
-    rules,
     behaviorPlugins,
-    modifiers: preset.modifiers ?? [],
-    modifierOrder: preset.modifierOrder ?? [...DEFAULT_MODIFIER_ORDER],
+    extensions: parseExtensions(preset.extensions),
   };
 }
 
@@ -147,10 +133,8 @@ export function loadPreset(json: string): LoadedPreset {
     name: preset.name,
     behavior: preset.behavior,
     graph: preset.graph,
-    plugins: createPlugins(preset.rules ?? [], preset.behaviorPlugins ?? []),
-    rules: preset.rules ?? [],
+    plugins: createBehaviorPlugins(preset.behaviorPlugins ?? []),
     behaviorPlugins: preset.behaviorPlugins ?? [],
-    modifiers: createModifiers(preset.modifiers ?? []),
-    modifierOrder: preset.modifierOrder ?? DEFAULT_MODIFIER_ORDER,
+    extensions: preset.extensions,
   };
 }

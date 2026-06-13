@@ -1,3 +1,4 @@
+import "@xyflow/react/dist/style.css";
 import {
   addEdge,
   Background,
@@ -5,6 +6,7 @@ import {
   Handle,
   Position,
   ReactFlow,
+  ReactFlowProvider,
   type Connection,
   type Edge,
   type Node,
@@ -12,8 +14,26 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { LIPSYNC_GRAPH_TEMPLATE } from "../constants/lipsync-template";
+import {
+  defaultExtensionCustomNodeData,
+  defaultMotionGeneratorNodeData,
+  defaultMotionPackNodeData,
+  getExtensionGraphCustomNodes,
+  getExtensionGraphGenerators,
+  getExtensionGraphPacks,
+} from "../constants/extension-graph-nodes";
+import {
+  ExtensionCustomNode,
+  MotionGeneratorNode,
+  MotionPackNode,
+} from "./graph/ExtensionGraphNodes";
 import { ActivePluginsPanel } from "./ActivePluginsPanel";
 import { mergeGraphIntoPreset } from "../graph-to-preset";
+import {
+  findDuplicateExtensionPackIds,
+  formatDuplicatePackWarning,
+} from "../utils/extension-duplicates";
 import {
   getChannelKeyOptions,
   getMotionKeyOptions,
@@ -46,6 +66,28 @@ const INITIAL_EDGES: Edge[] = [
   { id: "e1", source: "interest", target: "multiply" },
   { id: "e2", source: "multiply", target: "mouthX" },
 ];
+
+const EXTENSION_GRAPH_PACKS = getExtensionGraphPacks();
+const EXTENSION_GRAPH_GENERATORS = getExtensionGraphGenerators();
+const EXTENSION_GRAPH_CUSTOM_NODES = getExtensionGraphCustomNodes();
+
+function findPackConfigFields(packId: string) {
+  return EXTENSION_GRAPH_PACKS.find((pack) => pack.id === packId)?.configFields ?? [];
+}
+
+function findGeneratorConfigFields(generatorId: string) {
+  return (
+    EXTENSION_GRAPH_GENERATORS.find((generator) => generator.id === generatorId)
+      ?.configFields ?? []
+  );
+}
+
+function findCustomNodeConfigFields(nodeType: string) {
+  return (
+    EXTENSION_GRAPH_CUSTOM_NODES.find((node) => node.type === nodeType)?.configFields ??
+    []
+  );
+}
 
 const STATE_KEY_OPTIONS = getStateKeyOptions();
 const CHANNEL_KEY_OPTIONS = getChannelKeyOptions();
@@ -251,44 +293,24 @@ interface GraphEditorProps {
   onStatus: (message: string, kind: "success" | "error" | "info") => void;
 }
 
-const LIPSYNC_TEMPLATE_NODES: Node[] = [
-  {
-    id: "ls-vol",
-    type: "channelInput",
-    position: { x: 0, y: 40 },
-    data: { label: "volume", key: "volume" },
-  },
-  {
-    id: "ls-vtm",
-    type: "volumeToMouth",
-    position: { x: 220, y: 40 },
-    data: { label: "VolumeToMouth", gain: 1 },
-  },
-  {
-    id: "ls-mouthY",
-    type: "output",
-    position: { x: 460, y: 40 },
-    data: { label: "mouthY", key: "mouthY" },
-  },
-  {
-    id: "ls-ph-x",
-    type: "phonemeToShape",
-    position: { x: 0, y: 160 },
-    data: { label: "mouthX", axis: "mouthX", source: "auto" },
-  },
-  {
-    id: "ls-out-x",
-    type: "output",
-    position: { x: 260, y: 160 },
-    data: { label: "mouthX", key: "mouthX" },
-  },
-];
+const LIPSYNC_POSITIONS: Record<string, { x: number; y: number }> = {
+  "ls-vol": { x: 0, y: 40 },
+  "ls-vtm": { x: 220, y: 40 },
+  "ls-mouthY": { x: 460, y: 40 },
+  "ls-ph-x": { x: 0, y: 160 },
+  "ls-out-x": { x: 260, y: 160 },
+};
 
-const LIPSYNC_TEMPLATE_EDGES: Edge[] = [
-  { id: "ls-e1", source: "ls-vol", target: "ls-vtm" },
-  { id: "ls-e2", source: "ls-vtm", target: "ls-mouthY" },
-  { id: "ls-e3", source: "ls-ph-x", target: "ls-out-x" },
-];
+const LIPSYNC_TEMPLATE_NODES: Node[] = LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) => ({
+  id: node.id,
+  type: node.type,
+  position: LIPSYNC_POSITIONS[node.id] ?? { x: 0, y: 0 },
+  data: { label: String(node.data.label ?? node.type), ...node.data },
+}));
+
+const LIPSYNC_TEMPLATE_EDGES: Edge[] = LIPSYNC_GRAPH_TEMPLATE.edges.map((edge) => ({
+  ...edge,
+}));
 
 let nextNodeId = 1;
 
@@ -297,7 +319,7 @@ function createNodeId(prefix: string): string {
   return `${prefix}-${nextNodeId}`;
 }
 
-export function GraphEditor({
+function GraphEditorContent({
   exportJson,
   presetJson,
   presetGraphKey,
@@ -321,46 +343,51 @@ export function GraphEditor({
     [setNodes],
   );
 
-  const nodeTypes = useMemo(
-    () => ({
-      input: (props: { id: string; data: { label: string; key: string } }) => (
+  const nodeTypes = useMemo(() => {
+    const types: Record<
+      string,
+      (props: { id: string; data: Record<string, unknown> }) => JSX.Element
+    > = {
+      input: (props) => (
         <InputNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; key: string }}
           onKeyChange={(nodeId, key) => {
             updateNodeData(nodeId, { key, label: key });
           }}
         />
       ),
-      multiply: (props: { id: string; data: { label: string; gain: number } }) => (
+      multiply: (props) => (
         <MultiplyNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; gain: number }}
           onGainChange={(nodeId, gain) => {
             updateNodeData(nodeId, { gain });
           }}
         />
       ),
-      channelInput: (props: { id: string; data: { label: string; key: string } }) => (
+      channelInput: (props) => (
         <ChannelInputNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; key: string }}
           onKeyChange={(nodeId, key) => {
             updateNodeData(nodeId, { key, label: key });
           }}
         />
       ),
-      volumeToMouth: (props: { id: string; data: { label: string; gain: number } }) => (
+      volumeToMouth: (props) => (
         <VolumeToMouthNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; gain: number }}
           onGainChange={(nodeId, gain) => {
             updateNodeData(nodeId, { gain });
           }}
         />
       ),
-      phonemeToShape: (props: {
-        id: string;
-        data: { label: string; axis: string; source: string };
-      }) => (
+      phonemeToShape: (props) => (
         <PhonemeToShapeNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; axis: string; source: string }}
           onAxisChange={(nodeId, axis) => {
             updateNodeData(nodeId, { axis, label: axis });
           }}
@@ -369,17 +396,44 @@ export function GraphEditor({
           }}
         />
       ),
-      output: (props: { id: string; data: { label: string; key: string } }) => (
+      output: (props) => (
         <OutputNode
-          {...props}
+          id={props.id}
+          data={props.data as { label: string; key: string }}
           onKeyChange={(nodeId, key) => {
             updateNodeData(nodeId, { key, label: key });
           }}
         />
       ),
-    }),
-    [updateNodeData],
-  );
+      motionPack: (props) => (
+        <MotionPackNode
+          data={props.data}
+          configFields={findPackConfigFields(String(props.data.packId ?? ""))}
+          onChange={(patch) => updateNodeData(props.id, patch)}
+        />
+      ),
+      motionGenerator: (props) => (
+        <MotionGeneratorNode
+          data={props.data}
+          configFields={findGeneratorConfigFields(String(props.data.generatorId ?? ""))}
+          onChange={(patch) => updateNodeData(props.id, patch)}
+        />
+      ),
+    };
+
+    for (const customNode of EXTENSION_GRAPH_CUSTOM_NODES) {
+      types[customNode.type] = (props) => (
+        <ExtensionCustomNode
+          data={props.data}
+          label={customNode.label}
+          configFields={findCustomNodeConfigFields(customNode.type)}
+          onChange={(patch) => updateNodeData(props.id, patch)}
+        />
+      );
+    }
+
+    return types;
+  }, [updateNodeData]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -402,6 +456,53 @@ export function GraphEditor({
       setEdges((current) => addEdge(connection, current));
     },
     [setEdges],
+  );
+
+  const addExtensionNode = useCallback(
+    (kind: "motionPack" | "motionGenerator" | "ext", targetId: string) => {
+      const y = nodes.length * 80 + 40;
+      const x = 640;
+
+      if (kind === "motionPack") {
+        const id = createNodeId("pack");
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type: "motionPack",
+            position: { x, y },
+            data: defaultMotionPackNodeData(targetId),
+          },
+        ]);
+        return;
+      }
+
+      if (kind === "motionGenerator") {
+        const id = createNodeId("gen");
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type: "motionGenerator",
+            position: { x, y },
+            data: defaultMotionGeneratorNodeData(targetId),
+          },
+        ]);
+        return;
+      }
+
+      const id = createNodeId("ext");
+      setNodes((current) => [
+        ...current,
+        {
+          id,
+          type: targetId,
+          position: { x, y },
+          data: defaultExtensionCustomNodeData(targetId),
+        },
+      ]);
+    },
+    [nodes.length, setNodes],
   );
 
   const addNode = useCallback(
@@ -516,7 +617,7 @@ export function GraphEditor({
   const loadFromPreset = useCallback(() => {
     const graph = presetJsonToGraph(presetJson);
     if (graph.nodes.length === 0) {
-      onStatus("プリセットから読み込める graph / rules がありません。", "error");
+      onStatus("プリセットから読み込める graph がありません。", "error");
       return;
     }
 
@@ -549,8 +650,9 @@ export function GraphEditor({
   return (
     <section className="graph-editor">
       <p className="hint">
-        数値マッピングは State / Channel Input → 変換ノード → Motion
-        Output。リップシンクは <strong>Graph に mouthX / mouthY 出力が必要</strong>
+        数値マッピングは State / Channel Input → 変換ノード → Motion Output。 Motion
+        Pack / Generator はエッジ不要で配置するだけで Extension Layer に反映されます。
+        リップシンクは <strong>Graph に mouthX / mouthY 出力が必要</strong>
         です。まず「リップシンク簡易テンプレ」を試してください。
       </p>
       <ActivePluginsPanel pluginIds={activePluginIds} />
@@ -592,6 +694,44 @@ export function GraphEditor({
             選択削除
           </button>
         </div>
+        <div className="graph-toolbar-group">
+          <span className="graph-toolbar-label">Motion Pack</span>
+          {EXTENSION_GRAPH_PACKS.map((pack) => (
+            <button
+              key={pack.id}
+              type="button"
+              className="graph-toolbar-extension"
+              title={pack.description}
+              onClick={() => addExtensionNode("motionPack", pack.id)}
+            >
+              + {pack.label}
+            </button>
+          ))}
+        </div>
+        <div className="graph-toolbar-group">
+          <span className="graph-toolbar-label">Generator</span>
+          {EXTENSION_GRAPH_GENERATORS.map((generator) => (
+            <button
+              key={generator.id}
+              type="button"
+              className="graph-toolbar-extension"
+              title={generator.description}
+              onClick={() => addExtensionNode("motionGenerator", generator.id)}
+            >
+              + {generator.label}
+            </button>
+          ))}
+          {EXTENSION_GRAPH_CUSTOM_NODES.map((node) => (
+            <button
+              key={node.type}
+              type="button"
+              className="graph-toolbar-extension"
+              onClick={() => addExtensionNode("ext", node.type)}
+            >
+              + {node.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="canvas" ref={canvasRef}>
@@ -617,8 +757,15 @@ export function GraphEditor({
         <button
           type="button"
           onClick={() => {
+            const duplicateWarning = formatDuplicatePackWarning(
+              findDuplicateExtensionPackIds(presetJson, nodes),
+            );
             const json = mergeGraphIntoPreset(presetJson, { nodes, edges });
             onExport(json);
+            if (duplicateWarning) {
+              onStatus(`エクスポート完了。警告: ${duplicateWarning}`, "info");
+              return;
+            }
             onStatus(
               "Preset JSON をエクスポートしました（plugins を保持）。",
               "success",
@@ -636,5 +783,13 @@ export function GraphEditor({
 
       {exportJson ? <pre className="export-preview">{exportJson}</pre> : null}
     </section>
+  );
+}
+
+export function GraphEditor(props: GraphEditorProps) {
+  return (
+    <ReactFlowProvider>
+      <GraphEditorContent {...props} />
+    </ReactFlowProvider>
   );
 }

@@ -1,16 +1,21 @@
 {
   "name": "Thinking",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
     "statements": [
-      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.03, "speed": 0.35 } },
       {
         "type": "If",
         "condition": { "left": "interest", "op": ">", "right": 0.55 },
         "then": [{ "type": "Assign", "key": "headTilt", "op": "add", "value": 0.08 }]
       }
     ]
+  },
+  "behaviorPlugins": [
+    { "id": "gaze", "config": { "wanderAmplitude": 0.03, "speed": 0.35 } }
+  ],
+  "extensions": {
+    "packs": [{ "id": "thinking", "config": { "intensity": 0.65 } }]
   },
   "graph": {
     "nodes": [
@@ -32,11 +37,5 @@
       { "id": "e5", "source": "in-interest-mouthX", "target": "mul-mouthX" },
       { "id": "e6", "source": "mul-mouthX", "target": "out-mouthX" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 5.5, "amplitude": 0.035 } },
-    { "id": "noise", "config": { "amplitude": 0.006, "keys": ["mouthX"] } },
-    { "id": "smoothing", "config": { "factor": 0.09 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

@@ -11,11 +11,21 @@ describe("parseBehaviorRoot", () => {
           condition: { left: "interest", op: ">", right: 0.5 },
           then: [{ type: "Assign", key: "mouthX", op: "set", value: 0.3 }],
         },
-        { type: "Builtin", id: "gaze", config: { wanderAmplitude: 0.04 } },
       ],
     });
 
-    expect(root.statements).toHaveLength(2);
+    expect(root.statements).toHaveLength(1);
+  });
+
+  it("rejects Builtin statements", () => {
+    expect(() =>
+      parseBehaviorRoot({
+        type: "Block",
+        statements: [
+          { type: "Builtin", id: "gaze", config: { wanderAmplitude: 0.04 } },
+        ],
+      }),
+    ).toThrow(/Builtin/i);
   });
 
   it("rejects unknown statement types", () => {

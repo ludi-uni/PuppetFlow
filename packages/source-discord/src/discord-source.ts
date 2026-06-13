@@ -8,7 +8,9 @@ export interface DiscordSourceConfig {
   fieldMapping?: Record<string, string>;
 }
 
-function extractPayload(message: Message): unknown | null {
+export function extractDiscordPayload(
+  message: Pick<Message, "content">,
+): unknown | null {
   const content = message.content.trim();
   if (!content.startsWith("{")) {
     return null;
@@ -56,7 +58,7 @@ export class DiscordSource implements StateSource {
         return;
       }
 
-      const payload = extractPayload(message);
+      const payload = extractDiscordPayload(message);
       if (payload) {
         this.pendingPayload = payload;
       }

@@ -5,7 +5,7 @@ interface ActiveConfigSummaryProps {
   preset: PresetName;
   isCustomPreset: boolean;
   sources: SourceConfig;
-  builtinIds: string[];
+  behaviorPluginIds: string[];
   pluginIds: string[];
   mapperConfig: MotionMapperEditorConfig;
   httpHealth: "unknown" | "ok" | "error" | "idle";
@@ -38,7 +38,7 @@ export function ActiveConfigSummary({
   preset,
   isCustomPreset,
   sources,
-  builtinIds,
+  behaviorPluginIds,
   pluginIds,
   mapperConfig,
   httpHealth,
@@ -59,8 +59,8 @@ export function ActiveConfigSummary({
           </dd>
         </div>
         <div>
-          <dt>Behavior Builtins</dt>
-          <dd>{builtinIds.length > 0 ? builtinIds.join(", ") : "—"}</dd>
+          <dt>behaviorPlugins</dt>
+          <dd>{behaviorPluginIds.length > 0 ? behaviorPluginIds.join(", ") : "—"}</dd>
         </div>
         <div>
           <dt>Plugins</dt>

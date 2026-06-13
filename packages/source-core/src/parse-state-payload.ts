@@ -1,5 +1,7 @@
 import type { StateStore, StateValue } from "@puppetflow/core";
 
+export const MAX_STATE_KEYS_PER_PAYLOAD = 128;
+
 function isStateValue(value: unknown): value is StateValue {
   return (
     typeof value === "number" || typeof value === "string" || typeof value === "boolean"
@@ -16,7 +18,12 @@ export function applyStatePayload(
   }
 
   const record = payload as Record<string, unknown>;
-  for (const [remoteKey, value] of Object.entries(record)) {
+  const entries = Object.entries(record);
+  if (entries.length > MAX_STATE_KEYS_PER_PAYLOAD) {
+    throw new Error(`state exceeds max keys (${MAX_STATE_KEYS_PER_PAYLOAD})`);
+  }
+
+  for (const [remoteKey, value] of entries) {
     if (!isStateValue(value)) {
       continue;
     }

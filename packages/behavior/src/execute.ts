@@ -10,26 +10,13 @@ import type {
   BehaviorStatement,
   CompareCondition,
 } from "./ast.js";
-import { applyAssign, executeBuiltin, type BuiltinStateStore } from "./builtins.js";
+import { applyAssign } from "./builtins.js";
 
 export interface BehaviorExecutionContext {
   state: StateStore;
   channels: ChannelStore;
   renderedMotion: MotionState;
   deltaTime: number;
-  builtinStates?: BuiltinStateStore;
-}
-
-class MapBuiltinStateStore implements BuiltinStateStore {
-  private readonly map = new Map<string, unknown>();
-
-  get<T>(key: string): T | undefined {
-    return this.map.get(key) as T | undefined;
-  }
-
-  set<T>(key: string, value: T): void {
-    this.map.set(key, value);
-  }
 }
 
 function evaluateCompare(state: StateStore, condition: CompareCondition): boolean {
@@ -74,14 +61,13 @@ function evaluateCondition(state: StateStore, condition: BehaviorCondition): boo
 function executeStatements(
   statements: BehaviorStatement[],
   ctx: BehaviorExecutionContext,
-  builtinStates: BuiltinStateStore,
   path: string,
 ): Partial<MotionState>[] {
   const outputs: Partial<MotionState>[] = [];
 
   statements.forEach((statement, index) => {
     const instanceKey = `${path}/${index}`;
-    outputs.push(executeStatement(statement, ctx, builtinStates, instanceKey));
+    outputs.push(executeStatement(statement, ctx, instanceKey));
   });
 
   return outputs;
@@ -90,30 +76,21 @@ function executeStatements(
 function executeStatement(
   statement: BehaviorStatement,
   ctx: BehaviorExecutionContext,
-  builtinStates: BuiltinStateStore,
   instanceKey: string,
 ): Partial<MotionState> {
   switch (statement.type) {
     case "Block":
-      return mergePartials(
-        executeStatements(statement.statements, ctx, builtinStates, instanceKey),
-      );
+      return mergePartials(executeStatements(statement.statements, ctx, instanceKey));
     case "If": {
       const branch = evaluateCondition(ctx.state, statement.condition)
         ? statement.then
         : (statement.else ?? []);
-      return mergePartials(executeStatements(branch, ctx, builtinStates, instanceKey));
+      return mergePartials(executeStatements(branch, ctx, instanceKey));
     }
     case "Assign":
       return applyAssign({}, statement.key, statement.op, statement.value);
-    case "Builtin":
-      return executeBuiltin(statement, {
-        state: ctx.state,
-        renderedMotion: ctx.renderedMotion,
-        deltaTime: ctx.deltaTime,
-        states: builtinStates,
-        instanceKey,
-      });
+    case "MotionPack":
+      return {};
     default:
       return {};
   }
@@ -131,7 +108,6 @@ export function executeBehavior(
   root: BehaviorBlock,
   ctx: BehaviorExecutionContext,
 ): Partial<MotionState> {
-  const builtinStates = ctx.builtinStates ?? new MapBuiltinStateStore();
-  const partials = executeStatements(root.statements, ctx, builtinStates, "root");
+  const partials = executeStatements(root.statements, ctx, "root");
   return mergePartials(partials);
 }

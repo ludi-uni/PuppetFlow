@@ -42,8 +42,8 @@ export function MotionMapperEditor({
     <section className="mapper-editor">
       <h2>Motion Mapper</h2>
       <p className="hint">
-        プラグイン・behavior・graph・modifiers を通過した{" "}
-        <strong>Rendered Motion</strong> を各モデル形式へ 変換して OSC
+        プラグイン・behavior・graph を通過した <strong>Rendered Motion</strong>{" "}
+        を各モデル形式へ 変換して OSC
         で送信します。変換層と送信先はモデルごとに独立して設定できます。
       </p>
       <ActivePluginsPanel pluginIds={activePluginIds} />

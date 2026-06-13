@@ -1,13 +1,14 @@
 {
   "name": "Curious",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": [
-      { "type": "Builtin", "id": "attention", "config": { "leanGain": 0.25, "tiltGain": 0.2 } },
-      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.04 } }
-    ]
+    "statements": []
   },
+  "behaviorPlugins": [
+    { "id": "attention", "config": { "leanGain": 0.25, "tiltGain": 0.2 } },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.04 } }
+  ],
   "graph": {
     "nodes": [
       { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
@@ -28,11 +29,5 @@
       { "id": "e5", "source": "in-energy-facePitch", "target": "mul-facePitch" },
       { "id": "e6", "source": "mul-facePitch", "target": "out-facePitch" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 4.5, "amplitude": 0.04 } },
-    { "id": "noise", "config": { "amplitude": 0.008, "keys": ["mouthX"] } },
-    { "id": "smoothing", "config": { "factor": 0.1 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

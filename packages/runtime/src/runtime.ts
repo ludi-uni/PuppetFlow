@@ -18,6 +18,8 @@ import {
   type MotionModifier,
 } from "@puppetflow/modifier-core";
 import { executeMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
+import { executeExtensions, type PresetExtensions } from "@puppetflow/extension-core";
+import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
 import type { LoadedPreset } from "@puppetflow/preset";
 import type { StateSource } from "@puppetflow/source-core";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
@@ -65,6 +67,7 @@ export class PuppetFlowRuntime {
   private activePresetName: string | null = null;
   private behaviorRoot: BehaviorBlock = { type: "Block", statements: [] };
   private motionGraph: MotionGraphDocument = { nodes: [], edges: [] };
+  private presetExtensions: PresetExtensions | undefined;
   private elapsedTime = 0;
   private timelineCurrentMs = 0;
   private activeTimelineEvents: TimelineEvent[] = [];
@@ -130,17 +133,14 @@ export class PuppetFlowRuntime {
 
     this.behaviorRoot = loaded.behavior;
     this.motionGraph = loaded.graph;
+    this.presetExtensions = loaded.extensions;
     this.elapsedTime = 0;
 
     for (const plugin of loaded.plugins) {
       this.use(plugin);
     }
 
-    for (const modifier of loaded.modifiers) {
-      this.useModifier(modifier);
-    }
-
-    this.modifierOrder = loaded.modifierOrder;
+    this.modifierOrder = DEFAULT_MODIFIER_ORDER;
     this.activePresetName = loaded.name;
     return this;
   }
@@ -420,6 +420,34 @@ export class PuppetFlowRuntime {
         this.modifierOrder,
         deltaTime,
       );
+
+      try {
+        const extensionResult = executeExtensions(
+          getBundledMotionRegistry(),
+          {
+            state: this.state,
+            channels: this.channels,
+            deltaTime,
+            time: this.elapsedTime,
+            timelineCurrentMs: this.timelineCurrentMs,
+            activeTimelineEvents: this.activeTimelineEvents,
+            motion: this.renderedMotion,
+          },
+          {
+            presetExtensions: this.presetExtensions,
+            behavior: this.behaviorRoot,
+            graph: this.motionGraph,
+          },
+        );
+        this.renderedMotion = extensionResult.standard;
+        pipelineOutputs.push({
+          pluginId: "extensions",
+          output: { custom: extensionResult.custom },
+        });
+      } catch (error) {
+        console.error("[PuppetFlowRuntime] extension layer failed", error);
+        pipelineOutputs.push({ pluginId: "extensions", output: {} });
+      }
 
       if (!this.running) {
         return;

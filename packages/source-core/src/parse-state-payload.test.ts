@@ -10,4 +10,13 @@ describe("applyStatePayload", () => {
     expect(store.get("interest")).toBe(0.8);
     expect(store.get("nested")).toBeUndefined();
   });
+
+  it("rejects oversized state maps", () => {
+    const store = new StateStore();
+    const payload = Object.fromEntries(
+      Array.from({ length: 129 }, (_, index) => [`key${index}`, index]),
+    );
+
+    expect(() => applyStatePayload(store, payload)).toThrow(/state exceeds max keys/i);
+  });
 });

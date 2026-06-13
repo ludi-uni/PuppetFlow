@@ -1,12 +1,6 @@
 import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriOscAdapter } from "@puppetflow/adapter-vmc";
-import type { BehaviorStatement } from "@puppetflow/behavior";
 import type { MotionState, StateValue } from "@puppetflow/core";
-import { AttentionPlugin } from "@puppetflow/plugin-attention";
-import { BlinkPlugin } from "@puppetflow/plugin-blink";
-import { EmotionPlugin } from "@puppetflow/plugin-emotion";
-import { GazePlugin } from "@puppetflow/plugin-gaze";
-import { IdlePlugin } from "@puppetflow/plugin-idle";
 import { loadPreset } from "@puppetflow/preset";
 import { PuppetFlowRuntime, type PluginOutputSnapshot } from "@puppetflow/runtime";
 import { HttpSource } from "@puppetflow/source-http";
@@ -37,14 +31,6 @@ const PRESETS = {
 
 export type PresetName = keyof typeof PRESETS;
 
-export type PluginToggles = {
-  blink: boolean;
-  gaze: boolean;
-  idle: boolean;
-  attention: boolean;
-  emotion: boolean;
-};
-
 export type SourceConfig = {
   httpUrl: string | null;
   wsUrl: string | null;
@@ -61,13 +47,6 @@ let startupGeneration = 0;
 let startupPromise: Promise<PuppetFlowRuntime> | null = null;
 let currentPreset: PresetName = "Curious";
 let customPresetJson: string | null = null;
-let pluginToggles: PluginToggles = {
-  blink: false,
-  gaze: false,
-  idle: false,
-  attention: false,
-  emotion: false,
-};
 let sourceConfig: SourceConfig = {
   httpUrl: null,
   wsUrl: null,
@@ -81,26 +60,6 @@ const pipelineListenerUnsubs = new Map<
   (update: MotionPipelineUpdate) => void,
   () => void
 >();
-
-function applyOptionalPlugins(instance: PuppetFlowRuntime): void {
-  const activeIds = new Set(instance.getPlugins().map((plugin) => plugin.id));
-
-  if (pluginToggles.blink && !activeIds.has("blink")) {
-    instance.use(new BlinkPlugin());
-  }
-  if (pluginToggles.gaze && !activeIds.has("gaze")) {
-    instance.use(new GazePlugin());
-  }
-  if (pluginToggles.idle && !activeIds.has("idle")) {
-    instance.use(new IdlePlugin());
-  }
-  if (pluginToggles.attention && !activeIds.has("attention")) {
-    instance.use(new AttentionPlugin());
-  }
-  if (pluginToggles.emotion && !activeIds.has("emotion")) {
-    instance.use(new EmotionPlugin());
-  }
-}
 
 function isTauriEnvironment(): boolean {
   return (
@@ -137,7 +96,6 @@ function buildRuntime(): PuppetFlowRuntime {
   const instance = new PuppetFlowRuntime().loadPreset(loaded);
 
   attachMapperOutputs(instance);
-  applyOptionalPlugins(instance);
 
   if (mapperConfig.loggerEnabled) {
     instance.attachAdapter(
@@ -275,17 +233,6 @@ export function getPresetJson(presetName: PresetName): string {
   return PRESETS[presetName];
 }
 
-export async function setPluginToggles(
-  toggles: PluginToggles,
-): Promise<PuppetFlowRuntime> {
-  pluginToggles = toggles;
-  return restartRuntime();
-}
-
-export function getPluginToggles(): PluginToggles {
-  return { ...pluginToggles };
-}
-
 export function getActivePluginIds(): string[] {
   if (!runtime) {
     return getPresetPluginIds(currentPreset);
@@ -331,39 +278,14 @@ export function getActivePipelineStageIds(): string[] {
   return [...pluginIds, "behavior", "graph"];
 }
 
-function collectBuiltinIds(statements: BehaviorStatement[]): string[] {
-  const ids: string[] = [];
-
-  for (const statement of statements) {
-    if (statement.type === "Builtin") {
-      ids.push(statement.id);
-      continue;
-    }
-
-    if (statement.type === "Block") {
-      ids.push(...collectBuiltinIds(statement.statements));
-      continue;
-    }
-
-    if (statement.type === "If") {
-      ids.push(...collectBuiltinIds(statement.then));
-      if (statement.else) {
-        ids.push(...collectBuiltinIds(statement.else));
-      }
-    }
-  }
-
-  return ids;
-}
-
-export function getPresetBuiltinIds(presetName: PresetName): string[] {
+export function getPresetBehaviorPluginIds(presetName: PresetName): string[] {
   const loaded = loadPreset(customPresetJson ?? PRESETS[presetName]);
-  return collectBuiltinIds(loaded.behavior.statements);
+  return loaded.behaviorPlugins.map((plugin) => plugin.id);
 }
 
-export function getBuiltinIdsFromPresetJson(json: string): string[] {
+export function getBehaviorPluginIdsFromPresetJson(json: string): string[] {
   const loaded = loadPreset(json);
-  return collectBuiltinIds(loaded.behavior.statements);
+  return loaded.behaviorPlugins.map((plugin) => plugin.id);
 }
 
 export type MotionPipelineUpdate = {

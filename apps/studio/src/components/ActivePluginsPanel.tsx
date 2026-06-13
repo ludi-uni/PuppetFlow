@@ -9,7 +9,7 @@ export function ActivePluginsPanel({ pluginIds }: ActivePluginsPanelProps) {
       <p className="hint">
         {pluginIds.length > 0
           ? pluginIds.join(", ")
-          : "(なし) — Plugins タブ、または Preset の rules / behaviorPlugins で追加できます"}
+          : "(なし) — Plugins タブ、または Preset の behaviorPlugins で追加できます"}
       </p>
     </aside>
   );

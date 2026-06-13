@@ -9,6 +9,8 @@ export interface BlinkPluginConfig {
   minInterval?: number;
   maxInterval?: number;
   closeDuration?: number;
+  /** facePitch の閉眼量（0–1 スケール） */
+  blinkStrength?: number;
 }
 
 export class BlinkPlugin implements BehaviorPlugin {
@@ -17,6 +19,7 @@ export class BlinkPlugin implements BehaviorPlugin {
   private readonly minInterval: number;
   private readonly maxInterval: number;
   private readonly closeDuration: number;
+  private readonly blinkStrength: number;
   private nextBlinkAt: number | null = null;
   private blinkUntil = 0;
 
@@ -24,6 +27,7 @@ export class BlinkPlugin implements BehaviorPlugin {
     this.minInterval = config.minInterval ?? 3;
     this.maxInterval = config.maxInterval ?? 8;
     this.closeDuration = config.closeDuration ?? 0.12;
+    this.blinkStrength = config.blinkStrength ?? 0.15;
   }
 
   process(_input: PluginInputStores, _motion: MotionState): Partial<MotionState> {
@@ -44,7 +48,7 @@ export class BlinkPlugin implements BehaviorPlugin {
     if (this.blinkUntil > now) {
       const progress = 1 - (this.blinkUntil - now) / this.closeDuration;
       const closeAmount = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
-      return { facePitch: clamp01(0.5 - closeAmount * 0.15) };
+      return { facePitch: clamp01(0.5 - closeAmount * this.blinkStrength) };
     }
 
     this.blinkUntil = 0;

@@ -28,14 +28,14 @@ vNext 実装（モノレポ）に基づく技術概要です。
 
               +---------------------+
               |  Behavior Runtime   |
-              |  (AST / Builtins)   |
+              |  (If / Assign / …)  |
               +---------------------+
 
                         ↓
 
               +---------------------+
               | Motion Graph Runtime|
-              |  (数値ノードのみ)    |
+              |  (数値 + motionPack) |
               +---------------------+
 
                         ↓
@@ -50,6 +50,13 @@ vNext 実装（モノレポ）に基づく技術概要です。
               +---------------------+
               |  Motion Modifiers   |
               |  (smooth, noise, …) |
+              +---------------------+
+
+                        ↓
+
+              +---------------------+
+              |  Extension Layer    |
+              |  (Motion Pack 等)   |
               +---------------------+
 
                         ↓
@@ -82,9 +89,15 @@ puppetflow/
     behavior/          # Behavior AST, executeBehavior, Builtins
     motion-graph/      # Graph 実行（Logic ノードなし）
     runtime/           # PuppetFlowRuntime
-    preset/            # Preset v2 ローダー
+    preset/            # Preset v3 ローダー
     behavior-packs/    # 公式 .pfpreset 6 種
-    plugin-rule/       # 線形 gain マッピング
+    extension-core/    # Motion Registry, Extension Layer
+    extension-bundled/ # 公式 Motion Pack 一括登録
+    pfscript-core/     # PFScript 式評価
+    plugin-thinking/   # 考え込み Pack
+    plugin-lookaround/ # 視線探索
+    plugin-tail/       # 尻尾
+    plugin-animal-ears/# 耳ぴく
     plugin-gaze/       # 視線ゆらぎ
     plugin-blink/      # 瞬き
     plugin-idle/       # 待機視線
@@ -120,18 +133,19 @@ runtime.state.get("interest");
 
 キーはスキーマ固定ではありません。
 
-### Preset v2
+### Preset v3
 
 ```ts
 import { loadPreset } from "@puppetflow/preset";
 import { getPresetJson } from "@puppetflow/behavior-packs";
 
 const loaded = loadPreset(getPresetJson("Curious"));
-runtime.loadPreset(loaded); // plugins + behavior + graph + modifiers
+runtime.loadPreset(loaded); // behaviorPlugins + behavior + graph + extensions
 ```
 
-- `version: 1` は **読み込みエラー**
-- `version: 2` で任意の `rules` / `behaviorPlugins` を併記可能（[plugins.md](reference/plugins.md)）
+- `version: 3` のみ受け付け（v1 / v2 は **読み込みエラー**）
+- `rules` / `modifiers` / behavior 内 `Builtin` は **非対応**
+- 任意の `behaviorPlugins` と `extensions` を併記可能（[plugins.md](reference/plugins.md) / [motion-extension.md](reference/motion-extension.md)）
 
 ### BehaviorPlugin
 
@@ -142,14 +156,15 @@ interface BehaviorPlugin {
 }
 ```
 
-`runtime.use(plugin)` で追加。Preset の `rules` / `behaviorPlugins` は `loadPreset()` 時に自動登録されます。
+`runtime.use(plugin)` で追加。Preset の `behaviorPlugins` は `loadPreset()` 時に自動登録されます。
 
-### Behavior / Graph
+### Behavior / Graph / Extension
 
-- **Behavior:** `executeBehavior(behaviorRoot, ctx)` — If, Assign, Builtin
-- **Graph:** `executeMotionGraph(graph, ctx)` — stateInput, multiply, output 等
+- **Behavior:** `executeBehavior(behaviorRoot, ctx)` — If, Assign, MotionPack
+- **Graph:** `executeMotionGraph(graph, ctx)` — stateInput, multiply, output, motionPack 等
+- **Extension:** `executeExtensions(registry, ctx, sources)` — Motion Pack, custom パラメータ
 
-編集の分担は [reference/behavior-and-graph.md](reference/behavior-and-graph.md) を参照。
+編集の分担は [reference/behavior-and-graph.md](reference/behavior-and-graph.md) と [reference/motion-extension.md](reference/motion-extension.md) を参照。
 
 ### Motion Modifier
 

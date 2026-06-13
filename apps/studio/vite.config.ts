@@ -30,5 +30,17 @@ export default defineConfig({
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
     minify: process.env.TAURI_ENV_DEBUG ? false : "esbuild",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/blockly")) {
+            return "blockly";
+          }
+          if (id.includes("node_modules/@xyflow")) {
+            return "xyflow";
+          }
+        },
+      },
+    },
   },
 });

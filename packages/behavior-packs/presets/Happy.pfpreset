@@ -1,6 +1,6 @@
 {
   "name": "Happy",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
     "statements": []
@@ -20,11 +20,5 @@
       { "id": "e3", "source": "in-energy-facePitch", "target": "mul-facePitch" },
       { "id": "e4", "source": "mul-facePitch", "target": "out-facePitch" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 4, "amplitude": 0.035 } },
-    { "id": "noise", "config": { "amplitude": 0.006, "keys": ["mouthX"] } },
-    { "id": "smoothing", "config": { "factor": 0.1 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

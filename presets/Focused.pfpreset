@@ -1,13 +1,14 @@
 {
   "name": "Focused",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": [
-      { "type": "Builtin", "id": "attention", "config": { "leanGain": 0.35, "tiltGain": 0.12 } },
-      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.015, "speed": 0.3 } }
-    ]
+    "statements": []
   },
+  "behaviorPlugins": [
+    { "id": "attention", "config": { "leanGain": 0.35, "tiltGain": 0.12 } },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.015, "speed": 0.3 } }
+  ],
   "graph": {
     "nodes": [
       { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
@@ -28,11 +29,5 @@
       { "id": "e5", "source": "in-interest-lean", "target": "mul-lean" },
       { "id": "e6", "source": "mul-lean", "target": "out-lean" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 5, "amplitude": 0.025 } },
-    { "id": "noise", "config": { "amplitude": 0.005, "keys": ["mouthX"] } },
-    { "id": "smoothing", "config": { "factor": 0.1 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

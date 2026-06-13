@@ -1,12 +1,5 @@
 import { MOTION_STATE_KEYS, type MotionStateKey } from "@puppetflow/core";
 
-const BUILTIN_IDS = new Set<BehaviorBuiltin["id"]>([
-  "gaze",
-  "blink",
-  "idle",
-  "attention",
-  "emotion",
-]);
 const COMPARE_OPS = new Set<CompareOp>([">", ">=", "<", "<=", "==", "!="]);
 const ASSIGN_OPS = new Set<AssignOp>(["set", "add"]);
 const MAX_BEHAVIOR_DEPTH = 32;
@@ -58,17 +51,17 @@ export interface BehaviorAssign {
   value: number;
 }
 
-export interface BehaviorBuiltin {
-  type: "Builtin";
-  id: "gaze" | "blink" | "idle" | "attention" | "emotion";
-  config?: Record<string, unknown>;
+export interface BehaviorMotionPack {
+  type: "MotionPack";
+  packId: string;
+  config?: Record<string, number>;
 }
 
 export type BehaviorStatement =
   | BehaviorBlock
   | BehaviorIf
   | BehaviorAssign
-  | BehaviorBuiltin;
+  | BehaviorMotionPack;
 
 export function isBehaviorCondition(value: unknown): value is BehaviorCondition {
   if (typeof value !== "object" || value === null) {
@@ -172,6 +165,17 @@ function parseBehaviorStatement(
     throw new Error(`behavior statement must be an object at ${path}`);
   }
 
+  const rawType =
+    typeof value === "object" && value !== null && "type" in value
+      ? String((value as { type?: unknown }).type)
+      : undefined;
+
+  if (rawType === "Builtin") {
+    throw new Error(
+      `Builtin statements are no longer supported at ${path}. Use behaviorPlugins in the preset instead.`,
+    );
+  }
+
   const statement = value as Partial<BehaviorStatement>;
   switch (statement.type) {
     case "Block":
@@ -218,25 +222,30 @@ function parseBehaviorStatement(
         value: statement.value,
       };
     }
-    case "Builtin": {
-      if (
-        typeof statement.id !== "string" ||
-        !BUILTIN_IDS.has(statement.id as BehaviorBuiltin["id"])
-      ) {
-        throw new Error(`invalid Builtin statement at ${path}`);
+    case "MotionPack": {
+      const pack = statement as Partial<BehaviorMotionPack>;
+      if (typeof pack.packId !== "string" || pack.packId.length === 0) {
+        throw new Error(`MotionPack requires a non-empty packId at ${path}`);
       }
-      const config = statement.config;
+      const config = pack.config;
+      if (
+        config !== undefined &&
+        (typeof config !== "object" || config === null || Array.isArray(config))
+      ) {
+        throw new Error(`MotionPack config must be an object at ${path}`);
+      }
+      const normalized: Record<string, number> = {};
+      if (config) {
+        for (const [key, value] of Object.entries(config)) {
+          if (typeof value === "number" && Number.isFinite(value)) {
+            normalized[key] = value;
+          }
+        }
+      }
       return {
-        type: "Builtin",
-        id: statement.id as BehaviorBuiltin["id"],
-        config:
-          config === undefined
-            ? undefined
-            : typeof config === "object" && config !== null
-              ? (config as Record<string, unknown>)
-              : (() => {
-                  throw new Error(`Builtin config must be an object at ${path}`);
-                })(),
+        type: "MotionPack",
+        packId: pack.packId,
+        config: Object.keys(normalized).length > 0 ? normalized : undefined,
       };
     }
     default:

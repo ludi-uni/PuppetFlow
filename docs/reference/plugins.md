@@ -1,112 +1,74 @@
 # Behavior Plugins
 
-State から Motion へ変換する **拡張可能なプラグイン層** です。Preset v2 の `rules` / `behaviorPlugins`、または Studio の Plugins タブから有効化します。
+State / Channel から Motion へ変換する **拡張可能なプラグイン層** です。Preset v3 の `behaviorPlugins` で定義し、Studio の「オプション動き」タブから数値パラメータを編集できます。
 
-Behavior AST・Motion Graph と **併用** できます。各段階の出力は平均マージされ、Modifier 適用後に Adapter へ渡ります。
+Motion Pack（考え込み・尻尾等）は **別レイヤー** です。`extensions.packs` と Extension Layer については [motion-extension.md](motion-extension.md) を参照してください。
 
 ## パイプライン上の位置
 
 ```text
-StateStore
+StateStore / ChannelStore
   ↓
-Behavior Plugins     ← rule, gaze, blink, idle, attention, emotion
+Behavior Plugins     ← behaviorPlugins（gaze, blink, idle, attention, emotion）
   ↓
-Behavior Runtime     ← If / Assign / Builtin（Scratch）
+Behavior Runtime     ← If / Assign / MotionPack（Scratch）
   ↓
-Motion Graph         ← 数値ノード（Graph Editor）
+Motion Graph         ← 数値ノード + motionPack / ext:*（Graph Editor / 動きのつなぎ）
   ↓
-merge → Modifiers → Rendered Motion → Adapters
+merge → Motion Modifiers
+  ↓
+Extension Layer      ← extensions.packs / graph motionPack（Motion Pack プラグイン）
+  ↓
+Adapters
 ```
 
 ## 公式プラグイン
 
-| パッケージ                     | id          | 役割                                     |
-| ------------------------------ | ----------- | ---------------------------------------- |
-| `@puppetflow/plugin-rule`      | `rule`      | `input × gain → output` の線形マッピング |
-| `@puppetflow/plugin-gaze`      | `gaze`      | 視線ゆらぎ（`lookX` / `lookY`）          |
-| `@puppetflow/plugin-blink`     | `blink`     | 瞬き（`facePitch`）                      |
-| `@puppetflow/plugin-idle`      | `idle`      | 低 interest 時の待機視線                 |
-| `@puppetflow/plugin-attention` | `attention` | interest 連動の姿勢                      |
-| `@puppetflow/plugin-emotion`   | `emotion`   | joy / sadness / anger → 表情             |
+| パッケージ                     | id          | 動かす Motion キー             |
+| ------------------------------ | ----------- | ------------------------------ |
+| `@puppetflow/plugin-gaze`      | `gaze`      | `lookX`, `lookY`               |
+| `@puppetflow/plugin-blink`     | `blink`     | `facePitch`                    |
+| `@puppetflow/plugin-idle`      | `idle`      | `lookX`, `lookY`               |
+| `@puppetflow/plugin-attention` | `attention` | `bodyLean`, `headTilt`         |
+| `@puppetflow/plugin-emotion`   | `emotion`   | `mouthX`, `facePitch`, `lookX` |
 
-### Rule Plugin
-
-```json
-"rules": [
-  { "input": "interest", "output": "mouthX", "gain": 0.5 },
-  { "input": "energy", "output": "facePitch", "gain": 0.8 }
-]
-```
-
-同一 `output` への複数ルールは **平均** してマージします。
-
-### Character Plugins
+### Preset での定義
 
 ```json
 "behaviorPlugins": [
   { "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.3 } },
-  { "id": "blink" }
+  { "id": "blink", "config": { "blinkStrength": 0.15, "minInterval": 3 } }
 ]
 ```
 
-`gaze` / `blink` 等は Behavior の **Builtin** と同系統の動きですが、プラグインとして独立に追加・削除できます。
+`config` の各キーは **0〜1 または秒単位** など、プラグインごとに型付きパラメータです。Studio のプラグインカタログ（`plugin-catalog.ts`）にラベル・最小/最大・デフォルト・影響する Motion キーが定義されています。
 
-## Preset v2 での定義
+### パラメータを追加する手順
 
-`version` は **2 のまま**、`behavior` / `graph` と併記します（旧 v1 形式とは別）。
+1. プラグインパッケージの `*PluginConfig` にフィールドを追加し、`process()` で Motion へ反映
+2. `apps/studio/src/constants/plugin-catalog.ts` にパラメータ定義（`min` / `max` / `motionKeys`）を追加
+3. 必要なら公式 `.pfpreset` の `behaviorPlugins` デフォルトを更新
 
-```json
-{
-  "name": "Custom",
-  "version": 2,
-  "rules": [],
-  "behaviorPlugins": [{ "id": "gaze" }],
-  "behavior": { "type": "Block", "statements": [] },
-  "graph": { "nodes": [], "edges": [] },
-  "modifiers": [],
-  "modifierOrder": ["breath", "noise", "smoothing"]
-}
-```
-
-`loadPreset()` は `rules` と `behaviorPlugins` から `BehaviorPlugin` インスタンスを生成し、`runtime.loadPreset()` で登録します。
+カタログに載せたパラメータは Studio でスライダーとして自動表示されます。
 
 ## ランタイム API
 
 ```ts
 import { PuppetFlowRuntime } from "@puppetflow/runtime";
 import { GazePlugin } from "@puppetflow/plugin-gaze";
-import { createRulePlugin } from "@puppetflow/plugin-rule";
 
-const runtime = new PuppetFlowRuntime()
-  .use(createRulePlugin([{ input: "interest", output: "mouthX", gain: 0.5 }]))
-  .use(new GazePlugin({ wanderAmplitude: 0.04 }));
+const runtime = new PuppetFlowRuntime().use(new GazePlugin({ wanderAmplitude: 0.04 }));
 ```
 
 Preset 読み込み後に `runtime.use()` で追加することもできます（同一 id の重複に注意）。
 
 ## Studio での編集
 
-| タブ               | プラグイン関連                                              |
-| ------------------ | ----------------------------------------------------------- |
-| **Plugins**        | Preset 外から gaze / blink 等を ON/OFF（Apply Plugins）     |
-| **Preset Manager** | `rules` / `behaviorPlugins` JSON エディタ                   |
-| **Graph Editor**   | エクスポート時に plugins / behavior / modifiers を **保持** |
-| **Scratch**        | behavior 適用時に plugins フィールドを **保持**             |
-| **Motion Mapper**  | **Rendered Motion**（plugins 適用後）を OSC 送信            |
-| **Pipeline**       | 各プラグイン段階の出力を表形式で表示                        |
+| タブ / セクション               | Preset フィールド  | 内容                                  |
+| ------------------------------- | ------------------ | ------------------------------------- |
+| **オプション動き**（上半分）    | `behaviorPlugins`  | gaze / blink 等の ON/OFF + スライダー |
+| **オプション動き**（拡張 Pack） | `extensions.packs` | 考え込み / 尻尾等の Motion Pack       |
+| **Preset Manager**              | 両方               | JSON 直接編集                         |
+| **Pipeline**                    | —                  | 各プラグイン段階の出力を表形式で表示  |
 
-Graph Editor は `graph` を編集します。ノードをエクスポートすると `graph` が更新され、重複を避けるため `rules` は空にされます（数値マッピングは graph が正）。
-
-`rules` のみの Preset は Graph Editor 上でノードとして読み込めます。
-
-## Builtin との使い分け
-
-| 手段                          | 向いている用途                                   |
-| ----------------------------- | ------------------------------------------------ |
-| **Builtin**（`behavior` AST） | Scratch で条件付きに gaze / blink を組み合わせる |
-| **behaviorPlugins**           | Preset に固定の動きを宣言する                    |
-| **Plugins タブ**              | 試行錯誤・一時的な追加                           |
-| **rules**                     | シンプルな gain マッピング（Graph なしでも可）   |
-| **graph**                     | 複数ノード・Clamp 等を含む数値処理               |
-
-関連: [プリセット](presets.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [Studio ガイド](../guides/studio.md)
+関連: [プリセット](presets.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [Motion Extension](motion-extension.md)

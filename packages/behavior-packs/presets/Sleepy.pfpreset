@@ -1,14 +1,15 @@
 {
   "name": "Sleepy",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": [
-      { "type": "Builtin", "id": "blink", "config": { "minInterval": 4, "maxInterval": 10, "closeDuration": 0.18 } },
-      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.02, "speed": 0.25 } },
-      { "type": "Builtin", "id": "idle", "config": { "interestThreshold": 0.45, "wanderBoost": 0.08 } }
-    ]
+    "statements": []
   },
+  "behaviorPlugins": [
+    { "id": "blink", "config": { "minInterval": 4, "maxInterval": 10, "closeDuration": 0.18 } },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.02, "speed": 0.25 } },
+    { "id": "idle", "config": { "interestThreshold": 0.45, "wanderBoost": 0.08 } }
+  ],
   "graph": {
     "nodes": [
       { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
@@ -24,11 +25,5 @@
       { "id": "e3", "source": "in-stress-facePitch", "target": "mul-stress-facePitch" },
       { "id": "e4", "source": "mul-stress-facePitch", "target": "out-stress-facePitch" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 7, "amplitude": 0.05 } },
-    { "id": "noise", "config": { "amplitude": 0.008, "keys": ["facePitch"] } },
-    { "id": "smoothing", "config": { "factor": 0.07 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

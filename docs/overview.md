@@ -13,17 +13,19 @@ PuppetFlow は次の **いずれでもない** ランタイムです。
 ```text
 State
  ↓
-Behavior Plugins（rules / gaze / blink 等）
+Behavior Plugins（behaviorPlugins: gaze / blink 等）
  ↓
-Behavior Script Engine
+Behavior Script Engine（If / Assign / MotionPack）
  ↓
 Motion Graph Runtime
  ↓
-MotionState
+MotionState（merge）
  ↓
-Modifiers → Adapters
+Motion Modifiers
  ↓
-Viewer（外部）
+Extension Layer（extensions / Motion Pack）
+ ↓
+Adapters → Viewer（外部）
 ```
 
 キャラクターの **描画** は外部 Viewer（nijiexpose、Live2D、VRM アプリ等）が担います。PuppetFlow は状態からモーションまでを制御します。
@@ -32,15 +34,16 @@ Viewer（外部）
 
 PuppetFlow は **状態・振る舞い・表現** を分離します。
 
-| 層                        | 例                                                  |
-| ------------------------- | --------------------------------------------------- |
-| State（入力）             | `{ "interest": 0.8, "energy": 0.6 }`                |
-| Plugins                   | `interest × 0.5 → mouthX`、`gaze` による視線ゆらぎ  |
-| Behavior（条件・Builtin） | `If interest > 0.7 → headTilt += 0.1`               |
-| Graph（数値マッピング）   | `interest × 0.5 → mouthX`（Clamp 等も可）           |
-| MotionState               | `{ "mouthX": 0.4, "headTilt": 0.2, "lookX": 0.52 }` |
-| Adapter（表現）           | `{ "ParamMouthForm": 0.4, "ParamAngleZ": 0.2 }`     |
-| Viewer                    | 外部アプリで描画                                    |
+| 層                       | 例                                                  |
+| ------------------------ | --------------------------------------------------- |
+| State（入力）            | `{ "interest": 0.8, "energy": 0.6 }`                |
+| Behavior Plugins         | `gaze` による視線ゆらぎ、`blink` によるまばたき     |
+| Behavior（条件）         | `If interest > 0.7 → headTilt += 0.1`               |
+| Graph（数値マッピング）  | `interest × 0.5 → mouthX`（Clamp 等も可）           |
+| Extension（Motion Pack） | `thinking` パック、`tailWag` カスタムパラメータ     |
+| MotionState              | `{ "mouthX": 0.4, "headTilt": 0.2, "lookX": 0.52 }` |
+| Adapter（表現）          | `{ "ParamMouthForm": 0.4, "ParamAngleZ": 0.2 }`     |
+| Viewer                   | 外部アプリで描画                                    |
 
 State のキーは固定しません。ゲーム・AI・IoT など用途ごとに異なる状態をそのまま受け入れます。
 
@@ -48,14 +51,16 @@ MotionState のキーは [MotionState リファレンス](reference/motion-state
 
 ## 編集インターフェース
 
-振る舞いは **同一の Preset v2** にまとめます。
+振る舞いは **Preset v3**（`.pfpreset`）にまとめます。
 
-| UI                     | 担当                                                             |
-| ---------------------- | ---------------------------------------------------------------- |
-| **Plugins タブ**       | 追加プラグインの ON/OFF                                          |
-| **Scratch（Blockly）** | If / 比較 / Assign / Builtin                                     |
-| **Graph Editor**       | 数値ノード（条件分岐なし）                                       |
-| **Preset Manager**     | `rules` / `behaviorPlugins` / `behavior` / `graph` / `modifiers` |
+| UI                     | 担当                                                    |
+| ---------------------- | ------------------------------------------------------- |
+| **オプション動き**     | `behaviorPlugins` + `extensions.packs`                  |
+| **Scratch（Blockly）** | If / Assign / Motion Pack                               |
+| **Graph Editor**       | 数値ノード + motionPack / ext:\*                        |
+| **Preset Manager**     | `behaviorPlugins` / `behavior` / `graph` / `extensions` |
+
+詳細は [reference/presets.md](reference/presets.md) と [reference/motion-extension.md](reference/motion-extension.md) を参照。
 
 ## マイルストーン（現行）
 

@@ -15,6 +15,8 @@ export interface MotionState {
   bodyLean: number;
   lookX: number;
   lookY: number;
+  /** Extension Layer が書き込む独自パラメータ */
+  custom: Record<string, number>;
 }
 
 export const MOTION_STATE_KEYS = [
@@ -55,6 +57,7 @@ export const DEFAULT_MOTION_STATE: MotionState = {
   bodyLean: 0,
   lookX: 0.5,
   lookY: 0.5,
+  custom: {},
 };
 
 export function clamp01(value: number): number {

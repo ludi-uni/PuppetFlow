@@ -23,6 +23,8 @@
     "@puppetflow/behavior": "workspace:*",
     "@puppetflow/core": "workspace:*",
     "@puppetflow/modifier-core": "workspace:*",
+    "@puppetflow/extension-bundled": "workspace:*",
+    "@puppetflow/extension-core": "workspace:*",
     "@puppetflow/motion-graph": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/source-core": "workspace:*"

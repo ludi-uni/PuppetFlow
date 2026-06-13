@@ -7,15 +7,17 @@
 ```text
 StateStore
  ↓
-Behavior Plugins        ← rules / behaviorPlugins（gaze, blink, rule 等）
+Behavior Plugins        ← behaviorPlugins（gaze, blink 等）
  ↓
-Behavior Script Engine  ← If / Builtin / Assign（Blockly または JSON）
+Behavior Script Engine  ← If / Assign / MotionPack（Blockly または JSON）
  ↓
-Motion Graph Runtime    ← 数値ノード（Multiply / Clamp / Output 等）
+Motion Graph Runtime    ← 数値ノード + motionPack / ext:* ノード
  ↓
 Target MotionState
  ↓
 Motion Modifiers        ← breath / noise / smoothing
+ ↓
+Extension Layer         ← extensions.packs / graph motionPack / PFScript
  ↓
 Rendered MotionState
  ↓
@@ -43,7 +45,8 @@ Adapters → 外部 Viewer
 | [MotionState](reference/motion-state.md)                    | 正規化モーションパラメータ（16 キー）    |
 | [Behavior Plugins](reference/plugins.md)                    | rule / gaze / blink 等のプラグイン層     |
 | [Behavior と Motion Graph](reference/behavior-and-graph.md) | AST、Graph ノード、編集の分担            |
-| [プリセット](reference/presets.md)                          | Preset v2（`.pfpreset`）と公式 Pack 6 種 |
+| [Motion Extension](reference/motion-extension.md)           | Extension Layer、Pack、custom パラメータ |
+| [プリセット](reference/presets.md)                          | Preset v3（`.pfpreset`）と公式 Pack 6 種 |
 | [アダプタ](reference/adapters.md)                           | VMC / Live2D / VRM / WebSocket / Logger  |
 | [State Sources](reference/sources.md)                       | HTTP / WebSocket / MQTT / Discord        |
 
@@ -51,7 +54,7 @@ Adapters → 外部 Viewer
 
 | ドキュメント                                                           | 内容                                               |
 | ---------------------------------------------------------------------- | -------------------------------------------------- |
-| [追加仕様（Input & Timeline）](追加仕様.md)                            | Channel / Timeline 入力層の拡張仕様                |
+| [追加仕様（Motion Extension 設計メモ）](追加仕様.md)                   | Extension Layer の設計・API 草案                   |
 | [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（未着手）                      |
 | [設計決定（Input & Timeline）](adr/input-timeline-design-decisions.md) | sticky Channel / global clock / phoneme テーブル等 |
 

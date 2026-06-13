@@ -10,6 +10,7 @@ import { applyStatePayload } from "./parse-state-payload.js";
 
 export const MAX_TIMELINE_EVENTS_PER_PAYLOAD = 64;
 export const MAX_CHANNEL_KEYS_PER_PAYLOAD = 128;
+export const MAX_TIMELINE_EVENT_DURATION_MS = 300_000;
 
 function isStateValue(value: unknown): value is StateValue {
   return (
@@ -27,11 +28,27 @@ function isTimelineEvent(value: unknown): value is TimelineEvent {
   }
 
   const event = value as Partial<TimelineEvent>;
-  return (
-    typeof event.startMs === "number" &&
-    typeof event.endMs === "number" &&
-    typeof event.type === "string"
-  );
+  if (
+    typeof event.startMs !== "number" ||
+    typeof event.endMs !== "number" ||
+    typeof event.type !== "string"
+  ) {
+    return false;
+  }
+
+  if (!Number.isFinite(event.startMs) || !Number.isFinite(event.endMs)) {
+    return false;
+  }
+
+  if (event.endMs < event.startMs) {
+    return false;
+  }
+
+  if (event.endMs - event.startMs > MAX_TIMELINE_EVENT_DURATION_MS) {
+    return false;
+  }
+
+  return true;
 }
 
 export interface InputPayloadTarget {

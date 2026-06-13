@@ -1,13 +1,17 @@
 import type { MotionState } from "@puppetflow/core";
 import type { PluginOutputSnapshot } from "@puppetflow/runtime";
-import { ReactFlowProvider } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ActiveConfigSummary } from "./components/ActiveConfigSummary";
-import { GraphEditor } from "./components/GraphEditor";
 import { HelpGuide } from "./components/HelpGuide";
 import { KeyValueTable } from "./components/KeyValueTable";
 import { MotionMapperEditor } from "./components/MotionMapperEditor";
+import { NextStepBar } from "./components/NextStepBar";
+import { ExtensionPackEditor } from "./components/ExtensionPackEditor";
+import { PluginMotionEditor } from "./components/PluginMotionEditor";
+import { SimpleGraphMappingEditor } from "./components/SimpleGraphMappingEditor";
+import { SimpleOscMapperEditor } from "./components/SimpleOscMapperEditor";
+import { SimplePresetPicker } from "./components/SimplePresetPicker";
+import { StudioModeToggle } from "./components/StudioModeToggle";
 import { MotionTable } from "./components/MotionTable";
 import { MouthStatusBar } from "./components/MouthStatusBar";
 import { PluginOutputsPanel } from "./components/PluginOutputsPanel";
@@ -21,19 +25,16 @@ import {
   getActivePluginIds,
   getMapperConfig,
   getCurrentPreset,
-  getBuiltinIdsFromPresetJson,
-  getPluginToggles,
-  getPresetBuiltinIds,
+  getBehaviorPluginIdsFromPresetJson,
+  getPresetBehaviorPluginIds,
   getPresetJson,
   getSourceConfig,
   isCustomPresetActive,
   loadCustomPreset,
   type MotionPipelineUpdate,
-  type PluginToggles,
   type PresetName,
   type SourceConfig,
   setMapperConfig,
-  setPluginToggles,
   setSourceConfig,
   subscribeMotionPipeline,
   switchPreset,
@@ -42,13 +43,22 @@ import {
   extractBehaviorJson,
   extractBehaviorPluginsJson,
   extractGraphJson,
-  extractRulesJson,
   mergeBehaviorPart,
   mergeBehaviorPluginsPart,
   mergeGraphPart,
-  mergeRulesPart,
 } from "./utils/preset-parts";
+import { extractExtensionsJson } from "./utils/extension-config";
+import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "./utils/plugin-config";
+import { resolveNextStep } from "./utils/next-step";
 import { validatePresetJson } from "./utils/preset-validation";
+import {
+  getTabsForMode,
+  loadStudioMode,
+  normalizeTabForMode,
+  saveStudioMode,
+  type StudioMode,
+  type TabId,
+} from "./constants/studio-mode";
 
 const ScratchEditor = lazy(() =>
   import("./components/ScratchEditor").then((module) => ({
@@ -56,44 +66,21 @@ const ScratchEditor = lazy(() =>
   })),
 );
 
-type TabId =
-  | "pipeline"
-  | "scratch"
-  | "graph"
-  | "presets"
-  | "plugins"
-  | "sources"
-  | "mapper";
-
-const TABS: Array<{ id: TabId; label: string }> = [
-  { id: "pipeline", label: "Pipeline" },
-  { id: "scratch", label: "Scratch (Blockly)" },
-  { id: "graph", label: "Graph Editor" },
-  { id: "presets", label: "Preset Manager" },
-  { id: "plugins", label: "Plugins" },
-  { id: "sources", label: "Input Sources" },
-  { id: "mapper", label: "Motion Mapper" },
-];
-
-const OPTIONAL_PLUGINS: Array<{
-  id: keyof PluginToggles;
-  label: string;
-  description: string;
-}> = [
-  { id: "gaze", label: "Gaze", description: "視線のゆらぎ（lookX / lookY）" },
-  { id: "blink", label: "Blink", description: "まばたき（facePitch）" },
-  { id: "idle", label: "Idle", description: "低 interest 時の待機視線" },
-  { id: "attention", label: "Attention", description: "interest に応じた姿勢" },
-  { id: "emotion", label: "Emotion", description: "Channel emotion / joy → 表情" },
-];
+const GraphEditor = lazy(() =>
+  import("./components/GraphEditor").then((module) => ({
+    default: module.GraphEditor,
+  })),
+);
 
 const INPUT_SLIDERS = [
-  { key: "interest", label: "Interest", defaultValue: 0.5 },
-  { key: "energy", label: "Energy", defaultValue: 0.5 },
-  { key: "stress", label: "Stress", defaultValue: 0.2 },
+  { key: "interest", label: "Interest", simpleLabel: "興味・関心", defaultValue: 0.5 },
+  { key: "energy", label: "Energy", simpleLabel: "元気", defaultValue: 0.5 },
+  { key: "stress", label: "Stress", simpleLabel: "ストレス", defaultValue: 0.2 },
 ];
 
-const CHANNEL_SLIDERS = [{ key: "volume", label: "Volume", defaultValue: 0 }];
+const CHANNEL_SLIDERS = [
+  { key: "volume", label: "Volume", simpleLabel: "声の大きさ", defaultValue: 0 },
+];
 
 const PHONEME_OPTIONS = ["Rest", "A", "I", "U", "E", "O", "N"] as const;
 
@@ -130,6 +117,7 @@ function sourcesDirty(draft: SourceConfig, applied: SourceConfig): boolean {
 }
 
 export function App() {
+  const [studioMode, setStudioMode] = useState<StudioMode>(() => loadStudioMode());
   const [tab, setTab] = useState<TabId>("pipeline");
   const [ready, setReady] = useState(false);
   const [preset, setPreset] = useState<PresetName>(getCurrentPreset());
@@ -162,16 +150,18 @@ export function App() {
   const [graphJson, setGraphJson] = useState(
     extractGraphJson(getPresetJson("Curious")),
   );
-  const [rulesJson, setRulesJson] = useState(
-    extractRulesJson(getPresetJson("Curious")),
-  );
   const [behaviorPluginsJson, setBehaviorPluginsJson] = useState(
     extractBehaviorPluginsJson(getPresetJson("Curious")),
   );
-  const [pluginToggles, setPluginTogglesState] =
-    useState<PluginToggles>(getPluginToggles());
-  const [appliedPluginToggles, setAppliedPluginToggles] =
-    useState<PluginToggles>(getPluginToggles());
+  const [appliedBehaviorPluginsJson, setAppliedBehaviorPluginsJson] = useState(
+    extractBehaviorPluginsJson(getPresetJson("Curious")),
+  );
+  const [extensionsJson, setExtensionsJson] = useState(
+    extractExtensionsJson(getPresetJson("Curious")),
+  );
+  const [appliedExtensionsJson, setAppliedExtensionsJson] = useState(
+    extractExtensionsJson(getPresetJson("Curious")),
+  );
   const [activePluginIds, setActivePluginIds] =
     useState<string[]>(getActivePluginIds());
   const [behaviorPreviewJson, setBehaviorPreviewJson] = useState("");
@@ -182,8 +172,8 @@ export function App() {
   const [mqttTopic, setMqttTopic] = useState("");
   const [appliedSources, setAppliedSources] = useState<SourceConfig>(getSourceConfig());
   const [pipelineOutputs, setPipelineOutputs] = useState<PluginOutputSnapshot[]>([]);
-  const [builtinIds, setBuiltinIds] = useState<string[]>(
-    getPresetBuiltinIds(getCurrentPreset()),
+  const [behaviorPluginIds, setBehaviorPluginIds] = useState<string[]>(
+    getPresetBehaviorPluginIds(getCurrentPreset()),
   );
   const [mapperEditorKey, setMapperEditorKey] = useState(0);
   const [appliedMapperConfig, setAppliedMapperConfig] = useState(getMapperConfig());
@@ -213,9 +203,10 @@ export function App() {
     appliedSources.wsUrl ||
     (appliedSources.mqttBroker && appliedSources.mqttTopic),
   );
-  const pluginsHaveChanges = OPTIONAL_PLUGINS.some(
-    (plugin) => pluginToggles[plugin.id] !== appliedPluginToggles[plugin.id],
-  );
+  const pluginsHaveChanges =
+    behaviorPluginsJson !== appliedBehaviorPluginsJson ||
+    extensionsJson !== appliedExtensionsJson;
+  const emotionPluginEnabled = isPluginEnabled(appliedBehaviorPluginsJson, "emotion");
   const graphMouthMapped = useMemo(
     () => presetHasMouthChannelMapping(presetJson),
     [presetJson],
@@ -245,6 +236,24 @@ export function App() {
     setGraphEditorKey((current) => current + 1);
   }, []);
 
+  const tabs = useMemo(() => getTabsForMode(studioMode), [studioMode]);
+  const isSimpleMode = studioMode === "simple";
+  const nextStepGuide = useMemo(
+    () =>
+      resolveNextStep({
+        mapperConfig: appliedMapperConfig,
+        graphJson,
+        pluginsHaveChanges,
+      }),
+    [appliedMapperConfig, graphJson, pluginsHaveChanges],
+  );
+
+  const handleStudioModeChange = useCallback((nextMode: StudioMode) => {
+    saveStudioMode(nextMode);
+    setStudioMode(nextMode);
+    setTab((current) => normalizeTabForMode(current, nextMode));
+  }, []);
+
   const notify = useCallback((message: string, kind: StatusKind = "info") => {
     setStatus({ kind, message });
   }, []);
@@ -264,7 +273,7 @@ export function App() {
         setMqttBroker(sources.mqttBroker ?? "");
         setMqttTopic(sources.mqttTopic ?? "");
         setAppliedMapperConfig(getMapperConfig());
-        setBuiltinIds(getPresetBuiltinIds(getCurrentPreset()));
+        setBehaviorPluginIds(getPresetBehaviorPluginIds(getCurrentPreset()));
         setCustomPreset(isCustomPresetActive());
 
         unsubscribe = subscribeMotionPipeline(
@@ -342,7 +351,7 @@ export function App() {
         );
       }
       runtime.channels.set("phoneme", phonemeChannel);
-      if (appliedPluginToggles.emotion && emotionChannel) {
+      if (emotionPluginEnabled && emotionChannel) {
         runtime.channels.set("emotion", emotionChannel);
       } else {
         runtime.channels.delete("emotion");
@@ -353,7 +362,7 @@ export function App() {
     channelInputs,
     phonemeChannel,
     emotionChannel,
-    appliedPluginToggles.emotion,
+    emotionPluginEnabled,
     ready,
   ]);
 
@@ -449,7 +458,9 @@ export function App() {
     try {
       await loadCustomPreset(presetJson);
       setCustomPreset(true);
-      setBuiltinIds(getBuiltinIdsFromPresetJson(presetJson));
+      setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(presetJson));
+      setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(presetJson));
+      setAppliedExtensionsJson(extractExtensionsJson(presetJson));
       setActivePluginIds(getActivePluginIds());
       bumpGraphEditorKey();
       notify("カスタム Preset を適用しました。", "success");
@@ -466,8 +477,8 @@ export function App() {
   const syncPresetParts = (json: string) => {
     setBehaviorJson(extractBehaviorJson(json));
     setGraphJson(extractGraphJson(json));
-    setRulesJson(extractRulesJson(json));
     setBehaviorPluginsJson(extractBehaviorPluginsJson(json));
+    setExtensionsJson(extractExtensionsJson(json));
   };
 
   const handleLoadBuiltinPreset = async (presetName: PresetName) => {
@@ -479,7 +490,9 @@ export function App() {
       setPresetJson(json);
       syncPresetParts(json);
       setCustomPreset(false);
-      setBuiltinIds(getPresetBuiltinIds(presetName));
+      setBehaviorPluginIds(getPresetBehaviorPluginIds(presetName));
+      setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(json));
+      setAppliedExtensionsJson(extractExtensionsJson(json));
       setActivePluginIds(getActivePluginIds());
       bumpGraphEditorKey();
       notify(`プリセット「${presetName}」を適用しました。`, "success");
@@ -551,7 +564,9 @@ export function App() {
       setPresetJson(exportJson);
       syncPresetParts(exportJson);
       setCustomPreset(true);
-      setBuiltinIds(getBuiltinIdsFromPresetJson(exportJson));
+      setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(exportJson));
+      setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(exportJson));
+      setAppliedExtensionsJson(extractExtensionsJson(exportJson));
       bumpGraphEditorKey();
       setTab("pipeline");
       notify("グラフからエクスポートした Preset を適用しました。", "success");
@@ -587,9 +602,16 @@ export function App() {
       <header className="studio-header">
         <div>
           <h1>PuppetFlow Studio</h1>
-          <p>パイプライン編集・監視ツール（キャラ描画は外部 Viewer で行います）</p>
+          <p>
+            {isSimpleMode
+              ? "かんたんモード — キャラの動きを直感的に設定（描画は外部 Viewer）"
+              : "パイプライン編集・監視ツール（キャラ描画は外部 Viewer で行います）"}
+          </p>
         </div>
-        <HelpGuide />
+        <div className="studio-header-actions">
+          <StudioModeToggle mode={studioMode} onChange={handleStudioModeChange} />
+          <HelpGuide mode={studioMode} />
+        </div>
       </header>
 
       {status ? (
@@ -600,23 +622,46 @@ export function App() {
         />
       ) : null}
 
-      <ActiveConfigSummary
-        preset={preset}
-        isCustomPreset={customPreset}
-        sources={appliedSources}
-        builtinIds={builtinIds}
-        pluginIds={activePluginIds}
-        mapperConfig={appliedMapperConfig}
-        httpHealth={httpHealth}
-      />
+      {isSimpleMode ? (
+        <NextStepBar
+          guide={nextStepGuide}
+          onGoToTab={() => setTab(nextStepGuide.tab)}
+        />
+      ) : null}
+
+      {isSimpleMode ? (
+        <details className="config-summary-details">
+          <summary>設定の詳細を見る</summary>
+          <ActiveConfigSummary
+            preset={preset}
+            isCustomPreset={customPreset}
+            sources={appliedSources}
+            behaviorPluginIds={behaviorPluginIds}
+            pluginIds={activePluginIds}
+            mapperConfig={appliedMapperConfig}
+            httpHealth={httpHealth}
+          />
+        </details>
+      ) : (
+        <ActiveConfigSummary
+          preset={preset}
+          isCustomPreset={customPreset}
+          sources={appliedSources}
+          behaviorPluginIds={behaviorPluginIds}
+          pluginIds={activePluginIds}
+          mapperConfig={appliedMapperConfig}
+          httpHealth={httpHealth}
+        />
+      )}
 
       <nav className="tabs" aria-label="Studio tabs">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
             className={tab === item.id ? "tab active" : "tab"}
             onClick={() => setTab(item.id)}
+            title={item.description}
           >
             {item.label}
           </button>
@@ -629,6 +674,7 @@ export function App() {
             rendered={renderedMotion}
             phonemeSource={phonemeInputSource}
             graphMapped={graphMouthMapped}
+            simpleMode={isSimpleMode}
           />
           {externalInputActive ? (
             <p className="external-input-banner">
@@ -639,13 +685,15 @@ export function App() {
           <div className="panel-grid">
             <div className="pipeline-inputs">
               <section className="input-section">
-                <h2>State（長寿命）</h2>
+                <h2>{isSimpleMode ? "キャラの気持ち" : "State（長寿命）"}</h2>
                 <p className="hint">
-                  interest / energy 等。秒〜分単位で変化する状態です。
+                  {isSimpleMode
+                    ? "スライダーを動かすとキャラの動きが変わります。"
+                    : "interest / energy 等。秒〜分単位で変化する状態です。"}
                 </p>
                 {INPUT_SLIDERS.map((slider) => (
                   <label key={slider.key} className="row row-slider">
-                    <span>{slider.label}</span>
+                    <span>{isSimpleMode ? slider.simpleLabel : slider.label}</span>
                     <input
                       type="range"
                       min={0}
@@ -667,15 +715,15 @@ export function App() {
               </section>
 
               <section className="input-section">
-                <h2>Channel（常時・sticky）</h2>
+                <h2>{isSimpleMode ? "声・口の形" : "Channel（常時・sticky）"}</h2>
                 <p className="hint">
-                  値は保持されます。無音時は volume=0 / phoneme=Rest
-                  を送ってください。Graph の phonemeToShape（source=channel または
-                  auto）が参照します。
+                  {isSimpleMode
+                    ? "リップシンクを使う場合は、声の大きさと口の形をここで試せます。"
+                    : "値は保持されます。無音時は volume=0 / phoneme=Rest を送ってください。Graph の phonemeToShape（source=channel または auto）が参照します。"}
                 </p>
                 {CHANNEL_SLIDERS.map((slider) => (
                   <label key={slider.key} className="row row-slider">
-                    <span>{slider.label}</span>
+                    <span>{isSimpleMode ? slider.simpleLabel : slider.label}</span>
                     <input
                       type="range"
                       min={0}
@@ -695,7 +743,9 @@ export function App() {
                   </label>
                 ))}
                 <label className="row">
-                  <span>Channel phoneme</span>
+                  <span>
+                    {isSimpleMode ? "口の形（あいうえお）" : "Channel phoneme"}
+                  </span>
                   <select
                     value={phonemeChannel}
                     onChange={(e) => setPhonemeChannel(e.target.value)}
@@ -707,7 +757,7 @@ export function App() {
                     ))}
                   </select>
                 </label>
-                {appliedPluginToggles.emotion ? (
+                {emotionPluginEnabled ? (
                   <label className="row">
                     <span>emotion</span>
                     <select
@@ -729,55 +779,96 @@ export function App() {
                 </div>
               </section>
 
-              <section className="input-section">
-                <h2>Timeline（一時イベント）</h2>
-                <p className="hint">
-                  {TIMELINE_PHONEME_MS}ms の音素イベントを送ります。Graph の
-                  phonemeToShape（auto / timeline）では Timeline が Channel
-                  より優先されます。
-                </p>
-                <button type="button" onClick={handlePushTimelinePhoneme}>
-                  タイムラインに音素を送る（{TIMELINE_PHONEME_MS}ms）
-                </button>
-              </section>
+              {!isSimpleMode ? (
+                <section className="input-section">
+                  <h2>Timeline（一時イベント）</h2>
+                  <p className="hint">
+                    {TIMELINE_PHONEME_MS}ms の音素イベントを送ります。Graph の
+                    phonemeToShape（auto / timeline）では Timeline が Channel
+                    より優先されます。
+                  </p>
+                  <button type="button" onClick={handlePushTimelinePhoneme}>
+                    タイムラインに音素を送る（{TIMELINE_PHONEME_MS}ms）
+                  </button>
+                </section>
+              ) : (
+                <section className="input-section">
+                  <h2>口の動きを試す</h2>
+                  <p className="hint">
+                    選んだ口の形を短く送って、リップシンクの動きを確認できます。
+                  </p>
+                  <button type="button" onClick={handlePushTimelinePhoneme}>
+                    口の形を一瞬送る（{TIMELINE_PHONEME_MS}ms）
+                  </button>
+                </section>
+              )}
             </div>
             <div className="pipeline-inspectors">
-              <h2>Channel 一覧</h2>
-              <KeyValueTable rows={channelTableRows} emptyHint="（channel 未設定）" />
-              <h2>Timeline 稼働中（{timelineCurrentMs} ms）</h2>
-              <KeyValueTable
-                rows={timelineTableRows}
-                emptyHint="（active イベントなし）"
-              />
-              <details className="inspector-details">
-                <summary>State JSON（詳細）</summary>
-                <pre>{JSON.stringify(stateSnapshot, null, 2)}</pre>
-              </details>
-              <details className="inspector-details">
-                <summary>Builtins: {builtinIds.join(", ") || "(none)"}</summary>
-              </details>
+              {!isSimpleMode ? (
+                <>
+                  <h2>Channel 一覧</h2>
+                  <KeyValueTable
+                    rows={channelTableRows}
+                    emptyHint="（channel 未設定）"
+                  />
+                  <h2>Timeline 稼働中（{timelineCurrentMs} ms）</h2>
+                  <KeyValueTable
+                    rows={timelineTableRows}
+                    emptyHint="（active イベントなし）"
+                  />
+                  <details className="inspector-details">
+                    <summary>State JSON（詳細）</summary>
+                    <pre>{JSON.stringify(stateSnapshot, null, 2)}</pre>
+                  </details>
+                  <details className="inspector-details">
+                    <summary>
+                      behaviorPlugins: {behaviorPluginIds.join(", ") || "(none)"}
+                    </summary>
+                  </details>
+                </>
+              ) : (
+                <>
+                  <h2>いまの動き</h2>
+                  <MotionTable
+                    columns={[
+                      {
+                        id: "rendered",
+                        label: "キャラへの出力",
+                        values: renderedMotion,
+                      },
+                    ]}
+                  />
+                  <p className="hint">
+                    変化が見えないときは「キャラの雰囲気」「動きのつなぎ」「キャラへの送信」を確認してください。
+                  </p>
+                </>
+              )}
             </div>
           </div>
-          <div className="pipeline-motion">
-            <h2>Motion (merged → rendered)</h2>
-            <p className="hint">
-              Target は各段階のマージ結果。Rendered は modifier 適用後の最終出力です。
-            </p>
-            <MotionTable
-              columns={[
-                { id: "target", label: "Target", values: targetMotion },
-                { id: "rendered", label: "Rendered", values: renderedMotion },
-              ]}
-            />
-          </div>
-          <div className="pipeline-stages">
-            <h2>Pipeline Outputs</h2>
-            <p className="hint">
-              rule / behaviorPlugins / behavior / graph 各段階の
-              MotionState（マージ前）。
-            </p>
-            <PluginOutputsPanel pluginOutputs={pipelineOutputs} />
-          </div>
+          {!isSimpleMode ? (
+            <>
+              <div className="pipeline-motion">
+                <h2>Motion (merged → rendered)</h2>
+                <p className="hint">
+                  Target は各段階のマージ結果。Rendered は modifier
+                  適用後の最終出力です。
+                </p>
+                <MotionTable
+                  columns={[
+                    { id: "target", label: "Target", values: targetMotion },
+                    { id: "rendered", label: "Rendered", values: renderedMotion },
+                  ]}
+                />
+              </div>
+              <div className="pipeline-stages">
+                <h2>Pipeline Outputs</h2>
+                <p className="hint">
+                  behaviorPlugins / behavior / graph 各段階の MotionState（マージ前）。
+                </p>
+                <PluginOutputsPanel pluginOutputs={pipelineOutputs} />
+              </div>
+            </>
+          ) : null}
         </section>
       ) : null}
 
@@ -794,7 +885,7 @@ export function App() {
               try {
                 await loadCustomPreset(merged);
                 setCustomPreset(true);
-                setBuiltinIds(getBuiltinIdsFromPresetJson(merged));
+                setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(merged));
                 setActivePluginIds(getActivePluginIds());
                 bumpGraphEditorKey();
                 notify("Scratch から behavior を Preset に適用しました。", "success");
@@ -811,7 +902,7 @@ export function App() {
             }}
             onStatus={notify}
           />
-          {behaviorPreviewJson ? (
+          {!isSimpleMode && behaviorPreviewJson ? (
             <details className="scratch-preview">
               <summary>behavior JSON プレビュー</summary>
               <pre>{behaviorPreviewJson}</pre>
@@ -820,8 +911,24 @@ export function App() {
         </Suspense>
       ) : null}
 
+      {tab === "mapping" ? (
+        <SimpleGraphMappingEditor
+          presetJson={presetJson}
+          graphJson={graphJson}
+          applying={applyingPreset}
+          onGraphChange={(nextGraphJson, nextPresetJson) => {
+            setGraphJson(nextGraphJson);
+            setPresetJson(nextPresetJson);
+            bumpGraphEditorKey();
+          }}
+          onApply={() => {
+            void handleApplyPresetJson();
+          }}
+        />
+      ) : null}
+
       {tab === "graph" ? (
-        <ReactFlowProvider>
+        <Suspense fallback={<p className="hint">Graph Editor を読み込み中…</p>}>
           <GraphEditor
             exportJson={exportJson}
             presetJson={presetJson}
@@ -837,162 +944,163 @@ export function App() {
             }}
             onStatus={notify}
           />
-        </ReactFlowProvider>
+        </Suspense>
       ) : null}
 
       {tab === "presets" ? (
         <section className="preset-manager">
-          <label className="row">
-            <span>Built-in Preset</span>
-            <select
-              value={preset}
-              onChange={(e) => {
-                const next = e.target.value as PresetName;
-                const json = getPresetJson(next);
-                setPreset(next);
-                setPresetJson(json);
-                syncPresetParts(json);
+          {isSimpleMode ? (
+            <SimplePresetPicker
+              activePreset={preset}
+              isCustomPreset={customPreset}
+              applying={applyingPreset}
+              onSelect={(presetName) => {
+                void handleLoadBuiltinPreset(presetName);
               }}
-            >
-              {PRESET_OPTIONS.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="preset-actions">
-            <button
-              type="button"
-              disabled={applyingPreset}
-              onClick={() => {
-                void handleLoadBuiltinPreset(preset);
+              onDownload={handleDownloadPreset}
+              onImportFile={(file) => {
+                void handleImportPresetFile(file);
               }}
-            >
-              組み込み Preset を適用
-            </button>
-            <button type="button" onClick={handleDownloadPreset}>
-              .pfpreset をダウンロード
-            </button>
-            <label className="file-button">
-              ファイルからインポート
-              <input
-                type="file"
-                accept=".json,.pfpreset,application/json"
-                hidden
-                onChange={(event) => {
-                  void handleImportPresetFile(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-            </label>
-          </div>
-
-          <div className="preset-split">
-            <label className="preset-editor-label">
-              <span>rules（計算式: input → output × gain）</span>
-              <textarea
-                className="preset-editor preset-editor-half"
-                value={rulesJson}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setRulesJson(next);
-                  try {
-                    setPresetJson(mergeRulesPart(presetJson, next));
-                  } catch {
-                    // keep editing until JSON is valid
-                  }
-                }}
-                spellCheck={false}
-              />
-            </label>
-            <label className="preset-editor-label">
-              <span>behaviorPlugins（決められた動き）</span>
-              <textarea
-                className="preset-editor preset-editor-half"
-                value={behaviorPluginsJson}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setBehaviorPluginsJson(next);
-                  try {
-                    setPresetJson(mergeBehaviorPluginsPart(presetJson, next));
-                  } catch {
-                    // keep editing until JSON is valid
-                  }
-                }}
-                spellCheck={false}
-              />
-            </label>
-          </div>
-
-          <div className="preset-split">
-            <label className="preset-editor-label">
-              <span>behavior（If / Builtin / Assign）</span>
-              <textarea
-                className="preset-editor preset-editor-half"
-                value={behaviorJson}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setBehaviorJson(next);
-                  try {
-                    setPresetJson(mergeBehaviorPart(presetJson, next));
-                  } catch {
-                    // keep editing until JSON is valid
-                  }
-                }}
-                spellCheck={false}
-              />
-            </label>
-            <label className="preset-editor-label">
-              <span>graph（数値ノードのみ）</span>
-              <textarea
-                className="preset-editor preset-editor-half"
-                value={graphJson}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setGraphJson(next);
-                  try {
-                    setPresetJson(mergeGraphPart(presetJson, next));
-                  } catch {
-                    // keep editing until JSON is valid
-                  }
-                }}
-                spellCheck={false}
-              />
-            </label>
-          </div>
-
-          <details className="preset-full-json">
-            <summary>フル Preset JSON（modifiers 含む）</summary>
-            <textarea
-              className="preset-editor"
-              value={presetJson}
-              onChange={(event) => {
-                const next = event.target.value;
-                setPresetJson(next);
-                try {
-                  syncPresetParts(next);
-                } catch {
-                  // keep editing until JSON is valid
-                }
-              }}
-              spellCheck={false}
             />
-          </details>
+          ) : (
+            <>
+              <label className="row">
+                <span>Built-in Preset</span>
+                <select
+                  value={preset}
+                  onChange={(e) => {
+                    const next = e.target.value as PresetName;
+                    const json = getPresetJson(next);
+                    setPreset(next);
+                    setPresetJson(json);
+                    syncPresetParts(json);
+                  }}
+                >
+                  {PRESET_OPTIONS.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <button
-            type="button"
-            className={customPreset ? "primary" : undefined}
-            disabled={applyingPreset}
-            onClick={() => {
-              void handleApplyPresetJson();
-            }}
-          >
-            編集した Preset を適用
-          </button>
-          {customPreset ? (
-            <p className="hint">カスタム Preset がランタイムに適用されています。</p>
+              <div className="preset-actions">
+                <button
+                  type="button"
+                  disabled={applyingPreset}
+                  onClick={() => {
+                    void handleLoadBuiltinPreset(preset);
+                  }}
+                >
+                  組み込み Preset を適用
+                </button>
+                <button type="button" onClick={handleDownloadPreset}>
+                  .pfpreset をダウンロード
+                </button>
+                <label className="file-button">
+                  ファイルからインポート
+                  <input
+                    type="file"
+                    accept=".json,.pfpreset,application/json"
+                    hidden
+                    onChange={(event) => {
+                      void handleImportPresetFile(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            </>
+          )}
+
+          {!isSimpleMode ? (
+            <>
+              <div className="preset-split">
+                <label className="preset-editor-label">
+                  <span>behaviorPlugins（決められた動き）</span>
+                  <textarea
+                    className="preset-editor preset-editor-half"
+                    value={behaviorPluginsJson}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setBehaviorPluginsJson(next);
+                      try {
+                        setPresetJson(mergeBehaviorPluginsPart(presetJson, next));
+                      } catch {
+                        // keep editing until JSON is valid
+                      }
+                    }}
+                    spellCheck={false}
+                  />
+                </label>
+                <label className="preset-editor-label">
+                  <span>behavior（If / Assign）</span>
+                  <textarea
+                    className="preset-editor preset-editor-half"
+                    value={behaviorJson}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setBehaviorJson(next);
+                      try {
+                        setPresetJson(mergeBehaviorPart(presetJson, next));
+                      } catch {
+                        // keep editing until JSON is valid
+                      }
+                    }}
+                    spellCheck={false}
+                  />
+                </label>
+                <label className="preset-editor-label">
+                  <span>graph（数値ノードのみ）</span>
+                  <textarea
+                    className="preset-editor preset-editor-half"
+                    value={graphJson}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setGraphJson(next);
+                      try {
+                        setPresetJson(mergeGraphPart(presetJson, next));
+                      } catch {
+                        // keep editing until JSON is valid
+                      }
+                    }}
+                    spellCheck={false}
+                  />
+                </label>
+              </div>
+
+              <details className="preset-full-json">
+                <summary>フル Preset JSON</summary>
+                <textarea
+                  className="preset-editor"
+                  value={presetJson}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setPresetJson(next);
+                    try {
+                      syncPresetParts(next);
+                    } catch {
+                      // keep editing until JSON is valid
+                    }
+                  }}
+                  spellCheck={false}
+                />
+              </details>
+
+              <button
+                type="button"
+                className={customPreset ? "primary" : undefined}
+                disabled={applyingPreset}
+                onClick={() => {
+                  void handleApplyPresetJson();
+                }}
+              >
+                編集した Preset を適用
+              </button>
+              {customPreset ? (
+                <p className="hint">カスタム Preset がランタイムに適用されています。</p>
+              ) : null}
+            </>
           ) : null}
         </section>
       ) : null}
@@ -1000,77 +1108,80 @@ export function App() {
       {tab === "plugins" ? (
         <section className="plugins-layout">
           <div>
-            <h2>追加プラグイン</h2>
+            <h2>{isSimpleMode ? "オプション動き" : "追加プラグイン"}</h2>
             <p className="hint">
-              Preset に含まれないプラグインをランタイムへ追加します。計算式は Preset の{" "}
-              <code>rules</code>、 決められた動きは <code>behaviorPlugins</code>{" "}
-              で定義できます。
+              {isSimpleMode
+                ? "behaviorPlugins（視線・まばたき等）と extensions（考え込み・尻尾等）を編集します。変更後は下のボタンで反映してください。"
+                : "behaviorPlugins で gaze/blink 等を、extensions で Motion Pack を編集します。変更は Preset に保存されます。"}
             </p>
-            {appliedPluginToggles.emotion || pluginToggles.emotion ? (
+            {emotionPluginEnabled || isPluginEnabled(behaviorPluginsJson, "emotion") ? (
               <p className="hint emotion-plugin-hint">
-                Emotion プラグインは Pipeline の <strong>emotion</strong> Channel
-                を参照します。適用後、Pipeline タブで感情を選択してください。
+                Emotion プラグインは{isSimpleMode ? "動作確認" : "Pipeline"} タブの
+                emotion を参照します。適用後、感情を選択してください。
               </p>
             ) : null}
-            {OPTIONAL_PLUGINS.map((plugin) => (
-              <label key={plugin.id} className="row plugin-toggle-row">
-                <span>
-                  {plugin.label}
-                  <span className="hint plugin-toggle-desc">{plugin.description}</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={pluginToggles[plugin.id]}
-                  onChange={(event) => {
-                    setPluginTogglesState((current) => ({
-                      ...current,
-                      [plugin.id]: event.target.checked,
-                    }));
-                  }}
-                />
-              </label>
-            ))}
+            <PluginMotionEditor
+              behaviorPluginsJson={behaviorPluginsJson}
+              simpleMode={isSimpleMode}
+              onChange={(nextBehaviorPluginsJson) => {
+                setBehaviorPluginsJson(nextBehaviorPluginsJson);
+                setPresetJson(
+                  mergeBehaviorPluginsIntoPreset(presetJson, nextBehaviorPluginsJson),
+                );
+              }}
+            />
+            <ExtensionPackEditor
+              presetJson={presetJson}
+              extensionsJson={extensionsJson}
+              graphJson={graphJson}
+              simpleMode={isSimpleMode}
+              onChange={(nextExtensionsJson, nextPresetJson) => {
+                setExtensionsJson(nextExtensionsJson);
+                setPresetJson(nextPresetJson);
+              }}
+            />
             <button
               type="button"
               className={pluginsHaveChanges ? "primary" : undefined}
-              disabled={!pluginsHaveChanges}
+              disabled={!pluginsHaveChanges || applyingPreset}
               onClick={() => {
-                void setPluginToggles(pluginToggles).then(() => {
-                  setAppliedPluginToggles(getPluginToggles());
-                  setActivePluginIds(getActivePluginIds());
-                  notify("プラグイン設定を適用しました。", "success");
-                });
+                void handleApplyPresetJson();
               }}
             >
               {pluginsHaveChanges
-                ? "Apply Plugins（未適用の変更あり）"
-                : "Apply Plugins"}
+                ? isSimpleMode
+                  ? "変更を反映（未適用あり）"
+                  : "Apply Plugins（未適用の変更あり）"
+                : isSimpleMode
+                  ? "設定を反映"
+                  : "Apply Plugins"}
             </button>
           </div>
-          <div>
-            <h2>有効なプラグイン</h2>
-            <ul className="plugin-list">
-              {activePluginIds.length === 0 ? (
-                <li className="hint">有効なプラグインはありません。</li>
-              ) : (
-                activePluginIds.map((pluginId) => (
-                  <li key={pluginId}>
-                    <span>{pluginId}</span>
-                    <span className="badge">active</span>
-                  </li>
-                ))
-              )}
-            </ul>
-            <h2>Rule プラグイン例</h2>
-            <pre>{`[
-  { "input": "interest", "output": "mouthX", "gain": 0.5 },
-  { "input": "energy", "output": "facePitch", "gain": 0.8 }
-]`}</pre>
-          </div>
+          {!isSimpleMode ? (
+            <div>
+              <h2>有効なプラグイン</h2>
+              <ul className="plugin-list">
+                {activePluginIds.length === 0 ? (
+                  <li className="hint">有効なプラグインはありません。</li>
+                ) : (
+                  activePluginIds.map((pluginId) => (
+                    <li key={pluginId}>
+                      <span>{pluginId}</span>
+                      <span className="badge">active</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <h2>behaviorPlugins JSON</h2>
+              <pre>{behaviorPluginsJson}</pre>
+              <h2>extensions JSON</h2>
+              <pre>{extensionsJson}</pre>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
-      {tab === "sources" ? (
+      {tab === "sources" && !isSimpleMode ? (
         <section className="input-sources-panel">
           <p className="hint">
             HTTP / WebSocket / MQTT から <strong>state / channels / timeline</strong> を
@@ -1136,18 +1247,36 @@ export function App() {
       ) : null}
 
       {tab === "mapper" ? (
-        <MotionMapperEditor
-          key={mapperEditorKey}
-          initialConfig={getMapperConfig()}
-          activePluginIds={activePluginIds}
-          onApply={async (config) => {
-            await setMapperConfig(config);
-            setAppliedMapperConfig(getMapperConfig());
-            setActivePluginIds(getActivePluginIds());
-            setMapperEditorKey((current) => current + 1);
-            notify("Motion Mapper 設定を適用しました。", "success");
-          }}
-        />
+        isSimpleMode ? (
+          <SimpleOscMapperEditor
+            key={mapperEditorKey}
+            initialConfig={getMapperConfig()}
+            onApply={async (config) => {
+              await setMapperConfig(config);
+              setAppliedMapperConfig(getMapperConfig());
+              setActivePluginIds(getActivePluginIds());
+              setMapperEditorKey((current) => current + 1);
+              notify("送信設定を反映しました。", "success");
+            }}
+            onOpenExpert={() => {
+              handleStudioModeChange("expert");
+              setTab("mapper");
+            }}
+          />
+        ) : (
+          <MotionMapperEditor
+            key={mapperEditorKey}
+            initialConfig={getMapperConfig()}
+            activePluginIds={activePluginIds}
+            onApply={async (config) => {
+              await setMapperConfig(config);
+              setAppliedMapperConfig(getMapperConfig());
+              setActivePluginIds(getActivePluginIds());
+              setMapperEditorKey((current) => current + 1);
+              notify("Motion Mapper 設定を適用しました。", "success");
+            }}
+          />
+        )
       ) : null}
     </main>
   );

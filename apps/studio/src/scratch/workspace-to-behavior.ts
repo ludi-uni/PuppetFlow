@@ -63,16 +63,16 @@ function blockToStatement(block: Blockly.Block): BehaviorStatement {
         value,
       };
     }
-    case "pf_builtin_attention":
-      return { type: "Builtin", id: "attention" };
-    case "pf_builtin_gaze":
-      return { type: "Builtin", id: "gaze" };
-    case "pf_builtin_blink":
-      return { type: "Builtin", id: "blink" };
-    case "pf_builtin_idle":
-      return { type: "Builtin", id: "idle" };
     default:
-      return { type: "Builtin", id: "gaze" };
+      if (block.type.startsWith("pf_motion_pack_")) {
+        const packId = block.type.slice("pf_motion_pack_".length);
+        return {
+          type: "MotionPack",
+          packId,
+          config: { intensity: Number(block.getFieldValue("INTENSITY") ?? 0.8) },
+        };
+      }
+      throw new Error(`Unsupported Scratch block type: ${block.type}`);
   }
 }
 

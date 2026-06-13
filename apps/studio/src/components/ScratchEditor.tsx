@@ -3,6 +3,10 @@ import * as Blockly from "blockly/core";
 import { useEffect, useRef } from "react";
 import { registerScratchBlocks, SCRATCH_TOOLBOX } from "../scratch/block-definitions";
 import {
+  extensionScratchToolbox,
+  registerExtensionScratchBlocks,
+} from "../scratch/extension-blocks";
+import {
   behaviorToPresetBehaviorJson,
   mergeBehaviorIntoPreset,
   workspaceToBehavior,
@@ -37,11 +41,20 @@ export function ScratchEditor({
 
     if (!blocksRegistered) {
       registerScratchBlocks();
+      registerExtensionScratchBlocks();
       blocksRegistered = true;
     }
 
+    const extensionCategory = extensionScratchToolbox();
+    const toolbox = extensionCategory
+      ? {
+          ...SCRATCH_TOOLBOX,
+          contents: [...SCRATCH_TOOLBOX.contents, extensionCategory],
+        }
+      : SCRATCH_TOOLBOX;
+
     const workspace = Blockly.inject(containerRef.current, {
-      toolbox: SCRATCH_TOOLBOX,
+      toolbox,
       trashcan: true,
       scrollbars: true,
       sounds: false,
@@ -79,8 +92,8 @@ export function ScratchEditor({
   return (
     <section className="scratch-editor">
       <p className="hint">
-        条件分岐（If）と Motion 代入は Scratch ブロックで編集します。適用時は rules /
-        behaviorPlugins / graph / modifiers を保持します。数値マッピングは Graph Editor
+        条件分岐（If）と Motion 代入は Scratch ブロックで編集します。適用時は
+        behaviorPlugins と graph を保持します。数値マッピングは Graph Editor
         を使ってください。
       </p>
       <ActivePluginsPanel pluginIds={activePluginIds} />

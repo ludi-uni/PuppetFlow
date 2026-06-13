@@ -29,4 +29,4 @@ export {
   type LipSyncEvent,
   type TimelineEvent,
 } from "./timeline.js";
-export { TimelineStore } from "./timeline-store.js";
+export { DEFAULT_MAX_TIMELINE_EVENTS, TimelineStore } from "./timeline-store.js";

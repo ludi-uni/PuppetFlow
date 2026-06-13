@@ -4,6 +4,8 @@ export interface MotionGraphNode {
   id: string;
   type: string;
   data: Record<string, unknown>;
+  /** Optional editor layout; ignored by graph runtime execution */
+  position?: { x: number; y: number };
 }
 
 export interface MotionGraphEdge {
@@ -41,10 +43,25 @@ function parseGraphNode(value: unknown, index: number): MotionGraphNode {
     throw new Error(`graph.nodes[${index}].data must be an object when provided`);
   }
 
+  const position = (node as { position?: unknown }).position;
+  let parsedPosition: { x: number; y: number } | undefined;
+  if (
+    typeof position === "object" &&
+    position !== null &&
+    typeof (position as { x?: unknown }).x === "number" &&
+    typeof (position as { y?: unknown }).y === "number"
+  ) {
+    parsedPosition = {
+      x: (position as { x: number }).x,
+      y: (position as { y: number }).y,
+    };
+  }
+
   return {
     id: node.id,
     type: node.type,
     data: (data as Record<string, unknown> | undefined) ?? {},
+    ...(parsedPosition ? { position: parsedPosition } : {}),
   };
 }
 

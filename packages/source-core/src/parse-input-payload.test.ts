@@ -67,4 +67,23 @@ describe("applyInputPayload", () => {
       /channels exceed max keys/i,
     );
   });
+
+  it("skips timeline events with invalid duration", () => {
+    const target = {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      timeline: new TimelineStore(),
+    };
+
+    applyInputPayload(target, {
+      timeline: [
+        { startMs: 100, endMs: 50, type: "phoneme", value: "A" },
+        { startMs: 0, endMs: 400_000, type: "phoneme", value: "B" },
+        { startMs: 0, endMs: 100, type: "phoneme", value: "C" },
+      ],
+    });
+
+    expect(target.timeline.getActiveEvents(50)).toHaveLength(1);
+    expect(target.timeline.getActiveEvents(50)[0]?.value).toBe("C");
+  });
 });

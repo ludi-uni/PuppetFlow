@@ -15,7 +15,21 @@ export function resolvePhonemeInputSource(
   return "none";
 }
 
-export function phonemeSourceLabel(source: PhonemeInputSource): string {
+export function phonemeSourceLabel(
+  source: PhonemeInputSource,
+  simpleMode = false,
+): string {
+  if (simpleMode) {
+    switch (source) {
+      case "timeline":
+        return "一瞬送った口の形";
+      case "channel":
+        return "選んだ口の形（あいうえお）";
+      default:
+        return "休止（口を閉じる）";
+    }
+  }
+
   switch (source) {
     case "timeline":
       return "Timeline（一時イベント優先）";

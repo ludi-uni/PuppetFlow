@@ -7,6 +7,7 @@ Thumbs.db
 # Tauri
 apps/playground/src-tauri/target/
 apps/studio/src-tauri/target/
+apps/*/src-tauri/gen/
 
 # IDE
 .idea/

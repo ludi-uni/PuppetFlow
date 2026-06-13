@@ -1,14 +1,15 @@
 {
   "name": "Idle",
-  "version": 2,
+  "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": [
-      { "type": "Builtin", "id": "blink" },
-      { "type": "Builtin", "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.3 } },
-      { "type": "Builtin", "id": "idle", "config": { "interestThreshold": 0.35 } }
-    ]
+    "statements": []
   },
+  "behaviorPlugins": [
+    { "id": "blink" },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.3 } },
+    { "id": "idle", "config": { "interestThreshold": 0.35 } }
+  ],
   "graph": {
     "nodes": [
       { "id": "in-stress-facePitch", "type": "stateInput", "data": { "key": "stress" } },
@@ -24,11 +25,5 @@
       { "id": "e3", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
       { "id": "e4", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" }
     ]
-  },
-  "modifiers": [
-    { "id": "breath", "config": { "period": 5.5, "amplitude": 0.045 } },
-    { "id": "noise", "config": { "amplitude": 0.012, "keys": ["facePitch"] } },
-    { "id": "smoothing", "config": { "factor": 0.08 } }
-  ],
-  "modifierOrder": ["breath", "noise", "smoothing"]
+  }
 }

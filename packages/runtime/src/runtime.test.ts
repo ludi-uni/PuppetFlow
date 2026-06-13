@@ -1,6 +1,7 @@
 import type { Adapter } from "@puppetflow/adapter-core";
 import type { BehaviorPlugin, MotionState, PluginInputStores } from "@puppetflow/core";
 import { SmoothingModifier } from "@puppetflow/modifier";
+import { loadPreset } from "@puppetflow/preset";
 import { describe, expect, it, vi } from "vitest";
 import { PuppetFlowRuntime } from "./runtime.js";
 
@@ -172,5 +173,29 @@ describe("PuppetFlowRuntime", () => {
     });
 
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("applies extension packs from preset extensions", async () => {
+    const runtime = new PuppetFlowRuntime().loadPreset(
+      loadPreset(
+        JSON.stringify({
+          name: "Thinking",
+          version: 3,
+          behavior: { type: "Block", statements: [] },
+          graph: { nodes: [], edges: [] },
+          extensions: {
+            packs: [{ id: "thinking", config: { intensity: 0.8 } }],
+          },
+        }),
+      ),
+    );
+
+    await runtime.start();
+
+    expect(runtime.getRenderedMotion().lookX).not.toBe(0.5);
+    const pipeline = runtime.getPluginOutputs();
+    expect(pipeline.some((entry) => entry.pluginId === "extensions")).toBe(true);
+
+    await runtime.stop();
   });
 });
