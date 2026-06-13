@@ -10,15 +10,13 @@ export { ChannelStore, type ChannelListener } from "./channel-store.js";
 export {
   clamp01,
   DEFAULT_MOTION_STATE,
+  LEGACY_MOTION_KEY_REPLACEMENTS,
+  migrateLegacyMotionKey,
   MOTION_STATE_KEYS,
+  PLUGIN_MOTION_OUTPUTS,
   type MotionState,
   type MotionStateKey,
 } from "./motion-state.js";
-export {
-  LEGACY_MOTION_KEY_REPLACEMENTS,
-  migrateLegacyMotionKey,
-  PLUGIN_MOTION_OUTPUTS,
-} from "./motion-neutral.js";
 export { createEmptyMotionState, addMotionState, mergeMotionState } from "./merge-motion-state.js";
 export { StateStore, type StateValue } from "./state-store.js";
 export {

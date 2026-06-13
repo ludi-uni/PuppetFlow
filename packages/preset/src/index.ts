@@ -3,9 +3,10 @@ export { assemblePreset, splitPreset, type PresetParts } from "./assemble-preset
 export {
   loadPreset,
   parsePreset,
+  detectPresetMotionOverlaps,
   type LoadedPreset,
+  type PresetOverlapWarning,
 } from "./load-preset.js";
-export { detectPresetMotionOverlaps, type PresetOverlapWarning } from "./preset-overlap.js";
 export {
   compilePresetBehavior,
   PresetPfScriptError,
@@ -14,5 +15,7 @@ export {
 export {
   createBehaviorPlugin,
   createBehaviorPlugins,
+  registerBehaviorPlugin,
   type BehaviorPluginConfig,
+  type BehaviorPluginFactory,
 } from "./plugin-factory.js";

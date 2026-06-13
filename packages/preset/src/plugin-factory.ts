@@ -1,14 +1,36 @@
 import type { BehaviorPlugin } from "@puppetflow/core";
-import "./builtin-behavior-plugins.js";
-import { getBehaviorPluginFactory } from "./plugin-registry.js";
+import { AttentionPlugin } from "@puppetflow/plugin-attention";
+import { BlinkPlugin } from "@puppetflow/plugin-blink";
+import { EmotionPlugin } from "@puppetflow/plugin-emotion";
+import { GazePlugin } from "@puppetflow/plugin-gaze";
+import { IdlePlugin } from "@puppetflow/plugin-idle";
 
 export interface BehaviorPluginConfig {
   id: string;
   config?: Record<string, unknown>;
 }
 
+export type BehaviorPluginFactory = (
+  config?: Record<string, unknown>,
+) => BehaviorPlugin;
+
+const pluginFactories = new Map<string, BehaviorPluginFactory>();
+
+export function registerBehaviorPlugin(
+  id: string,
+  factory: BehaviorPluginFactory,
+): void {
+  pluginFactories.set(id, factory);
+}
+
+registerBehaviorPlugin("blink", (config) => new BlinkPlugin(config));
+registerBehaviorPlugin("gaze", (config) => new GazePlugin(config));
+registerBehaviorPlugin("idle", (config) => new IdlePlugin(config));
+registerBehaviorPlugin("attention", (config) => new AttentionPlugin(config));
+registerBehaviorPlugin("emotion", (config) => new EmotionPlugin(config));
+
 export function createBehaviorPlugin(entry: BehaviorPluginConfig): BehaviorPlugin {
-  const factory = getBehaviorPluginFactory(entry.id);
+  const factory = pluginFactories.get(entry.id);
   if (!factory) {
     throw new Error(`Unknown behavior plugin id: ${entry.id}`);
   }

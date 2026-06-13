@@ -1,12 +1,11 @@
-import type { BehaviorBlock } from "@puppetflow/behavior";
+import type { BehaviorBlock, BehaviorStatement } from "@puppetflow/behavior";
 import type { BehaviorPlugin } from "@puppetflow/core";
+import { migrateLegacyMotionKey, PLUGIN_MOTION_OUTPUTS } from "@puppetflow/core";
 import type { PresetExtensions } from "@puppetflow/extension-core";
 import { parseMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
 import type { PuppetFlowPreset } from "./types.js";
 import { compilePresetBehavior } from "./compile-behavior.js";
-import { migratePresetMotionKeys } from "./migrate-preset-motion-keys.js";
 import { createBehaviorPlugins, type BehaviorPluginConfig } from "./plugin-factory.js";
-import { detectPresetMotionOverlaps } from "./preset-overlap.js";
 
 export const MAX_PRESET_JSON_BYTES = 1_048_576;
 
@@ -21,6 +20,11 @@ export interface LoadedPreset {
   behaviorPfScript?: string;
   extensions?: PresetExtensions;
   warnings: string[];
+}
+
+export interface PresetOverlapWarning {
+  motionKey: string;
+  sources: string[];
 }
 
 function parseExtensions(raw: unknown): PresetExtensions | undefined {
@@ -92,6 +96,220 @@ function rejectDeprecatedPresetFields(preset: Record<string, unknown>): void {
   }
 }
 
+// --- Legacy motion key migration (raw preset JSON) ---
+
+function migrateBehaviorJson(
+  value: unknown,
+  warnings: string[],
+  path: string,
+): void {
+  if (typeof value !== "object" || value === null) {
+    return;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  if (obj.type === "Assign" && typeof obj.key === "string") {
+    const { key, migrated } = migrateLegacyMotionKey(obj.key);
+    if (migrated) {
+      warnings.push(`${path}: migrated motion key "${obj.key}" → "${key}"`);
+      obj.key = key;
+    }
+  }
+
+  for (const field of ["statements", "then", "else"] as const) {
+    const branch = obj[field];
+    if (!Array.isArray(branch)) {
+      continue;
+    }
+    branch.forEach((item, index) =>
+      migrateBehaviorJson(item, warnings, `${path}.${field}[${index}]`),
+    );
+  }
+}
+
+function migrateGraphJson(graph: Record<string, unknown>, warnings: string[]): void {
+  const nodes = graph.nodes;
+  if (!Array.isArray(nodes)) {
+    return;
+  }
+
+  for (let index = 0; index < nodes.length; index++) {
+    const node = nodes[index];
+    if (typeof node !== "object" || node === null) {
+      continue;
+    }
+
+    const parsed = node as Record<string, unknown>;
+    if (parsed.type !== "output") {
+      continue;
+    }
+
+    const data = parsed.data;
+    if (typeof data !== "object" || data === null) {
+      continue;
+    }
+
+    const output = data as Record<string, unknown>;
+    if (typeof output.key !== "string") {
+      continue;
+    }
+
+    const { key, migrated } = migrateLegacyMotionKey(output.key);
+    if (migrated) {
+      warnings.push(
+        `graph.nodes[${index}]: migrated motion key "${output.key}" → "${key}"`,
+      );
+      output.key = key;
+    }
+  }
+}
+
+function migratePresetMotionKeys(preset: Record<string, unknown>): string[] {
+  const warnings: string[] = [];
+
+  if (preset.behavior !== undefined) {
+    migrateBehaviorJson(preset.behavior, warnings, "behavior");
+  }
+
+  if (typeof preset.graph === "object" && preset.graph !== null) {
+    migrateGraphJson(preset.graph as Record<string, unknown>, warnings);
+  }
+
+  return warnings;
+}
+
+// --- Overlap detection (plugins / graph / behavior) ---
+
+function collectBehaviorMotionKeys(block: BehaviorBlock, keys: Set<string>): void {
+  for (const statement of block.statements) {
+    collectStatementMotionKeys(statement, keys);
+  }
+}
+
+function collectStatementMotionKeys(statement: BehaviorStatement, keys: Set<string>): void {
+  switch (statement.type) {
+    case "Block":
+      collectBehaviorMotionKeys(statement, keys);
+      break;
+    case "If":
+      collectBehaviorMotionKeys({ type: "Block", statements: statement.then }, keys);
+      if (statement.else) {
+        collectBehaviorMotionKeys({ type: "Block", statements: statement.else }, keys);
+      }
+      break;
+    case "Assign":
+      keys.add(statement.key);
+      break;
+    default:
+      break;
+  }
+}
+
+function collectGraphMotionKeys(graph: MotionGraphDocument): Set<string> {
+  const keys = new Set<string>();
+  for (const node of graph.nodes) {
+    if (node.type === "output" && typeof node.data.key === "string") {
+      keys.add(node.data.key);
+    }
+  }
+  return keys;
+}
+
+function collectPluginMotionKeys(plugins: BehaviorPluginConfig[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  for (const plugin of plugins) {
+    const outputs = PLUGIN_MOTION_OUTPUTS[plugin.id];
+    if (!outputs) {
+      continue;
+    }
+
+    for (const key of outputs) {
+      const list = map.get(key) ?? [];
+      list.push(`plugin:${plugin.id}`);
+      map.set(key, list);
+    }
+  }
+
+  return map;
+}
+
+function shouldWarnOverlappingSources(sources: string[]): boolean {
+  if (sources.length < 2) {
+    return false;
+  }
+
+  const hasGraph = sources.includes("graph");
+  const hasBehavior = sources.includes("behavior");
+  const hasPlugin = sources.some((source) => source.startsWith("plugin:"));
+
+  return (
+    (hasGraph && hasPlugin) ||
+    (hasBehavior && hasPlugin) ||
+    (hasGraph && hasBehavior)
+  );
+}
+
+/** Detects motion keys written by multiple pipeline stages (plugins / graph / behavior). */
+export function detectPresetMotionOverlaps(input: {
+  behavior: BehaviorBlock;
+  graph: MotionGraphDocument;
+  behaviorPlugins?: BehaviorPluginConfig[];
+}): PresetOverlapWarning[] {
+  const sources = new Map<string, string[]>();
+
+  const add = (key: string, source: string) => {
+    const list = sources.get(key) ?? [];
+    list.push(source);
+    sources.set(key, list);
+  };
+
+  for (const [key, pluginSources] of collectPluginMotionKeys(input.behaviorPlugins ?? [])) {
+    for (const source of pluginSources) {
+      add(key, source);
+    }
+  }
+
+  for (const key of collectGraphMotionKeys(input.graph)) {
+    add(key, "graph");
+  }
+
+  const behaviorKeys = new Set<string>();
+  collectBehaviorMotionKeys(input.behavior, behaviorKeys);
+  for (const key of behaviorKeys) {
+    add(key, "behavior");
+  }
+
+  const warnings: PresetOverlapWarning[] = [];
+  for (const [motionKey, keySources] of sources) {
+    if (!shouldWarnOverlappingSources(keySources)) {
+      continue;
+    }
+    warnings.push({ motionKey, sources: [...keySources] });
+  }
+
+  return warnings.sort((a, b) => a.motionKey.localeCompare(b.motionKey));
+}
+
+// --- Preset parse / load ---
+
+function parsePresetJsonObject(
+  json: string,
+): Partial<PuppetFlowPreset> & Record<string, unknown> {
+  const byteLength = new TextEncoder().encode(json).length;
+  if (byteLength > MAX_PRESET_JSON_BYTES) {
+    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
+  }
+
+  const parsed: unknown = JSON.parse(json);
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Preset must be a JSON object");
+  }
+
+  return parsed as Partial<PuppetFlowPreset> & Record<string, unknown>;
+}
+
 function collectPresetWarnings(
   behavior: BehaviorBlock,
   graph: MotionGraphDocument,
@@ -154,36 +372,11 @@ function parsePresetRecord(
 }
 
 export function parsePreset(json: string): PuppetFlowPreset {
-  const byteLength = new TextEncoder().encode(json).length;
-  if (byteLength > MAX_PRESET_JSON_BYTES) {
-    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
-  }
-
-  const parsed: unknown = JSON.parse(json);
-
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new Error("Preset must be a JSON object");
-  }
-
-  return parsePresetRecord(
-    parsed as Partial<PuppetFlowPreset> & Record<string, unknown>,
-  ).preset;
+  return parsePresetRecord(parsePresetJsonObject(json)).preset;
 }
 
 export function loadPreset(json: string): LoadedPreset {
-  const byteLength = new TextEncoder().encode(json).length;
-  if (byteLength > MAX_PRESET_JSON_BYTES) {
-    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
-  }
-
-  const parsed: unknown = JSON.parse(json);
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new Error("Preset must be a JSON object");
-  }
-
-  const { preset, migrationWarnings } = parsePresetRecord(
-    parsed as Partial<PuppetFlowPreset> & Record<string, unknown>,
-  );
+  const { preset, migrationWarnings } = parsePresetRecord(parsePresetJsonObject(json));
   const behaviorPlugins = preset.behaviorPlugins ?? [];
   const warnings = collectPresetWarnings(
     preset.behavior,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadPreset } from "./load-preset.js";
+import { detectPresetMotionOverlaps, loadPreset } from "./load-preset.js";
 
 describe("loadPreset", () => {
   it("loads v3 behavior, graph, and behaviorPlugins", () => {
@@ -195,5 +195,49 @@ describe("loadPreset", () => {
     expect(loaded.graph.nodes[0]?.data.key).toBe("bodyLean");
     expect(loaded.warnings.some((w) => w.includes("faceRoll"))).toBe(true);
     expect(loaded.warnings.some((w) => w.includes("bodyPitch"))).toBe(true);
+  });
+
+  it("compiles legacy PFScript motion names to current keys", () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "LegacyPfScript",
+        version: 3,
+        behaviorPfScript: "faceRoll = 0.6",
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    expect(loaded.behavior.statements[0]).toMatchObject({
+      type: "ExprAssign",
+      target: "headTilt",
+    });
+  });
+});
+
+describe("detectPresetMotionOverlaps", () => {
+  it("warns when plugin and graph both output headTilt", () => {
+    const warnings = detectPresetMotionOverlaps({
+      behavior: { type: "Block", statements: [] },
+      behaviorPlugins: [{ id: "attention" }],
+      graph: {
+        nodes: [{ id: "out", type: "output", data: { key: "headTilt" } }],
+        edges: [],
+      },
+    });
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.motionKey).toBe("headTilt");
+    expect(warnings[0]?.sources).toContain("graph");
+    expect(warnings[0]?.sources).toContain("plugin:attention");
+  });
+
+  it("does not warn when multiple plugins share lookX", () => {
+    const warnings = detectPresetMotionOverlaps({
+      behavior: { type: "Block", statements: [] },
+      behaviorPlugins: [{ id: "gaze" }, { id: "idle" }],
+      graph: { nodes: [], edges: [] },
+    });
+
+    expect(warnings).toEqual([]);
   });
 });

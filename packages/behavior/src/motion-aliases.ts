@@ -1,4 +1,8 @@
-import { MOTION_STATE_KEYS, type MotionStateKey } from "@puppetflow/core";
+import {
+  LEGACY_MOTION_KEY_REPLACEMENTS,
+  MOTION_STATE_KEYS,
+  type MotionStateKey,
+} from "@puppetflow/core";
 
 /** PFScript motion names → standard MotionState keys. Unlisted names use `custom`. */
 export const PFSCRIPT_MOTION_ALIASES: Readonly<Record<string, MotionStateKey>> = {
@@ -6,6 +10,7 @@ export const PFSCRIPT_MOTION_ALIASES: Readonly<Record<string, MotionStateKey>> =
   mouthOpen: "mouthY",
   eyeOpen: "eyeYaw",
   eyeSmile: "eyePitch",
+  ...LEGACY_MOTION_KEY_REPLACEMENTS,
 };
 
 export function isStandardMotionKey(name: string): name is MotionStateKey {

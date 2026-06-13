@@ -14,7 +14,11 @@ import { StudioModeToggle } from "./components/StudioModeToggle";
 import { PipelineTab } from "./components/PipelineTab";
 import { StatusBanner, type StatusKind } from "./components/StatusBanner";
 import { INPUT_SOURCE_PAYLOAD_EXAMPLE } from "./constants/input-sources";
-import { CHANNEL_SLIDERS, INPUT_SLIDERS } from "./constants/pipeline-sliders";
+import {
+  CHANNEL_SLIDERS,
+  INPUT_SLIDERS,
+  TIMELINE_PHONEME_MS,
+} from "./constants/pipeline-sliders";
 import { presetHasMouthChannelMapping } from "./utils/graph-mouth-mapping";
 import { resolvePhonemeInputSource } from "./utils/phoneme-source";
 import {
@@ -46,7 +50,7 @@ import {
   mergeBehaviorPluginsPart,
   mergeGraphPart,
 } from "./utils/preset-parts";
-import { applyPresetToStudio } from "./services/presetApply";
+import { applyPresetToStudio } from "./utils/preset-apply";
 import { extractExtensionsJson } from "./utils/extension-config";
 import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "./utils/plugin-config";
 import { resolveNextStep } from "./utils/next-step";
@@ -86,8 +90,6 @@ const PRESET_OPTIONS: PresetName[] = [
   "Sleepy",
   "Focused",
 ];
-
-import { TIMELINE_PHONEME_MS } from "./constants/pipeline-sliders";
 
 function formatValue(value: number): string {
   return value.toFixed(3);

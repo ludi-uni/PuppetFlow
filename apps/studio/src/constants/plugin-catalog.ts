@@ -1,4 +1,4 @@
-import type { MotionStateKey } from "@puppetflow/core";
+import { PLUGIN_MOTION_OUTPUTS, type MotionStateKey } from "@puppetflow/core";
 
 export type CatalogPluginId = "gaze" | "blink" | "idle" | "attention" | "emotion";
 
@@ -23,13 +23,21 @@ export interface PluginCatalogEntry {
   parameters: PluginParameterDef[];
 }
 
+function catalogMotionOutputs(id: CatalogPluginId): MotionStateKey[] {
+  const outputs = PLUGIN_MOTION_OUTPUTS[id];
+  if (!outputs) {
+    throw new Error(`Missing PLUGIN_MOTION_OUTPUTS for plugin id: ${id}`);
+  }
+  return [...outputs];
+}
+
 export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
   {
     id: "gaze",
     label: "Gaze",
     simpleLabel: "視線のゆらぎ",
     description: "視線が左右・上下にゆっくり動きます（lookX / lookY）",
-    motionOutputs: ["lookX", "lookY"],
+    motionOutputs: catalogMotionOutputs("gaze"),
     parameters: [
       {
         key: "wanderAmplitude",
@@ -58,7 +66,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     label: "Blink",
     simpleLabel: "まばたき",
     description: "まばたきの間隔と閉じる強さを調整します（eyeYaw / ParamEyeOpen）",
-    motionOutputs: ["eyeYaw"],
+    motionOutputs: catalogMotionOutputs("blink"),
     parameters: [
       {
         key: "minInterval",
@@ -107,7 +115,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     label: "Idle",
     simpleLabel: "待機時の視線",
     description: "興味が低いとき視線が大きくゆらぎます（lookX / lookY）",
-    motionOutputs: ["lookX", "lookY"],
+    motionOutputs: catalogMotionOutputs("idle"),
     parameters: [
       {
         key: "interestThreshold",
@@ -136,7 +144,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     label: "Attention",
     simpleLabel: "注目の姿勢",
     description: "興味に応じて体と頭が傾きます（bodyLean / headTilt）",
-    motionOutputs: ["bodyLean", "headTilt"],
+    motionOutputs: catalogMotionOutputs("attention"),
     parameters: [
       {
         key: "leanGain",
@@ -165,7 +173,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     label: "Emotion",
     simpleLabel: "感情の表情",
     description: "感情チャンネルから口・眉の動きを数値化します",
-    motionOutputs: ["mouthX", "facePitch", "lookX"],
+    motionOutputs: catalogMotionOutputs("emotion"),
     parameters: [
       {
         key: "joySmileGain",
