@@ -1,33 +1,28 @@
-{
-  "name": "Focused",
-  "version": 3,
-  "behavior": {
-    "type": "Block",
-    "statements": []
-  },
-  "behaviorPlugins": [
-    { "id": "attention", "config": { "leanGain": 0.35, "tiltGain": 0.12 } },
-    { "id": "gaze", "config": { "wanderAmplitude": 0.015, "speed": 0.3 } }
-  ],
-  "graph": {
-    "nodes": [
-      { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.35 } },
-      { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } },
-      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
-      { "id": "mul-energy-facePitch", "type": "multiply", "data": { "gain": 0.95 } },
-      { "id": "out-energy-facePitch", "type": "output", "data": { "key": "facePitch" } },
-      { "id": "in-interest-lean", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul-lean", "type": "multiply", "data": { "gain": 0.3 } },
-      { "id": "out-lean", "type": "output", "data": { "key": "bodyLean" } }
-    ],
-    "edges": [
-      { "id": "e1", "source": "in-interest-mouthX", "target": "mul-mouthX" },
-      { "id": "e2", "source": "mul-mouthX", "target": "out-mouthX" },
-      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
-      { "id": "e4", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" },
-      { "id": "e5", "source": "in-interest-lean", "target": "mul-lean" },
-      { "id": "e6", "source": "mul-lean", "target": "out-lean" }
-    ]
-  }
-}
+{
+  "name": "Focused",
+  "version": 3,
+  "behavior": {
+    "type": "Block",
+    "statements": []
+  },
+  "behaviorPlugins": [
+    { "id": "attention", "config": { "leanGain": 0.35, "tiltGain": 0.12 } },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.015, "speed": 0.12 } }
+  ],
+  "graph": {
+    "nodes": [
+      { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
+      { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.35 } },
+      { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } },
+      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
+      { "id": "mul-energy-facePitch", "type": "multiply", "data": { "gain": 0.95 } },
+      { "id": "out-energy-facePitch", "type": "output", "data": { "key": "facePitch" } }
+    ],
+    "edges": [
+      { "id": "e1", "source": "in-interest-mouthX", "target": "mul-mouthX" },
+      { "id": "e2", "source": "mul-mouthX", "target": "out-mouthX" },
+      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
+      { "id": "e4", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" }
+    ]
+  }
+}

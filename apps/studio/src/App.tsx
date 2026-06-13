@@ -3,7 +3,6 @@ import type { PluginOutputSnapshot } from "@puppetflow/runtime";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ActiveConfigSummary } from "./components/ActiveConfigSummary";
 import { HelpGuide } from "./components/HelpGuide";
-import { KeyValueTable } from "./components/KeyValueTable";
 import { MotionMapperEditor } from "./components/MotionMapperEditor";
 import { NextStepBar } from "./components/NextStepBar";
 import { ExtensionPackEditor } from "./components/ExtensionPackEditor";
@@ -12,11 +11,10 @@ import { SimpleGraphMappingEditor } from "./components/SimpleGraphMappingEditor"
 import { SimpleOscMapperEditor } from "./components/SimpleOscMapperEditor";
 import { SimplePresetPicker } from "./components/SimplePresetPicker";
 import { StudioModeToggle } from "./components/StudioModeToggle";
-import { MotionTable } from "./components/MotionTable";
-import { MouthStatusBar } from "./components/MouthStatusBar";
-import { PluginOutputsPanel } from "./components/PluginOutputsPanel";
+import { PipelineTab } from "./components/PipelineTab";
 import { StatusBanner, type StatusKind } from "./components/StatusBanner";
 import { INPUT_SOURCE_PAYLOAD_EXAMPLE } from "./constants/input-sources";
+import { CHANNEL_SLIDERS, INPUT_SLIDERS } from "./constants/pipeline-sliders";
 import { presetHasMouthChannelMapping } from "./utils/graph-mouth-mapping";
 import { resolvePhonemeInputSource } from "./utils/phoneme-source";
 import {
@@ -40,6 +38,7 @@ import {
   switchPreset,
 } from "./runtime";
 import {
+  assemblePresetFromParts,
   extractBehaviorJson,
   extractBehaviorPluginsJson,
   extractGraphJson,
@@ -47,6 +46,7 @@ import {
   mergeBehaviorPluginsPart,
   mergeGraphPart,
 } from "./utils/preset-parts";
+import { applyPresetToStudio } from "./services/presetApply";
 import { extractExtensionsJson } from "./utils/extension-config";
 import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "./utils/plugin-config";
 import { resolveNextStep } from "./utils/next-step";
@@ -72,27 +72,11 @@ const GraphEditor = lazy(() =>
   })),
 );
 
-const INPUT_SLIDERS = [
-  { key: "interest", label: "Interest", simpleLabel: "興味・関心", defaultValue: 0.5 },
-  { key: "energy", label: "Energy", simpleLabel: "元気", defaultValue: 0.5 },
-  { key: "stress", label: "Stress", simpleLabel: "ストレス", defaultValue: 0.2 },
-];
-
-const CHANNEL_SLIDERS = [
-  { key: "volume", label: "Volume", simpleLabel: "声の大きさ", defaultValue: 0 },
-];
-
-const PHONEME_OPTIONS = ["Rest", "A", "I", "U", "E", "O", "N"] as const;
-
-const EMOTION_CHANNEL_OPTIONS = [
-  { value: "", label: "（なし）" },
-  { value: "joy", label: "joy" },
-  { value: "sadness", label: "sadness" },
-  { value: "anger", label: "anger" },
-  { value: "curious", label: "curious" },
-] as const;
-
-const TIMELINE_PHONEME_MS = 150;
+const PfScriptEditor = lazy(() =>
+  import("./components/PfScriptEditor").then((module) => ({
+    default: module.PfScriptEditor,
+  })),
+);
 
 const PRESET_OPTIONS: PresetName[] = [
   "Curious",
@@ -102,6 +86,8 @@ const PRESET_OPTIONS: PresetName[] = [
   "Sleepy",
   "Focused",
 ];
+
+import { TIMELINE_PHONEME_MS } from "./constants/pipeline-sliders";
 
 function formatValue(value: number): string {
   return value.toFixed(3);
@@ -211,6 +197,15 @@ export function App() {
     () => presetHasMouthChannelMapping(presetJson),
     [presetJson],
   );
+  const assembledPresetJson = useMemo(
+    () =>
+      assemblePresetFromParts(presetJson, {
+        graphJson,
+        behaviorPluginsJson,
+        extensionsJson,
+      }),
+    [presetJson, graphJson, behaviorPluginsJson, extensionsJson],
+  );
   const phonemeInputSource = useMemo(
     () => resolvePhonemeInputSource(activeTimelineEvents, channelSnapshot.phoneme),
     [activeTimelineEvents, channelSnapshot.phoneme],
@@ -256,6 +251,11 @@ export function App() {
 
   const notify = useCallback((message: string, kind: StatusKind = "info") => {
     setStatus({ kind, message });
+  }, []);
+
+  const handlePresetGraphChange = useCallback((nextGraphJson: string, merged: string) => {
+    setGraphJson(nextGraphJson);
+    setPresetJson(merged);
   }, []);
 
   useEffect(() => {
@@ -447,33 +447,6 @@ export function App() {
     }
   };
 
-  const handleApplyPresetJson = async () => {
-    const validationError = validatePresetJson(presetJson);
-    if (validationError) {
-      notify(`Preset JSON が不正です: ${validationError}`, "error");
-      return;
-    }
-
-    setApplyingPreset(true);
-    try {
-      await loadCustomPreset(presetJson);
-      setCustomPreset(true);
-      setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(presetJson));
-      setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(presetJson));
-      setAppliedExtensionsJson(extractExtensionsJson(presetJson));
-      setActivePluginIds(getActivePluginIds());
-      bumpGraphEditorKey();
-      notify("カスタム Preset を適用しました。", "success");
-    } catch (error) {
-      notify(
-        error instanceof Error ? error.message : "Preset の適用に失敗しました。",
-        "error",
-      );
-    } finally {
-      setApplyingPreset(false);
-    }
-  };
-
   const syncPresetParts = (json: string) => {
     setBehaviorJson(extractBehaviorJson(json));
     setGraphJson(extractGraphJson(json));
@@ -481,29 +454,64 @@ export function App() {
     setExtensionsJson(extractExtensionsJson(json));
   };
 
-  const handleLoadBuiltinPreset = async (presetName: PresetName) => {
-    setApplyingPreset(true);
-    try {
-      await switchPreset(presetName);
-      const json = getPresetJson(presetName);
-      setPreset(presetName);
-      setPresetJson(json);
-      syncPresetParts(json);
-      setCustomPreset(false);
-      setBehaviorPluginIds(getPresetBehaviorPluginIds(presetName));
-      setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(json));
-      setAppliedExtensionsJson(extractExtensionsJson(json));
-      setActivePluginIds(getActivePluginIds());
-      bumpGraphEditorKey();
-      notify(`プリセット「${presetName}」を適用しました。`, "success");
-    } catch (error) {
-      notify(
-        error instanceof Error ? error.message : "プリセットの切り替えに失敗しました。",
-        "error",
-      );
-    } finally {
-      setApplyingPreset(false);
+  const presetApplySync = {
+    setPresetJson,
+    setCustomPreset,
+    syncPresetParts,
+    setBehaviorPluginIds,
+    setAppliedBehaviorPluginsJson,
+    setAppliedExtensionsJson,
+    setActivePluginIds,
+    bumpGraphEditorKey,
+    setPreset,
+  };
+
+  const runPresetApply = (
+    json: string,
+    custom: boolean,
+    successMessage: string,
+    reloadRuntime: () => Promise<unknown>,
+    presetName?: PresetName,
+  ) =>
+    applyPresetToStudio({
+      json,
+      custom,
+      successMessage,
+      presetName,
+      reloadRuntime,
+      getBehaviorPluginIdsFromJson: getBehaviorPluginIdsFromPresetJson,
+      getActivePluginIds,
+      extractBehaviorPluginsJson,
+      extractExtensionsJson,
+      sync: presetApplySync,
+      setApplying: setApplyingPreset,
+      notify,
+    });
+
+  const handleApplyPresetJson = async () => {
+    const validationError = validatePresetJson(presetJson);
+    if (validationError) {
+      notify(`Preset JSON が不正です: ${validationError}`, "error");
+      return;
     }
+
+    await runPresetApply(
+      presetJson,
+      true,
+      "カスタム Preset を適用しました。",
+      () => loadCustomPreset(presetJson),
+    );
+  };
+
+  const handleLoadBuiltinPreset = async (presetName: PresetName) => {
+    const json = getPresetJson(presetName);
+    await runPresetApply(
+      json,
+      false,
+      `プリセット「${presetName}」を適用しました。`,
+      () => switchPreset(presetName),
+      presetName,
+    );
   };
 
   const handleDownloadPreset = () => {
@@ -669,213 +677,37 @@ export function App() {
       </nav>
 
       {tab === "pipeline" ? (
-        <section className="preview-layout">
-          <MouthStatusBar
-            rendered={renderedMotion}
-            phonemeSource={phonemeInputSource}
-            graphMapped={graphMouthMapped}
-            simpleMode={isSimpleMode}
-          />
-          {externalInputActive ? (
-            <p className="external-input-banner">
-              外部 Input Source から channels
-              を受信中です。スライダーは受信値に同期します。
-            </p>
-          ) : null}
-          <div className="panel-grid">
-            <div className="pipeline-inputs">
-              <section className="input-section">
-                <h2>{isSimpleMode ? "キャラの気持ち" : "State（長寿命）"}</h2>
-                <p className="hint">
-                  {isSimpleMode
-                    ? "スライダーを動かすとキャラの動きが変わります。"
-                    : "interest / energy 等。秒〜分単位で変化する状態です。"}
-                </p>
-                {INPUT_SLIDERS.map((slider) => (
-                  <label key={slider.key} className="row row-slider">
-                    <span>{isSimpleMode ? slider.simpleLabel : slider.label}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={inputs[slider.key] ?? slider.defaultValue}
-                      onChange={(e) =>
-                        setInputs((c) => ({
-                          ...c,
-                          [slider.key]: Number(e.target.value),
-                        }))
-                      }
-                    />
-                    <span className="value">
-                      {formatValue(inputs[slider.key] ?? slider.defaultValue)}
-                    </span>
-                  </label>
-                ))}
-              </section>
-
-              <section className="input-section">
-                <h2>{isSimpleMode ? "声・口の形" : "Channel（常時・sticky）"}</h2>
-                <p className="hint">
-                  {isSimpleMode
-                    ? "リップシンクを使う場合は、声の大きさと口の形をここで試せます。"
-                    : "値は保持されます。無音時は volume=0 / phoneme=Rest を送ってください。Graph の phonemeToShape（source=channel または auto）が参照します。"}
-                </p>
-                {CHANNEL_SLIDERS.map((slider) => (
-                  <label key={slider.key} className="row row-slider">
-                    <span>{isSimpleMode ? slider.simpleLabel : slider.label}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={channelInputs[slider.key] ?? slider.defaultValue}
-                      onChange={(e) =>
-                        setChannelInputs((c) => ({
-                          ...c,
-                          [slider.key]: Number(e.target.value),
-                        }))
-                      }
-                    />
-                    <span className="value">
-                      {formatValue(channelInputs[slider.key] ?? slider.defaultValue)}
-                    </span>
-                  </label>
-                ))}
-                <label className="row">
-                  <span>
-                    {isSimpleMode ? "口の形（あいうえお）" : "Channel phoneme"}
-                  </span>
-                  <select
-                    value={phonemeChannel}
-                    onChange={(e) => setPhonemeChannel(e.target.value)}
-                  >
-                    {PHONEME_OPTIONS.map((phoneme) => (
-                      <option key={phoneme} value={phoneme}>
-                        {phoneme}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {emotionPluginEnabled ? (
-                  <label className="row">
-                    <span>emotion</span>
-                    <select
-                      value={emotionChannel}
-                      onChange={(e) => setEmotionChannel(e.target.value)}
-                    >
-                      {EMOTION_CHANNEL_OPTIONS.map((option) => (
-                        <option key={option.label} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                <div className="channel-actions">
-                  <button type="button" onClick={handleResetChannels}>
-                    Channel をリセット
-                  </button>
-                </div>
-              </section>
-
-              {!isSimpleMode ? (
-                <section className="input-section">
-                  <h2>Timeline（一時イベント）</h2>
-                  <p className="hint">
-                    {TIMELINE_PHONEME_MS}ms の音素イベントを送ります。Graph の
-                    phonemeToShape（auto / timeline）では Timeline が Channel
-                    より優先されます。
-                  </p>
-                  <button type="button" onClick={handlePushTimelinePhoneme}>
-                    タイムラインに音素を送る（{TIMELINE_PHONEME_MS}ms）
-                  </button>
-                </section>
-              ) : (
-                <section className="input-section">
-                  <h2>口の動きを試す</h2>
-                  <p className="hint">
-                    選んだ口の形を短く送って、リップシンクの動きを確認できます。
-                  </p>
-                  <button type="button" onClick={handlePushTimelinePhoneme}>
-                    口の形を一瞬送る（{TIMELINE_PHONEME_MS}ms）
-                  </button>
-                </section>
-              )}
-            </div>
-            <div className="pipeline-inspectors">
-              {!isSimpleMode ? (
-                <>
-                  <h2>Channel 一覧</h2>
-                  <KeyValueTable
-                    rows={channelTableRows}
-                    emptyHint="（channel 未設定）"
-                  />
-                  <h2>Timeline 稼働中（{timelineCurrentMs} ms）</h2>
-                  <KeyValueTable
-                    rows={timelineTableRows}
-                    emptyHint="（active イベントなし）"
-                  />
-                  <details className="inspector-details">
-                    <summary>State JSON（詳細）</summary>
-                    <pre>{JSON.stringify(stateSnapshot, null, 2)}</pre>
-                  </details>
-                  <details className="inspector-details">
-                    <summary>
-                      behaviorPlugins: {behaviorPluginIds.join(", ") || "(none)"}
-                    </summary>
-                  </details>
-                </>
-              ) : (
-                <>
-                  <h2>いまの動き</h2>
-                  <MotionTable
-                    columns={[
-                      {
-                        id: "rendered",
-                        label: "キャラへの出力",
-                        values: renderedMotion,
-                      },
-                    ]}
-                  />
-                  <p className="hint">
-                    変化が見えないときは「キャラの雰囲気」「動きのつなぎ」「キャラへの送信」を確認してください。
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-          {!isSimpleMode ? (
-            <>
-              <div className="pipeline-motion">
-                <h2>Motion (merged → rendered)</h2>
-                <p className="hint">
-                  Target は各段階のマージ結果。Rendered は modifier
-                  適用後の最終出力です。
-                </p>
-                <MotionTable
-                  columns={[
-                    { id: "target", label: "Target", values: targetMotion },
-                    { id: "rendered", label: "Rendered", values: renderedMotion },
-                  ]}
-                />
-              </div>
-              <div className="pipeline-stages">
-                <h2>Pipeline Outputs</h2>
-                <p className="hint">
-                  behaviorPlugins / behavior / graph 各段階の MotionState（マージ前）。
-                </p>
-                <PluginOutputsPanel pluginOutputs={pipelineOutputs} />
-              </div>
-            </>
-          ) : null}
-        </section>
+        <PipelineTab
+          isSimpleMode={isSimpleMode}
+          renderedMotion={renderedMotion}
+          targetMotion={targetMotion}
+          phonemeInputSource={phonemeInputSource}
+          graphMouthMapped={graphMouthMapped}
+          externalInputActive={externalInputActive}
+          inputs={inputs}
+          onInputsChange={setInputs}
+          channelInputs={channelInputs}
+          onChannelInputsChange={setChannelInputs}
+          phonemeChannel={phonemeChannel}
+          onPhonemeChannelChange={setPhonemeChannel}
+          emotionChannel={emotionChannel}
+          onEmotionChannelChange={setEmotionChannel}
+          emotionPluginEnabled={emotionPluginEnabled}
+          onResetChannels={handleResetChannels}
+          onPushTimelinePhoneme={handlePushTimelinePhoneme}
+          channelTableRows={channelTableRows}
+          timelineTableRows={timelineTableRows}
+          timelineCurrentMs={timelineCurrentMs}
+          stateSnapshot={stateSnapshot}
+          behaviorPluginIds={behaviorPluginIds}
+          pipelineOutputs={pipelineOutputs}
+        />
       ) : null}
 
       {tab === "scratch" ? (
         <Suspense fallback={<p className="hint">Scratch Editor を読み込み中…</p>}>
           <ScratchEditor
-            presetJson={presetJson}
+            presetJson={assembledPresetJson}
             activePluginIds={activePluginIds}
             onPreviewJson={setBehaviorPreviewJson}
             onApply={async (_behavior, merged) => {
@@ -886,6 +718,8 @@ export function App() {
                 await loadCustomPreset(merged);
                 setCustomPreset(true);
                 setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(merged));
+                setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(merged));
+                setAppliedExtensionsJson(extractExtensionsJson(merged));
                 setActivePluginIds(getActivePluginIds());
                 bumpGraphEditorKey();
                 notify("Scratch から behavior を Preset に適用しました。", "success");
@@ -905,6 +739,47 @@ export function App() {
           {!isSimpleMode && behaviorPreviewJson ? (
             <details className="scratch-preview">
               <summary>behavior JSON プレビュー</summary>
+              <pre>{behaviorPreviewJson}</pre>
+            </details>
+          ) : null}
+        </Suspense>
+      ) : null}
+
+      {tab === "pfscript" ? (
+        <Suspense fallback={<p className="hint">PFScript Editor を読み込み中…</p>}>
+          <PfScriptEditor
+            presetJson={assembledPresetJson}
+            applying={applyingPreset}
+            onPreviewJson={setBehaviorPreviewJson}
+            onApply={async (merged) => {
+              setPresetJson(merged);
+              syncPresetParts(merged);
+              setApplyingPreset(true);
+              try {
+                await loadCustomPreset(merged);
+                setCustomPreset(true);
+                setBehaviorPluginIds(getBehaviorPluginIdsFromPresetJson(merged));
+                setAppliedBehaviorPluginsJson(extractBehaviorPluginsJson(merged));
+                setAppliedExtensionsJson(extractExtensionsJson(merged));
+                setActivePluginIds(getActivePluginIds());
+                bumpGraphEditorKey();
+                notify("PFScript を Preset に適用しました。", "success");
+              } catch (error) {
+                notify(
+                  error instanceof Error
+                    ? error.message
+                    : "PFScript Preset の適用に失敗しました。",
+                  "error",
+                );
+              } finally {
+                setApplyingPreset(false);
+              }
+            }}
+            onStatus={notify}
+          />
+          {behaviorPreviewJson ? (
+            <details className="pfscript-preview">
+              <summary>behavior JSON（App プレビュー）</summary>
               <pre>{behaviorPreviewJson}</pre>
             </details>
           ) : null}
@@ -931,9 +806,10 @@ export function App() {
         <Suspense fallback={<p className="hint">Graph Editor を読み込み中…</p>}>
           <GraphEditor
             exportJson={exportJson}
-            presetJson={presetJson}
+            presetJson={assembledPresetJson}
             presetGraphKey={graphEditorKey}
             activePluginIds={activePluginIds}
+            onPresetGraphChange={handlePresetGraphChange}
             onExport={(json) => {
               setExportJson(json);
               setPresetJson(json);

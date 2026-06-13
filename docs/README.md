@@ -9,7 +9,7 @@ StateStore
  ↓
 Behavior Plugins        ← behaviorPlugins（gaze, blink 等）
  ↓
-Behavior Script Engine  ← If / Assign / MotionPack（Blockly または JSON）
+Behavior Script Engine  ← If / Assign / PFScript / MotionPack（Blockly・JSON・DSL）
  ↓
 Motion Graph Runtime    ← 数値ノード + motionPack / ext:* ノード
  ↓
@@ -35,7 +35,7 @@ Adapters → 外部 Viewer
 | ドキュメント                                  | 内容                                                   |
 | --------------------------------------------- | ------------------------------------------------------ |
 | [はじめての使い方](guides/getting-started.md) | インストール、Playground / Studio の起動               |
-| [Studio ガイド](guides/studio.md)             | Pipeline / Scratch / Graph / Plugins / Preset / Mapper |
+| [Studio ガイド](guides/studio.md)             | Pipeline / Scratch / PFScript / Graph / Preset / Mapper |
 | [Ecosystem デモ](guides/ecosystem-demo.md)    | 複数アダプタ同時出力                                   |
 
 ## リファレンス
@@ -46,6 +46,7 @@ Adapters → 外部 Viewer
 | [Behavior Plugins](reference/plugins.md)                    | rule / gaze / blink 等のプラグイン層     |
 | [Behavior と Motion Graph](reference/behavior-and-graph.md) | AST、Graph ノード、編集の分担            |
 | [Motion Extension](reference/motion-extension.md)           | Extension Layer、Pack、custom パラメータ |
+| [PFScript](reference/pfscript.md)                         | 上級者向け Behavior DSL（.pfscript）   |
 | [プリセット](reference/presets.md)                          | Preset v3（`.pfpreset`）と公式 Pack 6 種 |
 | [アダプタ](reference/adapters.md)                           | VMC / Live2D / VRM / WebSocket / Logger  |
 | [State Sources](reference/sources.md)                       | HTTP / WebSocket / MQTT / Discord        |
@@ -54,7 +55,8 @@ Adapters → 外部 Viewer
 
 | ドキュメント                                                           | 内容                                               |
 | ---------------------------------------------------------------------- | -------------------------------------------------- |
-| [追加仕様（Motion Extension 設計メモ）](追加仕様.md)                   | Extension Layer の設計・API 草案                   |
+| [追加仕様（Motion Extension / PFScript 設計メモ）](追加仕様.md)        | PFScript DSL / Extension Layer の設計草案          |
+| [実装計画（PFScript）](implementation-plan-pfscript.md)                | PFScript Issue 分解・**M1–M6 完了**        |
 | [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（未着手）                      |
 | [設計決定（Input & Timeline）](adr/input-timeline-design-decisions.md) | sticky Channel / global clock / phoneme テーブル等 |
 

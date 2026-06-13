@@ -12,6 +12,20 @@ describe("mapMotion", () => {
 
     expect(mapped.ParamEyeBallX).toBe(0);
     expect(mapped.ParamEyeBallY).toBe(1);
+    expect(mapped.ParamEyeOpen).toBe(1);
+    expect(mapped.ParamEyeSmile).toBe(0);
+  });
+
+  it("keeps eyelid and eye smile separate from eyeball direction", () => {
+    const mapped = mapMotion(
+      { ...DEFAULT_MOTION_STATE, lookX: 0.75, lookY: 0.25, eyeYaw: 0.2, eyePitch: 0.8 },
+      VMC_PROFILE,
+    );
+
+    expect(mapped.ParamEyeBallX).toBe(0.5);
+    expect(mapped.ParamEyeBallY).toBe(-0.5);
+    expect(mapped.ParamEyeOpen).toBe(0.2);
+    expect(mapped.ParamEyeSmile).toBe(0.8);
   });
 
   it("maps Live2D mouth form via mouthX", () => {

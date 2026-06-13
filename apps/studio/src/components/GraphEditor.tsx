@@ -30,6 +30,7 @@ import {
 } from "./graph/ExtensionGraphNodes";
 import { ActivePluginsPanel } from "./ActivePluginsPanel";
 import { mergeGraphIntoPreset } from "../graph-to-preset";
+import { extractGraphJson } from "../utils/preset-parts";
 import {
   findDuplicateExtensionPackIds,
   formatDuplicatePackWarning,
@@ -290,6 +291,7 @@ interface GraphEditorProps {
   activePluginIds: string[];
   onExport: (json: string) => void;
   onLoadExportedPreset: () => void;
+  onPresetGraphChange?: (graphJson: string, mergedPresetJson: string) => void;
   onStatus: (message: string, kind: "success" | "error" | "info") => void;
 }
 
@@ -326,21 +328,35 @@ function GraphEditorContent({
   activePluginIds,
   onExport,
   onLoadExportedPreset,
+  onPresetGraphChange,
   onStatus,
 }: GraphEditorProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const graphDirtyRef = useRef(false);
+  const nodesRef = useRef(INITIAL_NODES);
+  const edgesRef = useRef(INITIAL_EDGES);
+  const presetJsonRef = useRef(presetJson);
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
 
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+  presetJsonRef.current = presetJson;
+
+  const markGraphDirty = useCallback(() => {
+    graphDirtyRef.current = true;
+  }, []);
+
   const updateNodeData = useCallback(
     (nodeId: string, patch: Record<string, unknown>) => {
+      markGraphDirty();
       setNodes((current) =>
         current.map((node) =>
           node.id === nodeId ? { ...node, data: { ...node.data, ...patch } } : node,
         ),
       );
     },
-    [setNodes],
+    [markGraphDirty, setNodes],
   );
 
   const nodeTypes = useMemo(() => {
@@ -453,13 +469,15 @@ function GraphEditorContent({
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      markGraphDirty();
       setEdges((current) => addEdge(connection, current));
     },
-    [setEdges],
+    [markGraphDirty, setEdges],
   );
 
   const addExtensionNode = useCallback(
     (kind: "motionPack" | "motionGenerator" | "ext", targetId: string) => {
+      markGraphDirty();
       const y = nodes.length * 80 + 40;
       const x = 640;
 
@@ -502,7 +520,7 @@ function GraphEditorContent({
         },
       ]);
     },
-    [nodes.length, setNodes],
+    [markGraphDirty, nodes.length, setNodes],
   );
 
   const addNode = useCallback(
@@ -515,6 +533,7 @@ function GraphEditorContent({
         | "multiply"
         | "output",
     ) => {
+      markGraphDirty();
       const y = nodes.length * 80 + 40;
       const id = createNodeId(type);
 
@@ -593,7 +612,7 @@ function GraphEditorContent({
         },
       ]);
     },
-    [nodes.length, setNodes],
+    [markGraphDirty, nodes.length, setNodes],
   );
 
   const removeSelectedNodes = useCallback(() => {
@@ -605,6 +624,7 @@ function GraphEditorContent({
       return;
     }
 
+    markGraphDirty();
     setNodes((current) => current.filter((node) => !selectedIds.has(node.id)));
     setEdges((current) =>
       current.filter(
@@ -612,7 +632,7 @@ function GraphEditorContent({
       ),
     );
     onStatus(`${selectedIds.size} 個のノードを削除しました。`, "success");
-  }, [nodes, onStatus, setEdges, setNodes]);
+  }, [markGraphDirty, nodes, onStatus, setEdges, setNodes]);
 
   const loadFromPreset = useCallback(() => {
     const graph = presetJsonToGraph(presetJson);
@@ -628,20 +648,60 @@ function GraphEditorContent({
 
   useEffect(() => {
     const graph = presetJsonToGraph(presetJson);
+    graphDirtyRef.current = false;
     if (graph.nodes.length > 0) {
       setNodes(graph.nodes);
       setEdges(graph.edges);
+      return;
     }
+
+    setNodes(INITIAL_NODES);
+    setEdges(INITIAL_EDGES);
   }, [presetGraphKey, presetJson, setEdges, setNodes]);
 
+  useEffect(() => {
+    return () => {
+      if (!onPresetGraphChange || !graphDirtyRef.current) {
+        return;
+      }
+
+      const merged = mergeGraphIntoPreset(presetJsonRef.current, {
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+      });
+      onPresetGraphChange(extractGraphJson(merged), merged);
+    };
+  }, [onPresetGraphChange]);
+
   const insertLipsyncTemplate = useCallback(() => {
+    markGraphDirty();
     setNodes(LIPSYNC_TEMPLATE_NODES.map((node) => ({ ...node })));
     setEdges(LIPSYNC_TEMPLATE_EDGES.map((edge) => ({ ...edge })));
     onStatus(
       "リップシンク簡易テンプレを配置しました。Export → 適用後、Pipeline で Volume / Phoneme を試してください。",
       "success",
     );
-  }, [onStatus, setEdges, setNodes]);
+  }, [markGraphDirty, onStatus, setEdges, setNodes]);
+
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      if (changes.some((change) => change.type !== "select")) {
+        markGraphDirty();
+      }
+      onNodesChange(changes);
+    },
+    [markGraphDirty, onNodesChange],
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: Parameters<typeof onEdgesChange>[0]) => {
+      if (changes.some((change) => change.type !== "select")) {
+        markGraphDirty();
+      }
+      onEdgesChange(changes);
+    },
+    [markGraphDirty, onEdgesChange],
+  );
 
   const handleContextMenu = (event: { preventDefault(): void }) => {
     event.preventDefault();
@@ -738,8 +798,8 @@ function GraphEditorContent({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           onPaneContextMenu={handleContextMenu}

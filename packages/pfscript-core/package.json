@@ -19,6 +19,7 @@
     "test": "vitest run --dir ."
   },
   "dependencies": {
+    "@puppetflow/behavior": "workspace:*",
     "@puppetflow/core": "workspace:*",
     "@puppetflow/extension-core": "workspace:*"
   },

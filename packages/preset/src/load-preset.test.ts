@@ -109,4 +109,91 @@ describe("loadPreset", () => {
     ]);
     expect(loaded.extensions?.parameterDefaults).toEqual({ tailWag: 0.5 });
   });
+
+  it("loads behaviorPfScript and compiles behavior", () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "PfScriptPreset",
+        version: 3,
+        behaviorPfScript: "smile = interest * 0.5",
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    expect(loaded.behaviorPfScript).toContain("smile");
+    expect(loaded.behavior.statements[0]).toMatchObject({
+      type: "ExprAssign",
+      target: "mouthX",
+    });
+  });
+
+  it("prefers behaviorPfScript over stale behavior cache on load", () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "StaleCache",
+        version: 3,
+        behaviorPfScript: "smile = 0.9",
+        behavior: {
+          type: "Block",
+          statements: [{ type: "Assign", key: "mouthX", op: "set", value: 0.1 }],
+        },
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    expect(loaded.behavior.statements[0]).toMatchObject({
+      type: "ExprAssign",
+      value: { type: "Number", value: 0.9 },
+    });
+  });
+
+  it("rejects presets without behavior or behaviorPfScript", () => {
+    expect(() =>
+      loadPreset(
+        JSON.stringify({
+          name: "EmptyBehavior",
+          version: 3,
+          graph: { nodes: [], edges: [] },
+        }),
+      ),
+    ).toThrow(/requires behavior or behaviorPfScript/i);
+  });
+
+  it("reports PFScript syntax errors with location", () => {
+    expect(() =>
+      loadPreset(
+        JSON.stringify({
+          name: "BrokenScript",
+          version: 3,
+          behaviorPfScript: "for i = 1, 10 do end",
+          graph: { nodes: [], edges: [] },
+        }),
+      ),
+    ).toThrow(/\(1:/);
+  });
+
+  it("migrates legacy motion keys in behavior and graph", () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "LegacyKeys",
+        version: 3,
+        behavior: {
+          type: "Block",
+          statements: [{ type: "Assign", key: "faceRoll", op: "set", value: 0.6 }],
+        },
+        graph: {
+          nodes: [{ id: "out", type: "output", data: { key: "bodyPitch" } }],
+          edges: [],
+        },
+      }),
+    );
+
+    expect(loaded.behavior.statements[0]).toMatchObject({
+      type: "Assign",
+      key: "headTilt",
+    });
+    expect(loaded.graph.nodes[0]?.data.key).toBe("bodyLean");
+    expect(loaded.warnings.some((w) => w.includes("faceRoll"))).toBe(true);
+    expect(loaded.warnings.some((w) => w.includes("bodyPitch"))).toBe(true);
+  });
 });

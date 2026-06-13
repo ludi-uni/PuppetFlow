@@ -1,3 +1,35 @@
+import { mergeExtensionsPart } from "./extension-config.js";
+
+export interface PresetPartOverrides {
+  behaviorPluginsJson?: string;
+  behaviorJson?: string;
+  graphJson?: string;
+  extensionsJson?: string;
+}
+
+/** Merges split editor state into one preset JSON string (order: plugins → extensions → graph → behavior). */
+export function assemblePresetFromParts(
+  presetJson: string,
+  parts: PresetPartOverrides,
+): string {
+  let json = presetJson;
+
+  if (parts.behaviorPluginsJson !== undefined) {
+    json = mergeBehaviorPluginsPart(json, parts.behaviorPluginsJson);
+  }
+  if (parts.extensionsJson !== undefined) {
+    json = mergeExtensionsPart(json, parts.extensionsJson);
+  }
+  if (parts.graphJson !== undefined) {
+    json = mergeGraphPart(json, parts.graphJson);
+  }
+  if (parts.behaviorJson !== undefined) {
+    json = mergeBehaviorPart(json, parts.behaviorJson);
+  }
+
+  return json;
+}
+
 export function extractBehaviorJson(presetJson: string): string {
   const parsed = JSON.parse(presetJson) as { behavior?: unknown };
   return JSON.stringify(parsed.behavior ?? { type: "Block", statements: [] }, null, 2);

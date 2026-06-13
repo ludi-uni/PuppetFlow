@@ -1,9 +1,6 @@
 import type { BehaviorPlugin } from "@puppetflow/core";
-import { AttentionPlugin } from "@puppetflow/plugin-attention";
-import { BlinkPlugin } from "@puppetflow/plugin-blink";
-import { EmotionPlugin } from "@puppetflow/plugin-emotion";
-import { GazePlugin } from "@puppetflow/plugin-gaze";
-import { IdlePlugin } from "@puppetflow/plugin-idle";
+import "./builtin-behavior-plugins.js";
+import { getBehaviorPluginFactory } from "./plugin-registry.js";
 
 export interface BehaviorPluginConfig {
   id: string;
@@ -11,20 +8,11 @@ export interface BehaviorPluginConfig {
 }
 
 export function createBehaviorPlugin(entry: BehaviorPluginConfig): BehaviorPlugin {
-  switch (entry.id) {
-    case "blink":
-      return new BlinkPlugin(entry.config);
-    case "gaze":
-      return new GazePlugin(entry.config);
-    case "idle":
-      return new IdlePlugin(entry.config);
-    case "attention":
-      return new AttentionPlugin(entry.config);
-    case "emotion":
-      return new EmotionPlugin(entry.config);
-    default:
-      throw new Error(`Unknown behavior plugin id: ${entry.id}`);
+  const factory = getBehaviorPluginFactory(entry.id);
+  if (!factory) {
+    throw new Error(`Unknown behavior plugin id: ${entry.id}`);
   }
+  return factory(entry.config);
 }
 
 export function createBehaviorPlugins(

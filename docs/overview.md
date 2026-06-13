@@ -19,7 +19,7 @@ Behavior Script Engine（If / Assign / MotionPack）
  ↓
 Motion Graph Runtime
  ↓
-MotionState（merge）
+MotionState（runtime: addMotionState / 内部: merge）
  ↓
 Motion Modifiers
  ↓
@@ -47,7 +47,7 @@ PuppetFlow は **状態・振る舞い・表現** を分離します。
 
 State のキーは固定しません。ゲーム・AI・IoT など用途ごとに異なる状態をそのまま受け入れます。
 
-MotionState のキーは [MotionState リファレンス](reference/motion-state.md) で定義された 16 種に正規化されます。
+MotionState のキーは [MotionState リファレンス](reference/motion-state.md) で定義された **14 種** に正規化されます。
 
 ## 編集インターフェース
 

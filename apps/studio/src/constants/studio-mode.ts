@@ -3,6 +3,7 @@ export type StudioMode = "simple" | "expert";
 export type TabId =
   | "pipeline"
   | "scratch"
+  | "pfscript"
   | "mapping"
   | "graph"
   | "presets"
@@ -32,6 +33,7 @@ export function getTabsForMode(
     return [
       { id: "pipeline", label: "Pipeline" },
       { id: "scratch", label: "Scratch (Blockly)" },
+      { id: "pfscript", label: "PFScript" },
       { id: "graph", label: "Graph Editor" },
       { id: "presets", label: "Preset Manager" },
       { id: "plugins", label: "Plugins" },

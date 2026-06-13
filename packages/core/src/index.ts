@@ -14,7 +14,12 @@ export {
   type MotionState,
   type MotionStateKey,
 } from "./motion-state.js";
-export { createEmptyMotionState, mergeMotionState } from "./merge-motion-state.js";
+export {
+  LEGACY_MOTION_KEY_REPLACEMENTS,
+  migrateLegacyMotionKey,
+  PLUGIN_MOTION_OUTPUTS,
+} from "./motion-neutral.js";
+export { createEmptyMotionState, addMotionState, mergeMotionState } from "./merge-motion-state.js";
 export { StateStore, type StateValue } from "./state-store.js";
 export {
   DEFAULT_PHONEME_SHAPES,

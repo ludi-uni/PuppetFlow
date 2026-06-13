@@ -124,6 +124,8 @@ export interface ExtensionSources {
   presetExtensions?: PresetExtensions;
   behavior?: BehaviorBlock;
   graph?: MotionGraphDocument;
+  /** Runtime-evaluated behavior packs (If-aware). When set, static behavior scan is skipped. */
+  behaviorPackInvocations?: ExtensionInvocation[];
 }
 
 export interface ResolvedExtensions {

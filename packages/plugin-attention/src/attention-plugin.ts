@@ -28,7 +28,7 @@ export class AttentionPlugin implements BehaviorPlugin {
     }
 
     return {
-      bodyLean: clamp01(interest * this.leanGain),
+      bodyLean: clamp01(0.5 + (interest - 0.5) * this.leanGain),
       headTilt: clamp01(0.5 + (interest - 0.5) * this.tiltGain),
     };
   }

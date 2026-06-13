@@ -33,6 +33,35 @@ export function mergeMotionState(
   return result;
 }
 
+/** Adds partial outputs on top of each key's neutral default (runtime pipeline). */
+export function addMotionState(
+  base: MotionState,
+  partials: Partial<MotionState>[],
+): MotionState {
+  const result = { ...base, custom: { ...base.custom } };
+
+  for (const key of MOTION_STATE_KEYS) {
+    const values = collectValuesForKey(key, partials);
+    if (values.length === 0) {
+      continue;
+    }
+
+    const neutral = DEFAULT_MOTION_STATE[key];
+    const delta = values.reduce((sum, value) => sum + (value - neutral), 0);
+    result[key] = clamp01(neutral + delta);
+  }
+
+  const customPartials = partials
+    .map((partial) => partial.custom)
+    .filter((custom): custom is Record<string, number> => custom !== undefined);
+
+  if (customPartials.length > 0) {
+    result.custom = addCustomRecords(result.custom, customPartials);
+  }
+
+  return result;
+}
+
 function mergeCustomRecords(
   base: Record<string, number>,
   partials: Array<Record<string, number>>,
@@ -59,6 +88,35 @@ function mergeCustomRecords(
     result[key] = clamp01(
       values.reduce((sum, value) => sum + value, 0) / values.length,
     );
+  }
+  return result;
+}
+
+function addCustomRecords(
+  base: Record<string, number>,
+  partials: Array<Record<string, number>>,
+): Record<string, number> {
+  const keys = new Set<string>(Object.keys(base));
+  for (const partial of partials) {
+    for (const key of Object.keys(partial)) {
+      keys.add(key);
+    }
+  }
+
+  const result: Record<string, number> = { ...base };
+  for (const key of keys) {
+    const values: number[] = [];
+    for (const partial of partials) {
+      const value = partial[key];
+      if (value !== undefined) {
+        values.push(value);
+      }
+    }
+    if (values.length === 0) {
+      continue;
+    }
+    const delta = values.reduce((sum, value) => sum + value, 0);
+    result[key] = clamp01(delta);
   }
   return result;
 }

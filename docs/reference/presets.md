@@ -30,14 +30,19 @@
 }
 ```
 
-| フィールド        | 必須 | 説明                                            |
-| ----------------- | ---- | ----------------------------------------------- |
-| `name`            | ✅   | プリセット名                                    |
-| `version`         | ✅   | **`3` のみ**                                    |
-| `behavior`        | ✅   | Behavior AST ルート（`If` / `Assign`）          |
-| `graph`           | ✅   | Motion Graph（`nodes` + `edges`）               |
+| フィールド           | 必須 | 説明                                            |
+| -------------------- | ---- | ----------------------------------------------- |
+| `name`               | ✅   | プリセット名                                    |
+| `version`            | ✅   | **`3` のみ**                                    |
+| `behavior`           | △   | Behavior AST（`behaviorPfScript` があれば省略可） |
+| `behaviorPfScript`   | —    | PFScript ソース（load 時に `behavior` へコンパイル） |
+| `graph`              | ✅   | Motion Graph（`nodes` + `edges`）               |
 | `behaviorPlugins` | —    | gaze / blink 等のプラグイン定義                 |
 | `extensions`      | —    | Motion Pack / 独自パラメータ（Extension Layer） |
+
+`behavior` または `behaviorPfScript` のどちらか一方が必要です。両方ある場合 **ソース（`behaviorPfScript`）が優先** されます。
+
+詳細: [PFScript](pfscript.md)
 
 ### 廃止されたフィールド（v3 ではエラー）
 
@@ -69,7 +74,7 @@ import { getPresetJson, listPresetNames } from "@puppetflow/behavior-packs";
 const json = getPresetJson("Curious");
 ```
 
-ファイル実体: `packages/behavior-packs/presets/*.pfpreset`
+ファイル実体: `packages/behavior-packs/presets/*.pfpreset`（リポジトリルートの `presets/` は同内容のミラー）
 
 ## 読み込み API
 
@@ -88,6 +93,7 @@ await runtime.start();
 | タブ              | 編集対象                                  |
 | ----------------- | ----------------------------------------- |
 | Scratch (Blockly) | `behavior`（If / Assign）                 |
+| **PFScript**      | `behaviorPfScript` + コンパイル済 `behavior` |
 | Graph Editor      | `graph`                                   |
 | 動きのつなぎ      | `graph`（かんたんモードの表 UI）          |
 | Plugins           | ランタイムへの追加プラグイン（Preset 外） |
@@ -99,4 +105,4 @@ await runtime.start();
 
 `.pfpreset` を共有し、Studio のインポートまたは `loadPreset()` で利用できます。
 
-関連: [Behavior Plugins](plugins.md) / [Motion Extension](motion-extension.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [MotionState](motion-state.md)
+関連: [PFScript](pfscript.md) / [Behavior Plugins](plugins.md) / [Motion Extension](motion-extension.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [MotionState](motion-state.md)

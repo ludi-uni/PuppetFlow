@@ -118,7 +118,9 @@ export function collectExtensionInvocations(
 
   collectPresetInvocations(sources.presetExtensions, invocations);
 
-  if (sources.behavior) {
+  if (sources.behaviorPackInvocations !== undefined) {
+    invocations.push(...sources.behaviorPackInvocations);
+  } else if (sources.behavior) {
     collectBehaviorPackInvocations(sources.behavior.statements, invocations);
   }
 

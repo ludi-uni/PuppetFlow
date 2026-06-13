@@ -25,7 +25,7 @@ function createTestAdapter(update: Adapter["update"]): Adapter {
 }
 
 describe("PuppetFlowRuntime", () => {
-  it("merges plugin outputs and notifies adapters with deltaTime", async () => {
+  it("adds plugin outputs and notifies adapters with deltaTime", async () => {
     const update = vi.fn(async () => {});
     const adapter = createTestAdapter(update);
 
@@ -36,7 +36,7 @@ describe("PuppetFlowRuntime", () => {
 
     await runtime.start();
 
-    expect(runtime.getTargetMotion().mouthX).toBe(0.5);
+    expect(runtime.getTargetMotion().mouthX).toBe(1);
     expect(adapter.initialize).toHaveBeenCalledTimes(1);
     expect(update).toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith(expect.any(Object), expect.any(Number));
@@ -195,6 +195,62 @@ describe("PuppetFlowRuntime", () => {
     expect(runtime.getRenderedMotion().lookX).not.toBe(0.5);
     const pipeline = runtime.getPluginOutputs();
     expect(pipeline.some((entry) => entry.pluginId === "extensions")).toBe(true);
+
+    await runtime.stop();
+  });
+
+  it("executes PFScript preset behavior with channels and conditional packs", async () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "PfScriptRuntime",
+        version: 3,
+        behaviorPfScript: `
+smile = interest * 0.4
+if interest > 0.7 then
+    thinking(intensity = 0.8)
+end
+`,
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    const runtime = new PuppetFlowRuntime().loadPreset(loaded);
+    runtime.state.set("interest", 0.5);
+    await runtime.start();
+
+    expect(runtime.getTargetMotion().mouthX).toBeCloseTo(0.2, 2);
+    const lowInterestLookX = runtime.getRenderedMotion().lookX;
+
+    runtime.state.set("interest", 1);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect(runtime.getTargetMotion().mouthX).toBeCloseTo(0.4, 2);
+    expect(runtime.getRenderedMotion().lookX).not.toBeCloseTo(lowInterestLookX, 2);
+
+    await runtime.stop();
+  });
+
+  it("resolves currentPhoneme from phoneme channel for PFScript lip-sync", async () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "LipSync",
+        version: 3,
+        behaviorPfScript: `
+if currentPhoneme == "A" then
+    MouthA = 1
+end
+`,
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    const runtime = new PuppetFlowRuntime().loadPreset(loaded);
+    runtime.channels.set("phoneme", "A");
+    await runtime.start();
+
+    expect(runtime.getTargetMotion().custom?.MouthA).toBeCloseTo(1, 2);
 
     await runtime.stop();
   });

@@ -62,6 +62,13 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                   へのマッピングが必要です
                 </li>
                 <li>
+                  <strong>Scratch (Blockly)</strong> — If / Assign をブロックで編集
+                </li>
+                <li>
+                  <strong>PFScript</strong> — 上級者向け DSL。コンパイルして behavior /
+                  behaviorPfScript を Preset に保存
+                </li>
+                <li>
                   <strong>Graph Editor</strong> — 「リップシンク簡易テンプレ」で volume
                   → mouthY 等を配置し Preset にエクスポート
                 </li>

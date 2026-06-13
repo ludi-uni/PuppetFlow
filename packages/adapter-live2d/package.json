@@ -10,7 +10,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./mappings/default.json": "./mappings/default.json"
+    "./mappings/default.json": "@puppetflow/motion-mapper/profiles/live2d.json"
   },
   "files": [
     "dist",

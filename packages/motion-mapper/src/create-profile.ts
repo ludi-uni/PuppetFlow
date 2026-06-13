@@ -7,17 +7,13 @@ import type {
   ValueTransform,
 } from "./types.js";
 
-const CENTERED_MOTION_KEYS = [
+const BASE_CENTERED_MOTION_KEYS = [
   "faceYaw",
   "facePitch",
-  "faceRoll",
   "bodyYaw",
-  "bodyPitch",
   "bodyRoll",
-  "eyeYaw",
-  "eyePitch",
-  "eyeX",
-  "eyeY",
+  "headTilt",
+  "bodyLean",
   "lookX",
   "lookY",
 ] as const satisfies readonly MotionStateKey[];
@@ -34,9 +30,21 @@ const TARGET_DEFAULT_TRANSFORMS: Record<
   ModelTarget,
   Partial<Record<MotionStateKey, ValueTransform>>
 > = {
-  vmc: centeredTransforms(CENTERED_MOTION_KEYS),
-  live2d: centeredTransforms(CENTERED_MOTION_KEYS),
-  vrm: centeredTransforms(CENTERED_MOTION_KEYS),
+  vmc: {
+    ...centeredTransforms(BASE_CENTERED_MOTION_KEYS),
+    eyeYaw: "identity",
+    eyePitch: "identity",
+  },
+  live2d: {
+    ...centeredTransforms(BASE_CENTERED_MOTION_KEYS),
+    eyeYaw: "identity",
+    eyePitch: "identity",
+  },
+  vrm: {
+    ...centeredTransforms(BASE_CENTERED_MOTION_KEYS),
+    eyeYaw: "identity",
+    eyePitch: "identity",
+  },
   custom: {},
 };
 

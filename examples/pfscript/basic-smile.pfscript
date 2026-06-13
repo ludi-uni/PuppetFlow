@@ -1,0 +1,4 @@
+-- 最小サンプル: interest と volume から口の動き
+
+smile = interest * 0.5
+mouthOpen = volume

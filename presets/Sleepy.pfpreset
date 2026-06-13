@@ -7,7 +7,7 @@
   },
   "behaviorPlugins": [
     { "id": "blink", "config": { "minInterval": 4, "maxInterval": 10, "closeDuration": 0.18 } },
-    { "id": "gaze", "config": { "wanderAmplitude": 0.02, "speed": 0.25 } },
+    { "id": "gaze", "config": { "wanderAmplitude": 0.02, "speed": 0.1 } },
     { "id": "idle", "config": { "interestThreshold": 0.45, "wanderBoost": 0.08 } }
   ],
   "graph": {

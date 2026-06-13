@@ -37,6 +37,32 @@ describe("parseBehaviorRoot", () => {
     ).toThrow(/unsupported behavior statement/i);
   });
 
+  it("accepts StringCompare and ExprAssign statements", () => {
+    const root = parseBehaviorRoot({
+      type: "Block",
+      statements: [
+        {
+          type: "If",
+          condition: {
+            kind: "StringCompare",
+            left: "currentPhoneme",
+            op: "==",
+            right: "A",
+          },
+          then: [
+            {
+              type: "ExprAssign",
+              target: "custom:MouthA",
+              value: { type: "Number", value: 1 },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(root.statements[0]?.type).toBe("If");
+  });
+
   it("rejects invalid Assign keys", () => {
     expect(() =>
       parseBehaviorRoot({

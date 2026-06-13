@@ -1,27 +1,41 @@
 import {
   mergeMotionState,
   createEmptyMotionState,
+  clamp01,
+  MOTION_STATE_KEYS,
   type MotionState,
+  type MotionStateKey,
 } from "@puppetflow/core";
-import type { ChannelStore, StateStore } from "@puppetflow/core";
 import type {
   BehaviorBlock,
   BehaviorCondition,
+  BehaviorMotionPack,
   BehaviorStatement,
   CompareCondition,
+  StringCompareCondition,
 } from "./ast.js";
 import { applyAssign } from "./builtins.js";
+import { evaluateExpressionAsNumber } from "./evaluate-expr.js";
+import { parseAssignTarget } from "./motion-aliases.js";
+import type { BehaviorExecutionContext } from "./context.js";
+import {
+  resolveCurrentPhoneme,
+  resolveNumericIdentifier,
+  resolveStringIdentifier,
+} from "./resolve-context.js";
 
-export interface BehaviorExecutionContext {
-  state: StateStore;
-  channels: ChannelStore;
-  renderedMotion: MotionState;
-  deltaTime: number;
+export interface BehaviorMotionPackInvocation {
+  packId: string;
+  config?: Record<string, number>;
 }
 
-function evaluateCompare(state: StateStore, condition: CompareCondition): boolean {
-  const raw = state.get(condition.left);
-  const left = typeof raw === "number" ? raw : 0;
+export interface BehaviorExecutionResult {
+  motion: Partial<MotionState>;
+  packInvocations: BehaviorMotionPackInvocation[];
+}
+
+function evaluateCompare(ctx: BehaviorExecutionContext, condition: CompareCondition): boolean {
+  const left = resolveNumericIdentifier(condition.left, ctx);
 
   switch (condition.op) {
     case ">":
@@ -41,33 +55,95 @@ function evaluateCompare(state: StateStore, condition: CompareCondition): boolea
   }
 }
 
-function evaluateCondition(state: StateStore, condition: BehaviorCondition): boolean {
-  if ("left" in condition) {
-    return evaluateCompare(state, condition);
+function evaluateStringCompare(
+  ctx: BehaviorExecutionContext,
+  condition: StringCompareCondition,
+): boolean {
+  const left =
+    condition.left === "currentPhoneme"
+      ? resolveCurrentPhoneme(ctx)
+      : resolveStringIdentifier(condition.left, ctx);
+
+  switch (condition.op) {
+    case "==":
+      return left === condition.right;
+    case "!=":
+      return left !== condition.right;
+    default:
+      return false;
+  }
+}
+
+function isStringCompareCondition(
+  condition: BehaviorCondition,
+): condition is StringCompareCondition {
+  return "kind" in condition && condition.kind === "StringCompare";
+}
+
+function isCompareCondition(condition: BehaviorCondition): condition is CompareCondition {
+  return "left" in condition && typeof (condition as CompareCondition).right === "number";
+}
+
+function evaluateCondition(ctx: BehaviorExecutionContext, condition: BehaviorCondition): boolean {
+  if (isStringCompareCondition(condition)) {
+    return evaluateStringCompare(ctx, condition);
+  }
+
+  if (isCompareCondition(condition)) {
+    return evaluateCompare(ctx, condition);
   }
 
   switch (condition.type) {
     case "And":
-      return condition.conditions.every((item) => evaluateCondition(state, item));
+      return condition.conditions.every((item) => evaluateCondition(ctx, item));
     case "Or":
-      return condition.conditions.some((item) => evaluateCondition(state, item));
+      return condition.conditions.some((item) => evaluateCondition(ctx, item));
     case "Not":
-      return !evaluateCondition(state, condition.condition);
+      return !evaluateCondition(ctx, condition.condition);
     default:
       return false;
   }
+}
+
+function applyExprAssign(
+  statement: Extract<BehaviorStatement, { type: "ExprAssign" }>,
+  ctx: BehaviorExecutionContext,
+): Partial<MotionState> {
+  const value = clamp01(evaluateExpressionAsNumber(statement.value, ctx));
+  const target = parseAssignTarget(statement.target);
+
+  if (typeof target === "string") {
+    return applyAssign({}, target, "set", value);
+  }
+
+  return {
+    custom: {
+      [target.custom]: value,
+    },
+  };
+}
+
+function recordMotionPack(
+  statement: BehaviorMotionPack,
+  packInvocations: BehaviorMotionPackInvocation[],
+): void {
+  packInvocations.push({
+    packId: statement.packId,
+    config: statement.config,
+  });
 }
 
 function executeStatements(
   statements: BehaviorStatement[],
   ctx: BehaviorExecutionContext,
   path: string,
+  packInvocations: BehaviorMotionPackInvocation[],
 ): Partial<MotionState>[] {
   const outputs: Partial<MotionState>[] = [];
 
   statements.forEach((statement, index) => {
     const instanceKey = `${path}/${index}`;
-    outputs.push(executeStatement(statement, ctx, instanceKey));
+    outputs.push(executeStatement(statement, ctx, instanceKey, packInvocations));
   });
 
   return outputs;
@@ -77,19 +153,25 @@ function executeStatement(
   statement: BehaviorStatement,
   ctx: BehaviorExecutionContext,
   instanceKey: string,
+  packInvocations: BehaviorMotionPackInvocation[],
 ): Partial<MotionState> {
   switch (statement.type) {
     case "Block":
-      return mergePartials(executeStatements(statement.statements, ctx, instanceKey));
+      return mergePartials(
+        executeStatements(statement.statements, ctx, instanceKey, packInvocations),
+      );
     case "If": {
-      const branch = evaluateCondition(ctx.state, statement.condition)
+      const branch = evaluateCondition(ctx, statement.condition)
         ? statement.then
         : (statement.else ?? []);
-      return mergePartials(executeStatements(branch, ctx, instanceKey));
+      return mergePartials(executeStatements(branch, ctx, instanceKey, packInvocations));
     }
     case "Assign":
       return applyAssign({}, statement.key, statement.op, statement.value);
+    case "ExprAssign":
+      return applyExprAssign(statement, ctx);
     case "MotionPack":
+      recordMotionPack(statement, packInvocations);
       return {};
     default:
       return {};
@@ -101,13 +183,54 @@ function mergePartials(partials: Partial<MotionState>[]): Partial<MotionState> {
     return {};
   }
 
-  return mergeMotionState(createEmptyMotionState(), partials);
+  const keysWithValues = new Set<MotionStateKey>();
+  const customKeys = new Set<string>();
+
+  for (const partial of partials) {
+    for (const key of MOTION_STATE_KEYS) {
+      if (partial[key] !== undefined) {
+        keysWithValues.add(key);
+      }
+    }
+    if (partial.custom) {
+      for (const key of Object.keys(partial.custom)) {
+        customKeys.add(key);
+      }
+    }
+  }
+
+  const merged = mergeMotionState(createEmptyMotionState(), partials);
+  const result: Partial<MotionState> = {};
+
+  for (const key of keysWithValues) {
+    result[key] = merged[key];
+  }
+
+  if (customKeys.size > 0) {
+    result.custom = {};
+    for (const key of customKeys) {
+      result.custom[key] = merged.custom[key] ?? 0;
+    }
+  }
+
+  return result;
+}
+
+export function executeBehaviorWithInvocations(
+  root: BehaviorBlock,
+  ctx: BehaviorExecutionContext,
+): BehaviorExecutionResult {
+  const packInvocations: BehaviorMotionPackInvocation[] = [];
+  const partials = executeStatements(root.statements, ctx, "root", packInvocations);
+  return {
+    motion: mergePartials(partials),
+    packInvocations,
+  };
 }
 
 export function executeBehavior(
   root: BehaviorBlock,
   ctx: BehaviorExecutionContext,
 ): Partial<MotionState> {
-  const partials = executeStatements(root.statements, ctx, "root");
-  return mergePartials(partials);
+  return executeBehaviorWithInvocations(root, ctx).motion;
 }

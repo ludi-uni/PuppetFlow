@@ -14,9 +14,6 @@
       { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
       { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.5 } },
       { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } },
-      { "id": "in-interest-tilt", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul-tilt", "type": "multiply", "data": { "gain": 0.15 } },
-      { "id": "out-tilt", "type": "output", "data": { "key": "headTilt" } },
       { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
       { "id": "mul-facePitch", "type": "multiply", "data": { "gain": 0.8 } },
       { "id": "out-facePitch", "type": "output", "data": { "key": "facePitch" } }
@@ -24,10 +21,8 @@
     "edges": [
       { "id": "e1", "source": "in-interest-mouthX", "target": "mul-mouthX" },
       { "id": "e2", "source": "mul-mouthX", "target": "out-mouthX" },
-      { "id": "e3", "source": "in-interest-tilt", "target": "mul-tilt" },
-      { "id": "e4", "source": "mul-tilt", "target": "out-tilt" },
-      { "id": "e5", "source": "in-energy-facePitch", "target": "mul-facePitch" },
-      { "id": "e6", "source": "mul-facePitch", "target": "out-facePitch" }
+      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-facePitch" },
+      { "id": "e4", "source": "mul-facePitch", "target": "out-facePitch" }
     ]
   }
 }

@@ -1,0 +1,16 @@
+{
+  "name": "PfScriptDemo",
+  "version": 3,
+  "behaviorPfScript": "-- See examples/pfscript/lipsync-thinking.pfscript\n\nsmile = interest * 0.4\nmouthOpen = volume\n\nif interest > 0.7 then\n    thinking(intensity = 0.8)\nend\n\nif currentPhoneme == \"A\" then\n    MouthA = 1\nend\n",
+  "behaviorPlugins": [
+    { "id": "gaze", "config": { "wanderAmplitude": 0.03 } }
+  ],
+  "behavior": {
+    "type": "Block",
+    "statements": []
+  },
+  "graph": {
+    "nodes": [],
+    "edges": []
+  }
+}

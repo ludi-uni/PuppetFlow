@@ -15,7 +15,7 @@ const runtime = new PuppetFlowRuntime()
 runtime.state.set("interest", 0.8);
 await runtime.start();
 
-console.log("Motion:", runtime.getMotion());
+console.log("Motion:", runtime.getRenderedMotion());
 console.log("Sending VMC packets to 127.0.0.1:39539. Press Ctrl+C to exit.");
 
 setTimeout(async () => {

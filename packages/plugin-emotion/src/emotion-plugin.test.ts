@@ -1,33 +1,29 @@
-import { ChannelStore, DEFAULT_MOTION_STATE } from "@puppetflow/core";
-import { StateStore } from "@puppetflow/core";
+import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
 import { describe, expect, it } from "vitest";
 import { EmotionPlugin } from "./emotion-plugin.js";
 
+function pluginInput(state: StateStore, channels = new ChannelStore()) {
+  return { state, channels };
+}
+
 describe("EmotionPlugin", () => {
-  it("reads joy from channel string emotion", () => {
+  it("maps joy channel to mouthX", () => {
     const channels = new ChannelStore();
-    channels.set("emotion", "joy");
+    channels.set("joy", 0.8);
 
-    const plugin = new EmotionPlugin({ joySmileGain: 0.8 });
-    const output = plugin.process(
-      { state: new StateStore(), channels },
-      DEFAULT_MOTION_STATE,
-    );
+    const plugin = new EmotionPlugin({ joySmileGain: 0.7 });
+    const output = plugin.process(pluginInput(new StateStore(), channels), DEFAULT_MOTION_STATE);
 
-    expect(output.mouthX).toBe(0.8);
+    expect(output.mouthX).toBeCloseTo(0.56, 2);
   });
 
-  it("prefers numeric joy channel over string mapping", () => {
+  it("maps curious emotion string to lookX", () => {
     const channels = new ChannelStore();
-    channels.set("emotion", "sadness");
-    channels.set("joy", 0.5);
+    channels.set("emotion", "curious");
 
-    const plugin = new EmotionPlugin({ joySmileGain: 1 });
-    const output = plugin.process(
-      { state: new StateStore(), channels },
-      DEFAULT_MOTION_STATE,
-    );
+    const plugin = new EmotionPlugin();
+    const output = plugin.process(pluginInput(new StateStore(), channels), DEFAULT_MOTION_STATE);
 
-    expect(output.mouthX).toBe(0.5);
+    expect(output.lookX).toBe(0.6);
   });
 });

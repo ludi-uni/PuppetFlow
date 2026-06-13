@@ -36,7 +36,7 @@ Adapters
 
 ```json
 "behaviorPlugins": [
-  { "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.3 } },
+  { "id": "gaze", "config": { "wanderAmplitude": 0.04, "speed": 0.12 } },
   { "id": "blink", "config": { "blinkStrength": 0.15, "minInterval": 3 } }
 ]
 ```

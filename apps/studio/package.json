@@ -27,6 +27,7 @@
     "@puppetflow/plugin-gaze": "workspace:*",
     "@puppetflow/plugin-idle": "workspace:*",
     "@puppetflow/preset": "workspace:*",
+    "@puppetflow/pfscript-core": "workspace:*",
     "@puppetflow/runtime": "workspace:*",
     "@puppetflow/source-http": "workspace:*",
     "@puppetflow/source-mqtt": "workspace:*",

@@ -1,4 +1,5 @@
 import { MOTION_STATE_KEYS, type MotionStateKey } from "@puppetflow/core";
+import type { BehaviorExpression } from "./expr.js";
 
 const COMPARE_OPS = new Set<CompareOp>([">", ">=", "<", "<=", "==", "!="]);
 const ASSIGN_OPS = new Set<AssignOp>(["set", "add"]);
@@ -28,7 +29,19 @@ export interface LogicNot {
   condition: BehaviorCondition;
 }
 
-export type BehaviorCondition = CompareCondition | LogicAnd | LogicOr | LogicNot;
+export interface StringCompareCondition {
+  kind: "StringCompare";
+  left: string;
+  op: "==" | "!=";
+  right: string;
+}
+
+export type BehaviorCondition =
+  | CompareCondition
+  | StringCompareCondition
+  | LogicAnd
+  | LogicOr
+  | LogicNot;
 
 export interface BehaviorBlock {
   type: "Block";
@@ -57,10 +70,17 @@ export interface BehaviorMotionPack {
   config?: Record<string, number>;
 }
 
+export interface BehaviorExprAssign {
+  type: "ExprAssign";
+  target: string;
+  value: BehaviorExpression;
+}
+
 export type BehaviorStatement =
   | BehaviorBlock
   | BehaviorIf
   | BehaviorAssign
+  | BehaviorExprAssign
   | BehaviorMotionPack;
 
 export function isBehaviorCondition(value: unknown): value is BehaviorCondition {
@@ -88,7 +108,25 @@ function parseBehaviorCondition(value: unknown, path: string): BehaviorCondition
   }
 
   if ("left" in value && "op" in value && "right" in value) {
-    const condition = value as Partial<CompareCondition>;
+    const condition = value as Partial<CompareCondition & StringCompareCondition>;
+    if (condition.kind === "StringCompare" || typeof condition.right === "string") {
+      if (typeof condition.left !== "string" || condition.left.length === 0) {
+        throw new Error(`string compare requires a non-empty left key at ${path}`);
+      }
+      if (condition.op !== "==" && condition.op !== "!=") {
+        throw new Error(`unsupported string compare operator at ${path}`);
+      }
+      if (typeof condition.right !== "string") {
+        throw new Error(`string compare requires a string right value at ${path}`);
+      }
+      return {
+        kind: "StringCompare",
+        left: condition.left,
+        op: condition.op,
+        right: condition.right,
+      };
+    }
+
     if (typeof condition.left !== "string" || condition.left.length === 0) {
       throw new Error(`compare condition requires a non-empty left key at ${path}`);
     }
@@ -203,6 +241,20 @@ function parseBehaviorStatement(
           elseBranch === undefined
             ? undefined
             : parseBehaviorStatements(elseBranch, depth + 1, `${path}.else`),
+      };
+    }
+    case "ExprAssign": {
+      const exprAssign = statement as Partial<BehaviorExprAssign>;
+      if (typeof exprAssign.target !== "string" || exprAssign.target.length === 0) {
+        throw new Error(`ExprAssign requires a non-empty target at ${path}`);
+      }
+      if (typeof exprAssign.value !== "object" || exprAssign.value === null) {
+        throw new Error(`ExprAssign requires a value expression at ${path}`);
+      }
+      return {
+        type: "ExprAssign",
+        target: exprAssign.target,
+        value: exprAssign.value as BehaviorExpression,
       };
     }
     case "Assign": {

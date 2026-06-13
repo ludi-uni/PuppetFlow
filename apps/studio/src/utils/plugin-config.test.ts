@@ -14,7 +14,7 @@ describe("plugin-config", () => {
 
     expect(entries).toHaveLength(1);
     expect(entries[0]?.config.wanderAmplitude).toBe(0.04);
-    expect(entries[0]?.config.speed).toBe(1);
+    expect(entries[0]?.config.speed).toBe(0.5);
   });
 
   it("enables and disables plugins", () => {

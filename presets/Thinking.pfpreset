@@ -12,7 +12,7 @@
     ]
   },
   "behaviorPlugins": [
-    { "id": "gaze", "config": { "wanderAmplitude": 0.03, "speed": 0.35 } }
+    { "id": "gaze", "config": { "wanderAmplitude": 0.03, "speed": 0.12 } }
   ],
   "extensions": {
     "packs": [{ "id": "thinking", "config": { "intensity": 0.65 } }]

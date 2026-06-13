@@ -7,8 +7,14 @@ import {
 
 export interface GazePluginConfig {
   wanderAmplitude?: number;
+  /** Phase advance in radians per second */
   speed?: number;
 }
+
+const MIN_SPEED = 0.05;
+const MAX_SPEED = 0.5;
+const MIN_WANDER = 0;
+const MAX_WANDER = 0.2;
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -23,8 +29,13 @@ export class GazePlugin implements BehaviorPlugin {
   private lastTime = nowMs();
 
   constructor(config: GazePluginConfig = {}) {
-    this.wanderAmplitude = config.wanderAmplitude ?? 0.05;
-    this.speed = config.speed ?? 0.35;
+    this.wanderAmplitude = clamp01(
+      Math.min(MAX_WANDER, Math.max(MIN_WANDER, config.wanderAmplitude ?? 0.05)),
+    );
+    this.speed = Math.min(
+      MAX_SPEED,
+      Math.max(MIN_SPEED, config.speed ?? 0.12),
+    );
   }
 
   process(_input: PluginInputStores, _motion: MotionState): Partial<MotionState> {
@@ -34,7 +45,8 @@ export class GazePlugin implements BehaviorPlugin {
 
     this.phase += this.speed * deltaTime;
     const lookX = 0.5 + Math.sin(this.phase) * this.wanderAmplitude;
-    const lookY = 0.5 + Math.cos(this.phase * 0.7) * this.wanderAmplitude * 0.6;
+    const lookY =
+      0.5 + Math.sin(this.phase + Math.PI * 0.35) * this.wanderAmplitude * 0.85;
 
     return {
       lookX: clamp01(lookX),

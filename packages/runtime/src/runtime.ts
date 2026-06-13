@@ -1,9 +1,8 @@
 import type { Adapter } from "@puppetflow/adapter-core";
-import { wrapLegacyAdapter, type LegacyAdapter } from "@puppetflow/adapter-core";
-import { executeBehavior, type BehaviorBlock } from "@puppetflow/behavior";
+import { executeBehaviorWithInvocations, type BehaviorBlock } from "@puppetflow/behavior";
 import {
+  addMotionState,
   createEmptyMotionState,
-  mergeMotionState,
   TimelineStore,
   type BehaviorPlugin,
   type ChannelStore,
@@ -83,13 +82,6 @@ export class PuppetFlowRuntime {
   use(plugin: BehaviorPlugin): this {
     this.plugins.push(plugin);
     return this;
-  }
-
-  /**
-   * @deprecated Use `attachAdapter()` instead.
-   */
-  useAdapter(legacy: LegacyAdapter): this {
-    return this.attachAdapter(wrapLegacyAdapter("legacy", legacy));
   }
 
   attachAdapter(adapter: Adapter): this {
@@ -189,11 +181,6 @@ export class PuppetFlowRuntime {
 
   isRunning(): boolean {
     return this.running;
-  }
-
-  /** @deprecated Use `getRenderedMotion()` instead. */
-  getMotion(): MotionState {
-    return this.getRenderedMotion();
   }
 
   getTargetMotion(): MotionState {
@@ -380,15 +367,28 @@ export class PuppetFlowRuntime {
         }
       }
 
+      let behaviorPackInvocations: Array<{
+        kind: "pack";
+        id: string;
+        config: Record<string, number>;
+      }> = [];
+
       try {
-        const behaviorOutput = executeBehavior(this.behaviorRoot, {
+        const behaviorResult = executeBehaviorWithInvocations(this.behaviorRoot, {
           state: this.state,
           channels: this.channels,
           renderedMotion: this.renderedMotion,
           deltaTime,
+          time: this.elapsedTime,
+          activeTimelineEvents: this.activeTimelineEvents,
         });
-        pipelineOutputs.push({ pluginId: "behavior", output: behaviorOutput });
-        partials.push(behaviorOutput);
+        behaviorPackInvocations = behaviorResult.packInvocations.map((invocation) => ({
+          kind: "pack" as const,
+          id: invocation.packId,
+          config: invocation.config ?? {},
+        }));
+        pipelineOutputs.push({ pluginId: "behavior", output: behaviorResult.motion });
+        partials.push(behaviorResult.motion);
       } catch (error) {
         console.error("[PuppetFlowRuntime] behavior execution failed", error);
         pipelineOutputs.push({ pluginId: "behavior", output: {} });
@@ -412,7 +412,7 @@ export class PuppetFlowRuntime {
       }
 
       this.pluginOutputs = pipelineOutputs;
-      this.targetMotion = mergeMotionState(createEmptyMotionState(), partials);
+      this.targetMotion = addMotionState(createEmptyMotionState(), partials);
       this.renderedMotion = applyModifierChain(
         this.renderedMotion,
         this.targetMotion,
@@ -435,8 +435,8 @@ export class PuppetFlowRuntime {
           },
           {
             presetExtensions: this.presetExtensions,
-            behavior: this.behaviorRoot,
             graph: this.motionGraph,
+            behaviorPackInvocations,
           },
         );
         this.renderedMotion = extensionResult.standard;

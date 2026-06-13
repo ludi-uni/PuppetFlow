@@ -56,14 +56,10 @@ function baseMotion(): MotionState {
   return {
     faceYaw: 0.5,
     facePitch: 0.5,
-    faceRoll: 0.5,
     bodyYaw: 0.5,
-    bodyPitch: 0.5,
     bodyRoll: 0.5,
     eyeYaw: 0.5,
     eyePitch: 0.5,
-    eyeX: 0.5,
-    eyeY: 0.5,
     mouthX: 0,
     mouthY: 0,
     headTilt: 0.5,
@@ -120,6 +116,20 @@ describe("extension-core", () => {
     expect(invocations).toEqual([
       { kind: "pack", id: "thinking", config: { intensity: 0.5 } },
     ]);
+  });
+
+  it("prefers runtime behaviorPackInvocations over static behavior scan", () => {
+    const invocations = collectExtensionInvocations({
+      behavior: {
+        type: "Block",
+        statements: [
+          { type: "MotionPack", packId: "thinking", config: { intensity: 0.5 } },
+        ],
+      },
+      behaviorPackInvocations: [{ kind: "pack", id: "idle", config: { strength: 0.2 } }],
+    });
+
+    expect(invocations).toEqual([{ kind: "pack", id: "idle", config: { strength: 0.2 } }]);
   });
 
   it("executes ext: graph nodes without treating them as pack invocations", () => {

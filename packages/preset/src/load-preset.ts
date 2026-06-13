@@ -1,10 +1,12 @@
-import { parseBehaviorRoot } from "@puppetflow/behavior";
-import type { BehaviorPlugin } from "@puppetflow/core";
 import type { BehaviorBlock } from "@puppetflow/behavior";
+import type { BehaviorPlugin } from "@puppetflow/core";
 import type { PresetExtensions } from "@puppetflow/extension-core";
 import { parseMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
 import type { PuppetFlowPreset } from "./types.js";
+import { compilePresetBehavior } from "./compile-behavior.js";
+import { migratePresetMotionKeys } from "./migrate-preset-motion-keys.js";
 import { createBehaviorPlugins, type BehaviorPluginConfig } from "./plugin-factory.js";
+import { detectPresetMotionOverlaps } from "./preset-overlap.js";
 
 export const MAX_PRESET_JSON_BYTES = 1_048_576;
 
@@ -16,7 +18,9 @@ export interface LoadedPreset {
   graph: MotionGraphDocument;
   plugins: BehaviorPlugin[];
   behaviorPlugins: BehaviorPluginConfig[];
+  behaviorPfScript?: string;
   extensions?: PresetExtensions;
+  warnings: string[];
 }
 
 function parseExtensions(raw: unknown): PresetExtensions | undefined {
@@ -88,20 +92,36 @@ function rejectDeprecatedPresetFields(preset: Record<string, unknown>): void {
   }
 }
 
-export function parsePreset(json: string): PuppetFlowPreset {
-  const byteLength = new TextEncoder().encode(json).length;
-  if (byteLength > MAX_PRESET_JSON_BYTES) {
-    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
+function collectPresetWarnings(
+  behavior: BehaviorBlock,
+  graph: MotionGraphDocument,
+  behaviorPlugins: BehaviorPluginConfig[],
+  migrationWarnings: string[],
+): string[] {
+  const warnings = [...migrationWarnings];
+
+  for (const overlap of detectPresetMotionOverlaps({ behavior, graph, behaviorPlugins })) {
+    warnings.push(
+      `motion key "${overlap.motionKey}" is produced by multiple stages: ${overlap.sources.join(", ")}`,
+    );
   }
 
-  const parsed: unknown = JSON.parse(json);
+  return warnings;
+}
 
-  if (typeof parsed !== "object" || parsed === null) {
-    throw new Error("Preset must be a JSON object");
-  }
+function resolveBehavior(preset: Record<string, unknown>): {
+  behavior: BehaviorBlock;
+  behaviorPfScript?: string;
+} {
+  return compilePresetBehavior({
+    behavior: preset.behavior,
+    behaviorPfScript: preset.behaviorPfScript,
+  });
+}
 
-  const preset = parsed as Partial<PuppetFlowPreset> & Record<string, unknown>;
-
+function parsePresetRecord(
+  preset: Partial<PuppetFlowPreset> & Record<string, unknown>,
+): { preset: PuppetFlowPreset; migrationWarnings: string[] } {
   if (typeof preset.name !== "string" || preset.name.length === 0) {
     throw new Error("Preset requires a non-empty name");
   }
@@ -114,27 +134,76 @@ export function parsePreset(json: string): PuppetFlowPreset {
 
   rejectDeprecatedPresetFields(preset);
 
+  const migrationWarnings = migratePresetMotionKeys(preset);
+
   const behaviorPlugins = parseBehaviorPluginConfigs(preset.behaviorPlugins);
+  const { behavior, behaviorPfScript } = resolveBehavior(preset);
 
   return {
-    name: preset.name,
-    version: 3,
-    behavior: parseBehaviorRoot(preset.behavior),
-    graph: parseMotionGraph(preset.graph),
-    behaviorPlugins,
-    extensions: parseExtensions(preset.extensions),
+    preset: {
+      name: preset.name,
+      version: 3,
+      behavior,
+      behaviorPfScript,
+      graph: parseMotionGraph(preset.graph),
+      behaviorPlugins,
+      extensions: parseExtensions(preset.extensions),
+    },
+    migrationWarnings,
   };
 }
 
+export function parsePreset(json: string): PuppetFlowPreset {
+  const byteLength = new TextEncoder().encode(json).length;
+  if (byteLength > MAX_PRESET_JSON_BYTES) {
+    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
+  }
+
+  const parsed: unknown = JSON.parse(json);
+
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Preset must be a JSON object");
+  }
+
+  return parsePresetRecord(
+    parsed as Partial<PuppetFlowPreset> & Record<string, unknown>,
+  ).preset;
+}
+
 export function loadPreset(json: string): LoadedPreset {
-  const preset = parsePreset(json);
+  const byteLength = new TextEncoder().encode(json).length;
+  if (byteLength > MAX_PRESET_JSON_BYTES) {
+    throw new Error(`Preset JSON exceeds max size (${MAX_PRESET_JSON_BYTES} bytes)`);
+  }
+
+  const parsed: unknown = JSON.parse(json);
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error("Preset must be a JSON object");
+  }
+
+  const { preset, migrationWarnings } = parsePresetRecord(
+    parsed as Partial<PuppetFlowPreset> & Record<string, unknown>,
+  );
+  const behaviorPlugins = preset.behaviorPlugins ?? [];
+  const warnings = collectPresetWarnings(
+    preset.behavior,
+    preset.graph,
+    behaviorPlugins,
+    migrationWarnings,
+  );
+
+  for (const warning of warnings) {
+    console.warn(`[PuppetFlowPreset] ${warning}`);
+  }
 
   return {
     name: preset.name,
     behavior: preset.behavior,
     graph: preset.graph,
-    plugins: createBehaviorPlugins(preset.behaviorPlugins ?? []),
-    behaviorPlugins: preset.behaviorPlugins ?? [],
+    plugins: createBehaviorPlugins(behaviorPlugins),
+    behaviorPlugins,
+    behaviorPfScript: preset.behaviorPfScript,
     extensions: preset.extensions,
+    warnings,
   };
 }
