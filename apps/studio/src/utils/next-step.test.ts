@@ -50,4 +50,22 @@ describe("resolveNextStep", () => {
     expect(guide.tab).toBe("plugins");
     expect(guide.status).toBe("action");
   });
+
+  it("guides to presets when assembled preset has motion overlaps", () => {
+    const guide = resolveNextStep({
+      mapperConfig: DEFAULT_MAPPER_CONFIG,
+      graphJson: graphWithOutput,
+      pluginsHaveChanges: false,
+      assembledPresetJson: JSON.stringify({
+        name: "Overlap",
+        version: 3,
+        behaviorPfScript: "mouthX = interest",
+        behavior: { type: "Block", statements: [] },
+        graph: JSON.parse(graphWithOutput),
+      }),
+    });
+
+    expect(guide.tab).toBe("presets");
+    expect(guide.message).toContain("重複");
+  });
 });

@@ -2,6 +2,10 @@ import { hasLipsyncGraph } from "../constants/lipsync-template";
 import { parseSimpleMappingsFromGraph } from "../constants/simple-mapping";
 import type { TabId } from "../constants/studio-mode";
 import type { MotionMapperEditorConfig } from "../mapper-config";
+import {
+  collectLoadPresetWarnings,
+  formatLoadOverlapWarnings,
+} from "./preset-warnings";
 
 export type NextStepStatus = "action" | "ready";
 
@@ -17,6 +21,7 @@ export interface NextStepContext {
   mapperConfig: MotionMapperEditorConfig;
   graphJson: string;
   pluginsHaveChanges: boolean;
+  assembledPresetJson?: string;
 }
 
 function hasOscTargetEnabled(mapperConfig: MotionMapperEditorConfig): boolean {
@@ -52,6 +57,21 @@ export function resolveNextStep(context: NextStepContext): NextStepGuide {
       tab: "mapper",
       tabLabel: "キャラへの送信",
     };
+  }
+
+  if (context.assembledPresetJson) {
+    const overlapWarning = formatLoadOverlapWarnings(
+      collectLoadPresetWarnings(context.assembledPresetJson),
+    );
+    if (overlapWarning) {
+      return {
+        status: "action",
+        message: "Motion キーの重複があります",
+        detail: `${overlapWarning}。笑顔は Graph、体・口は PFScript に分けるなど、どちらか一方に寄せてください。`,
+        tab: "presets",
+        tabLabel: "キャラの雰囲気",
+      };
+    }
   }
 
   if (!hasMappingConfiguration(context.graphJson)) {

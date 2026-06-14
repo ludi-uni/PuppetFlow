@@ -1,11 +1,11 @@
--- 興味に応じて笑顔
+-- 興味に応じて笑顔（単体 .pfscript 用。公式 .pfpreset では Graph が mouthX を担当）
 
 smile =
     interest * 0.4
 
 -- 音量で口パク
 
-mouthOpen =
+mouthY =
     volume
 
 -- 軽いゆらぎ

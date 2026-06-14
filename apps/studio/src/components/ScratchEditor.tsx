@@ -26,6 +26,7 @@ interface ScratchEditorProps {
   onApply: (behavior: BehaviorBlock, mergedPresetJson: string) => void;
   onPreviewJson: (behaviorJson: string) => void;
   presetJson: string;
+  graphJson: string;
   behaviorPluginsJson: string;
   activePluginIds: string[];
   onStatus: (message: string, kind: "success" | "error" | "info") => void;
@@ -37,6 +38,7 @@ export function ScratchEditor({
   onApply,
   onPreviewJson,
   presetJson,
+  graphJson,
   behaviorPluginsJson,
   activePluginIds,
   onStatus,
@@ -50,9 +52,9 @@ export function ScratchEditor({
       return null;
     }
     return formatStatefulPluginConflictWarning(
-      findStatefulPluginConflicts(behaviorPluginsJson, previewBehavior),
+      findStatefulPluginConflicts(behaviorPluginsJson, previewBehavior, graphJson),
     );
-  }, [behaviorPluginsJson, previewBehavior]);
+  }, [behaviorPluginsJson, previewBehavior, graphJson]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -139,7 +141,11 @@ export function ScratchEditor({
 
             try {
               const behavior = workspaceToBehavior(workspace);
-              const conflicts = findStatefulPluginConflicts(behaviorPluginsJson, behavior);
+              const conflicts = findStatefulPluginConflicts(
+                behaviorPluginsJson,
+                behavior,
+                graphJson,
+              );
               const merged = mergeBehaviorIntoPreset(presetJson, behavior);
               onApply(behavior, merged);
               if (conflicts.length > 0) {

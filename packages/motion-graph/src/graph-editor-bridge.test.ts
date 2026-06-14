@@ -31,6 +31,30 @@ describe("graph-editor-bridge", () => {
     expect(restored.nodes[0]?.data.packId).toBe("thinking");
   });
 
+  it("round-trips motionFunction nodes with position", () => {
+    const graph = {
+      nodes: [
+        {
+          id: "fn-1",
+          type: "motionFunction",
+          position: { x: 120, y: 80 },
+          data: { label: "Heartbeat", functionName: "heartbeat", amplitude: 0.2 },
+        },
+      ],
+      edges: [],
+    };
+
+    const serialized = serializeEditorGraph(graph);
+    expect(serialized.nodes[0]).toMatchObject({
+      type: "motionFunction",
+      data: { functionName: "heartbeat", amplitude: 0.2 },
+      position: { x: 120, y: 80 },
+    });
+
+    const restored = deserializeGraphToEditor(serialized);
+    expect(restored.nodes[0]?.data.functionName).toBe("heartbeat");
+  });
+
   it("merges graph into preset while preserving extensions", () => {
     const presetJson = JSON.stringify({
       name: "Test",

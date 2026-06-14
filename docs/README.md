@@ -7,17 +7,17 @@
 ```text
 StateStore
  ↓
-Behavior Plugins        ← behaviorPlugins（gaze, blink 等）
+Behavior Plugins        ← blink / idle（公式）
  ↓
-Behavior Script Engine  ← If / Assign / PFScript / MotionPack（Blockly・JSON・DSL）
+Behavior Script Engine  ← PFScript / Scratch / If / ExprAssign / MotionPack
  ↓
-Motion Graph Runtime    ← 数値ノード + motionPack / ext:* ノード
+Motion Graph Runtime    ← 数値 + stateful + motionFunction / motionPack / ext:*
  ↓
 Target MotionState
  ↓
-Motion Modifiers        ← breath / noise / smoothing
+Motion Modifiers
  ↓
-Extension Layer         ← extensions.packs / graph motionPack / PFScript
+Extension Layer         ← extensions.packs / graph motionPack
  ↓
 Rendered MotionState
  ↓
@@ -43,12 +43,12 @@ Adapters → 外部 Viewer
 | ドキュメント                                                | 内容                                     |
 | ----------------------------------------------------------- | ---------------------------------------- |
 | [MotionState](reference/motion-state.md)                    | 正規化モーションパラメータ（16 キー）    |
-| [Behavior Plugins](reference/plugins.md)                    | rule / gaze / blink 等のプラグイン層     |
+| [Behavior Plugins](reference/plugins.md)                    | blink / idle（公式）、レガシー gaze 等 |
 | [Behavior と Motion Graph](reference/behavior-and-graph.md) | AST、Graph ノード、編集の分担            |
 | [Motion Extension](reference/motion-extension.md)           | Extension Layer、Pack、custom パラメータ |
 | [PFScript](reference/pfscript.md)                         | 上級者向け Behavior DSL（.pfscript）   |
 | [Stateful 関数](reference/stateful.md)                    | フレーム跨ぎ状態・Physics Pack 連携    |
-| [プリセット](reference/presets.md)                          | Preset v3（`.pfpreset`）と公式 Pack 6 種 |
+| [プリセット](reference/presets.md)                          | Preset v3、Standard モデル、公式 7 種 |
 | [アダプタ](reference/adapters.md)                           | VMC / Live2D / VRM / WebSocket / Logger  |
 | [State Sources](reference/sources.md)                       | HTTP / WebSocket / MQTT / Discord        |
 
@@ -60,6 +60,10 @@ Adapters → 外部 Viewer
 | [実装計画（PFScript）](implementation-plan-pfscript.md)                | PFScript Issue 分解・**M1–M6 完了**        |
 | [Stateful 関数](reference/stateful.md)                                  | フレーム跨ぎ状態・Physics Pack 連携        |
 | [実装計画（Stateful Node）](implementation-plan-stateful.md)           | Stateful 関数・ノード Issue 分解（**完了**） |
+| [リファクタリング計画（進捗）](refactoring-plan.md)                  | R0–R5 フェーズの完了状況と残タスク               |
+| [設計決定（Plugin 層）](adr/plugin-layer.md)                         | 公式 blink+idle / レガシー gaze 等 / overlap     |
+| [設計決定（Mapper / Inochi2D）](adr/motion-mapper-inochi2d.md)     | nijiexpose は live2d ターゲットを使用            |
+| [設計決定（Preset 正本）](adr/preset-canonical-model.md)             | behaviorPfScript 正本 / overlap / custom 値域    |
 | [設計決定（Stateful）](adr/stateful-design-decisions.md)             | Stateful / Modifier / Plugin の境界              |
 | [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（未着手）                      |
 | [設計決定（Input & Timeline）](adr/input-timeline-design-decisions.md) | sticky Channel / global clock / phoneme テーブル等 |

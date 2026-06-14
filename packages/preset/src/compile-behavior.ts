@@ -70,3 +70,17 @@ export function compilePresetBehavior(source: PresetBehaviorSource): CompiledPre
 
   throw new Error("Preset requires behavior or behaviorPfScript");
 }
+
+/** Syncs cached `behavior` AST from `behaviorPfScript` when present (serialization helper). */
+export function materializePresetBehavior<T extends PresetBehaviorSource>(
+  preset: T,
+): T & { behavior: BehaviorBlock } {
+  const compiled = compilePresetBehavior(preset);
+  return {
+    ...preset,
+    behavior: compiled.behavior,
+    ...(compiled.behaviorPfScript !== undefined
+      ? { behaviorPfScript: compiled.behaviorPfScript }
+      : {}),
+  };
+}

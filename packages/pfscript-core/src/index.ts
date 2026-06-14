@@ -24,6 +24,3 @@ export { lowerPfScriptToBehavior } from "./lower.js";
 export { compilePfScript, compileToBehaviorJson } from "./compile.js";
 export { SPEC_SAMPLE_PFSCRIPT } from "./samples.js";
 export type { Token, TokenType } from "./tokens.js";
-
-export type { PfScriptCall } from "./legacy-call.js";
-export { evaluatePfScriptExpression, parsePfScriptCall } from "./legacy-call.js";

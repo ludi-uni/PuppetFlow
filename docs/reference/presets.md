@@ -2,31 +2,45 @@
 
 振る舞いを `.pfpreset` JSON で共有する仕組みです。**ランタイムは version 3 のみ** 受け付けます。
 
+## 標準構成（Standard モデル）
+
+公式プリセットは `Standard.pfpreset` を基準に、次の **役割分担** で構成します。
+
+| 層 | 担当 | 例 |
+| ---- | ---- | ---- |
+| **PFScript** (`behaviorPfScript`) | 体の揺れ、前のめり、口開き（volume）、まぶた開き（energy→`eyeYaw`）、呼吸（custom） | `bodyLean`, `mouthY`, `eyeYaw`, `custom:breath` |
+| **Graph** | かんたんモードで編集する笑顔マッピング | `interest × gain → mouthX` |
+| **behaviorPlugins** | 瞬き（`eyeYaw` 上書き）・低 interest 時の視線 wander | `blink`, `idle` |
+| **extensions** | Motion Pack（Thinking 等） | `thinking` |
+
+**同一 Motion キーを PFScript と Graph の両方に書かない** こと（load 時に overlap 警告）。笑顔は Graph、体・呼吸は PFScript に寄せます。
+
+再生成: `pnpm build:presets`（`packages/preset/src/build-official-presets.ts`）
+
 ## ファイル形式（v3）
 
 ```json
 {
   "name": "Curious",
   "version": 3,
+  "behaviorPfScript": "bodyLean = oscillator(...) + 0.5\nmouthY = volume\nbreath = breath(0.1)",
+  "behavior": { "type": "Block", "statements": [] },
   "behaviorPlugins": [
-    { "id": "attention", "config": { "leanGain": 0.25, "tiltGain": 0.2 } },
-    { "id": "gaze", "config": { "wanderAmplitude": 0.04 } }
+    { "id": "blink", "config": { "minInterval": 3, "maxInterval": 8 } },
+    { "id": "idle", "config": { "interestThreshold": 0.35, "wanderBoost": 0.12 } }
   ],
-  "behavior": {
-    "type": "Block",
-    "statements": []
-  },
   "graph": {
     "nodes": [
-      { "id": "in-interest", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul", "type": "multiply", "data": { "gain": 0.5 } },
-      { "id": "out", "type": "output", "data": { "key": "mouthX" } }
+      { "id": "interest", "type": "stateInput", "data": { "key": "interest" } },
+      { "id": "multiply", "type": "multiply", "data": { "gain": 0.5 } },
+      { "id": "mouthX", "type": "output", "data": { "key": "mouthX" } }
     ],
     "edges": [
-      { "id": "e1", "source": "in-interest", "target": "mul" },
-      { "id": "e2", "source": "mul", "target": "out" }
+      { "id": "e1", "source": "interest", "target": "multiply" },
+      { "id": "e2", "source": "multiply", "target": "mouthX" }
     ]
-  }
+  },
+  "extensions": { "packs": [] }
 }
 ```
 
@@ -34,10 +48,10 @@
 | -------------------- | ---- | ----------------------------------------------- |
 | `name`               | ✅   | プリセット名                                    |
 | `version`            | ✅   | **`3` のみ**                                    |
-| `behavior`           | △   | Behavior AST（`behaviorPfScript` があれば省略可） |
+| `behavior`           | △   | Behavior AST（`behaviorPfScript` があればキャッシュ） |
 | `behaviorPfScript`   | —    | PFScript ソース（load 時に `behavior` へコンパイル） |
 | `graph`              | ✅   | Motion Graph（`nodes` + `edges`）               |
-| `behaviorPlugins` | —    | gaze / blink 等のプラグイン定義                 |
+| `behaviorPlugins` | —    | blink / idle 等のプラグイン定義                 |
 | `extensions`      | —    | Motion Pack / 独自パラメータ（Extension Layer） |
 
 `behavior` または `behaviorPfScript` のどちらか一方が必要です。両方ある場合 **ソース（`behaviorPfScript`）が優先** されます。
@@ -55,18 +69,17 @@
 
 旧 **Preset v2**（`rules` / `modifiers` / `Builtin` 併用）は非対応です。
 
-## 公式 Behavior Pack（6 種）
+## 公式プリセット（6 種 + Standard）
 
-パッケージ `@puppetflow/behavior-packs` に同梱。`behaviorPlugins` + `graph` + 必要に応じて `behavior`（If / Assign）で構成します。
-
-| 名前     | 概要                                   |
-| -------- | -------------------------------------- |
-| Curious  | attention + gaze、interest → mouthX 等 |
-| Happy    | 高エネルギー寄りの mouthX / facePitch  |
-| Idle     | blink + gaze + idle、待機ゆらぎ        |
-| Thinking | 考え中の視線・条件付き headTilt        |
-| Sleepy   | まばたき間隔長め・低エネルギー         |
-| Focused  | 強めの attention・視線抑制             |
+| 名前     | 概要 |
+| -------- | ---- |
+| **Standard** | 基準テンプレート（PFScript + blink/idle + Graph mouthX） |
+| Curious  | Standard 同等・きょろきょろ |
+| Happy    | 活発な揺れ・明るい笑顔（Graph gain 0.8） |
+| Idle     | 控えめな揺れ・待機向け |
+| Thinking | 控えめ + `headTilt` + `thinking` Pack |
+| Sleepy   | ゆっくり・半開き目・長めのまばたき |
+| Focused  | 引き締め・前のめり強め |
 
 ```ts
 import { getPresetJson, listPresetNames } from "@puppetflow/behavior-packs";
@@ -74,19 +87,22 @@ import { getPresetJson, listPresetNames } from "@puppetflow/behavior-packs";
 const json = getPresetJson("Curious");
 ```
 
-ファイル実体: `packages/behavior-packs/presets/*.pfpreset`（リポジトリルートの `presets/` は同内容のミラー）
+**正本:** `packages/behavior-packs/presets/*.pfpreset`  
+**ミラー:** リポジトリルート `presets/`（`pnpm build:presets` で同期。CI で差分チェック）
 
 ## 読み込み API
 
 ```ts
-import { loadPreset } from "@puppetflow/preset";
+import { loadPreset, detectPresetMotionOverlaps } from "@puppetflow/preset";
 import { PuppetFlowRuntime } from "@puppetflow/runtime";
 
 const loaded = loadPreset(presetJson);
-// loaded.plugins ← behaviorPlugins から生成
+// loaded.warnings に graph/behavior/plugin の重複があれば文字列で入る
 const runtime = new PuppetFlowRuntime().loadPreset(loaded);
 await runtime.start();
 ```
+
+`detectPresetMotionOverlaps()` は PFScript の `ExprAssign` も behavior 出力として検出します。
 
 ## Studio での編集
 
@@ -96,8 +112,8 @@ await runtime.start();
 | **PFScript**      | `behaviorPfScript` + コンパイル済 `behavior` |
 | Graph Editor      | `graph`                                   |
 | 動きのつなぎ      | `graph`（かんたんモードの表 UI）          |
-| Plugins           | ランタイムへの追加プラグイン（Preset 外） |
-| Preset Manager    | `behaviorPlugins` / `behavior` / `graph`  |
+| オプション動き    | `behaviorPlugins` / `extensions`        |
+| Preset Manager    | JSON 直接編集                             |
 
 適用前に `loadPreset()` 相当のバリデーションが走ります。
 

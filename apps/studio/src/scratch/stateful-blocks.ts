@@ -195,7 +195,9 @@ export function registerStatefulScratchBlocks(): void {
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(45);
-      this.setTooltip("wander() で lookX / lookY をランダムに探索します。");
+      this.setTooltip(
+        "wander() で lookX / lookY をランダムに探索します。gaze / idle プラグインと重複しやすいため、どちらか一方を推奨します。",
+      );
     },
   };
 

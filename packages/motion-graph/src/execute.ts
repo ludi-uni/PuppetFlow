@@ -23,6 +23,11 @@ import {
   type MotionGraphNode,
 } from "./types.js";
 
+export type ExtensionGraphFunctionEvaluator = (
+  functionName: string,
+  args: Record<string, number>,
+) => number;
+
 export interface MotionGraphContext {
   state: StateStore;
   channels: ChannelStore;
@@ -34,6 +39,24 @@ export interface MotionGraphContext {
   frame?: FrameContext;
   statefulStore?: StatefulStore;
   statefulRegistry?: StatefulRegistry;
+  /** Extension registry scalar functions (e.g. heartbeat) for motionFunction nodes */
+  evaluateExtensionFunction?: ExtensionGraphFunctionEvaluator;
+}
+
+function numericConfigFromNodeData(
+  data: Record<string, unknown>,
+  skipKeys: string[],
+): Record<string, number> {
+  const config: Record<string, number> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (skipKeys.includes(key)) {
+      continue;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      config[key] = value;
+    }
+  }
+  return config;
 }
 
 function topologicalOrder(document: MotionGraphDocument): MotionGraphNode[] {
@@ -263,6 +286,18 @@ function evaluateNode(
         ctx.statefulStore,
         ctx.statefulRegistry,
       );
+    }
+    case "motionFunction": {
+      const functionName = String(node.data.functionName ?? "");
+      if (!functionName || !ctx.evaluateExtensionFunction) {
+        return 0;
+      }
+      const args = numericConfigFromNodeData(node.data, ["functionName", "label"]);
+      let value = clamp01(ctx.evaluateExtensionFunction(functionName, args));
+      if (document.edges.some((edge) => edge.target === node.id)) {
+        value = clamp01(value * getSingleInput(node.id, values, document));
+      }
+      return value;
     }
     default:
       return 0;

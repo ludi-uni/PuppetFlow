@@ -1,5 +1,6 @@
 import type { MotionStateKey } from "@puppetflow/core";
 import type { PresetExtensions } from "@puppetflow/extension-core";
+import { collectExtensionCustomParameterIds } from "@puppetflow/extension-bundled";
 import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
 
 export interface ExtensionPackRow {
@@ -122,10 +123,7 @@ export function parseExtensionCustomParameterRows(
 export function getActiveExtensionCustomParameterIds(
   extensions: PresetExtensions | undefined,
 ): string[] {
-  const enabledPackIds = (extensions?.packs ?? []).map((pack) => pack.id);
-  return parseExtensionCustomParameterRows(extensions, enabledPackIds)
-    .filter((row) => row.active)
-    .map((row) => row.id);
+  return collectExtensionCustomParameterIds(extensions);
 }
 
 export function serializeExtensions(

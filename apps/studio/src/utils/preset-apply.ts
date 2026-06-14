@@ -1,4 +1,8 @@
 import type { PresetName } from "../runtime";
+import {
+  collectLoadPresetWarnings,
+  formatLoadOverlapWarnings,
+} from "./preset-warnings";
 
 export interface PresetApplySyncState {
   setPresetJson: (json: string) => void;
@@ -57,7 +61,13 @@ export async function applyPresetToStudio(options: ApplyPresetOptions): Promise<
     sync.setAppliedExtensionsJson(extractExtensionsJson(json));
     sync.setActivePluginIds(getActivePluginIds());
     sync.bumpGraphEditorKey();
-    notify(successMessage, "success");
+
+    const overlapWarning = formatLoadOverlapWarnings(collectLoadPresetWarnings(json));
+    if (overlapWarning) {
+      notify(`Preset を適用しました（注意: ${overlapWarning}）`, "info");
+    } else {
+      notify(successMessage, "success");
+    }
     return true;
   } catch (error) {
     notify(

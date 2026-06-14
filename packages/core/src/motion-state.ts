@@ -85,3 +85,19 @@ export const PLUGIN_MOTION_OUTPUTS: Readonly<
   attention: ["bodyLean", "headTilt"],
   emotion: ["mouthX", "facePitch", "lookX"],
 };
+
+/** Official preset policy: blink + idle only */
+export const OFFICIAL_BEHAVIOR_PLUGIN_IDS = ["blink", "idle"] as const;
+
+export type OfficialBehaviorPluginId = (typeof OFFICIAL_BEHAVIOR_PLUGIN_IDS)[number];
+
+/** Custom / advanced presets — overlap easily with PFScript or Graph */
+export const LEGACY_BEHAVIOR_PLUGIN_IDS = ["gaze", "attention", "emotion"] as const;
+
+export type LegacyBehaviorPluginId = (typeof LEGACY_BEHAVIOR_PLUGIN_IDS)[number];
+
+export function getPluginMotionOutputs(
+  pluginId: string,
+): readonly MotionStateKey[] {
+  return PLUGIN_MOTION_OUTPUTS[pluginId] ?? [];
+}

@@ -215,4 +215,31 @@ describe("executeMotionGraph", () => {
     expect(holdOutput.lookY).toBeGreaterThanOrEqual(0);
     expect(holdOutput.lookY).toBeLessThanOrEqual(1);
   });
+
+  it("evaluates motionFunction nodes via extension registry callback", () => {
+    const output = executeMotionGraph(
+      {
+        nodes: [
+          {
+            id: "hb",
+            type: "motionFunction",
+            data: { functionName: "heartbeat", amplitude: 0.2 },
+          },
+          { id: "out", type: "output", data: { key: "bodyLean" } },
+        ],
+        edges: [{ id: "e1", source: "hb", target: "out" }],
+      },
+      {
+        ...createGraphContext(new StateStore()),
+        time: 0.25,
+        evaluateExtensionFunction: (functionName, args) => {
+          expect(functionName).toBe("heartbeat");
+          expect(args.amplitude).toBeCloseTo(0.2, 3);
+          return 0.7;
+        },
+      },
+    );
+
+    expect(output.bodyLean).toBeCloseTo(0.7, 3);
+  });
 });

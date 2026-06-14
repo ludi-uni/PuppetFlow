@@ -1,74 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePfScriptExpression, parsePfScriptCall } from "./index.js";
-import {
-  createMotionRegistry,
-  registerExtensionPlugins,
-  type ExtensionPlugin,
-} from "@puppetflow/extension-core";
-import { clamp01, ChannelStore, StateStore, type MotionState } from "@puppetflow/core";
-
-const heartbeatFunctionPlugin: ExtensionPlugin = {
-  id: "heartbeatFn",
-  register(registry) {
-    registry.addFunction({
-      name: "heartbeat",
-      label: "Heartbeat",
-      execute(_ctx, args) {
-        return clamp01(0.5 + (args.amplitude ?? 0.15));
-      },
-    });
-  },
-};
-
-function baseMotion(): MotionState {
-  return {
-    faceYaw: 0.5,
-    facePitch: 0.5,
-    bodyYaw: 0.5,
-    bodyRoll: 0.5,
-    eyeYaw: 0.5,
-    eyePitch: 0.5,
-    mouthX: 0,
-    mouthY: 0,
-    headTilt: 0.5,
-    bodyLean: 0.5,
-    lookX: 0.5,
-    lookY: 0.5,
-    custom: {},
-  };
-}
+import { compilePfScript } from "./compile.js";
+import { parsePfScript } from "./parser.js";
 
 describe("pfscript-core", () => {
-  it("parses named function calls", () => {
-    expect(parsePfScriptCall("heartbeat(amplitude=0.2)")).toEqual({
-      name: "heartbeat",
-      args: { amplitude: 0.2 },
+  it("compiles Motion Pack calls to Behavior MotionPack statements", () => {
+    const behavior = compilePfScript("thinking(intensity = 0.8)");
+    expect(behavior.statements[0]).toMatchObject({
+      type: "MotionPack",
+      packId: "thinking",
+      config: { intensity: 0.8 },
     });
   });
 
-  it("returns null for invalid expressions", () => {
-    expect(parsePfScriptCall("not a call")).toBeNull();
+  it("parses stateful oscillator expressions", () => {
+    const program = parsePfScript(
+      'bodyLean = oscillator(id = "body", frequency = 0.3) * 0.1 + 0.5',
+    );
+    expect(program.body).toHaveLength(1);
+    expect(program.body[0]?.type).toBe("Assign");
   });
 
-  it("evaluates registered PFScript functions", () => {
-    const registry = createMotionRegistry();
-    registerExtensionPlugins(registry, [heartbeatFunctionPlugin]);
-
-    const value = evaluatePfScriptExpression(
-      registry,
-      {
-        state: new StateStore(),
-        channels: new ChannelStore(),
-        deltaTime: 0.016,
-        time: 0,
-        timelineCurrentMs: 0,
-        activeTimelineEvents: [],
-        motion: baseMotion(),
-        custom: {},
-      },
-      "heartbeat(amplitude=0.1)",
-    );
-
-    expect(value).toBeCloseTo(0.6);
+  it("rejects forbidden control-flow keywords", () => {
+    expect(() => parsePfScript("while true do end")).toThrow(/Forbidden/);
   });
 });

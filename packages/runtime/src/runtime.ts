@@ -17,7 +17,11 @@ import {
   type MotionModifier,
 } from "@puppetflow/modifier-core";
 import { executeMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
-import { executeExtensions, type PresetExtensions } from "@puppetflow/extension-core";
+import {
+  executeExtensions,
+  executePfScriptFunction,
+  type PresetExtensions,
+} from "@puppetflow/extension-core";
 import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
 import {
   createRuntimeStatefulRegistry,
@@ -452,6 +456,25 @@ export class PuppetFlowRuntime {
           frame,
           statefulStore: this.statefulStore,
           statefulRegistry: this.statefulRegistry,
+          evaluateExtensionFunction: (functionName, args) =>
+            executePfScriptFunction(
+              getBundledMotionRegistry(),
+              {
+                state: this.state,
+                channels: this.channels,
+                deltaTime,
+                time: this.elapsedTime,
+                timelineCurrentMs: this.timelineCurrentMs,
+                activeTimelineEvents: this.activeTimelineEvents,
+                motion: this.renderedMotion,
+                custom: this.renderedMotion.custom ?? {},
+                statefulStore: this.statefulStore,
+                statefulRegistry: this.statefulRegistry,
+                frame,
+              },
+              functionName,
+              args,
+            ),
         });
         pipelineOutputs.push({ pluginId: "graph", output: graphOutput });
         partials.push(graphOutput);

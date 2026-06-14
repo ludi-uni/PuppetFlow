@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { PLUGIN_CATALOG, type CatalogPluginId } from "../constants/plugin-catalog";
+import {
+  getPluginCatalogTier,
+  PLUGIN_CATALOG,
+  type CatalogPluginId,
+} from "../constants/plugin-catalog";
+import { collectPluginLayerGuidance } from "../utils/plugin-layer-warnings";
 import {
   parseBehaviorPluginEntries,
   setPluginEnabled,
@@ -8,12 +13,16 @@ import {
 
 interface PluginMotionEditorProps {
   behaviorPluginsJson: string;
+  presetJson: string;
+  graphJson: string;
   simpleMode: boolean;
   onChange: (behaviorPluginsJson: string) => void;
 }
 
 export function PluginMotionEditor({
   behaviorPluginsJson,
+  presetJson,
+  graphJson,
   simpleMode,
   onChange,
 }: PluginMotionEditorProps) {
@@ -25,18 +34,32 @@ export function PluginMotionEditor({
     () => new Map(entries.map((entry) => [entry.id, entry])),
     [entries],
   );
+  const layerGuidance = useMemo(
+    () =>
+      collectPluginLayerGuidance({
+        presetJson,
+        graphJson,
+        behaviorPluginsJson,
+      }),
+    [presetJson, graphJson, behaviorPluginsJson],
+  );
 
   return (
     <div className="plugin-motion-editor">
+      {layerGuidance ? (
+        <p className="hint emotion-plugin-hint">⚠ {layerGuidance}</p>
+      ) : null}
       {PLUGIN_CATALOG.map((plugin) => {
         const enabled = entryMap.has(plugin.id);
         const config = entryMap.get(plugin.id)?.config;
+        const tier = getPluginCatalogTier(plugin.id);
 
         return (
           <section key={plugin.id} className="plugin-motion-card">
             <label className="row plugin-toggle-row">
               <span>
                 {simpleMode ? plugin.simpleLabel : plugin.label}
+                <span className="badge">{tier === "official" ? "公式" : "レガシー"}</span>
                 <span className="hint plugin-toggle-desc">{plugin.description}</span>
               </span>
               <input

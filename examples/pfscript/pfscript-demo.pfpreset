@@ -1,16 +1,165 @@
 {
   "name": "PfScriptDemo",
   "version": 3,
-  "behaviorPfScript": "-- See examples/pfscript/lipsync-thinking.pfscript\n\nsmile = interest * 0.4\nmouthOpen = volume\n\nif interest > 0.7 then\n    thinking(intensity = 0.8)\nend\n\nif currentPhoneme == \"A\" then\n    MouthA = 1\nend\n",
-  "behaviorPlugins": [
-    { "id": "gaze", "config": { "wanderAmplitude": 0.03 } }
-  ],
+  "behaviorPfScript": "-- 笑顔は Graph (mouthX)。PFScript は口・リップシンク・体。\n\n-- 音量で口パク\n\nmouthY =\n    volume\n\n-- 軽いゆらぎ\n\nheadTilt =\n    noise(time * 0.2) * 0.1\n\n-- thinking は extensions.packs で有効化\n\n-- 音素リップシンク\n\nif currentPhoneme == \"A\" then\n    MouthA = 1\nend\n\nif currentPhoneme == \"I\" then\n    MouthI = 1\nend",
   "behavior": {
     "type": "Block",
-    "statements": []
+    "statements": [
+      {
+        "type": "ExprAssign",
+        "target": "mouthY",
+        "value": {
+          "type": "Identifier",
+          "name": "volume"
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "headTilt",
+        "value": {
+          "type": "Binary",
+          "op": "*",
+          "left": {
+            "type": "Call",
+            "callee": "noise",
+            "args": [
+              {
+                "value": {
+                  "type": "Binary",
+                  "op": "*",
+                  "left": {
+                    "type": "Identifier",
+                    "name": "time"
+                  },
+                  "right": {
+                    "type": "Number",
+                    "value": 0.2
+                  }
+                }
+              }
+            ]
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.1
+          }
+        }
+      },
+      {
+        "type": "If",
+        "condition": {
+          "kind": "StringCompare",
+          "left": "currentPhoneme",
+          "op": "==",
+          "right": "A"
+        },
+        "then": [
+          {
+            "type": "ExprAssign",
+            "target": "custom:MouthA",
+            "value": {
+              "type": "Number",
+              "value": 1
+            }
+          }
+        ]
+      },
+      {
+        "type": "If",
+        "condition": {
+          "kind": "StringCompare",
+          "left": "currentPhoneme",
+          "op": "==",
+          "right": "I"
+        },
+        "then": [
+          {
+            "type": "ExprAssign",
+            "target": "custom:MouthI",
+            "value": {
+              "type": "Number",
+              "value": 1
+            }
+          }
+        ]
+      }
+    ]
   },
+  "behaviorPlugins": [
+    {
+      "id": "blink",
+      "config": {
+        "minInterval": 3,
+        "maxInterval": 8,
+        "closeDuration": 0.12,
+        "blinkStrength": 1
+      }
+    },
+    {
+      "id": "idle",
+      "config": {
+        "interestThreshold": 0.35,
+        "wanderBoost": 0.1
+      }
+    }
+  ],
   "graph": {
-    "nodes": [],
-    "edges": []
+    "nodes": [
+      {
+        "id": "interest",
+        "type": "stateInput",
+        "data": {
+          "key": "interest"
+        },
+        "position": {
+          "x": 0,
+          "y": 80
+        }
+      },
+      {
+        "id": "multiply",
+        "type": "multiply",
+        "data": {
+          "gain": 0.4
+        },
+        "position": {
+          "x": 220,
+          "y": 80
+        }
+      },
+      {
+        "id": "mouthX",
+        "type": "output",
+        "data": {
+          "key": "mouthX"
+        },
+        "position": {
+          "x": 460,
+          "y": 80
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "interest",
+        "target": "multiply"
+      },
+      {
+        "id": "e2",
+        "source": "multiply",
+        "target": "mouthX"
+      }
+    ]
+  },
+  "extensions": {
+    "packs": [
+      {
+        "id": "thinking",
+        "config": {
+          "intensity": 0.8
+        }
+      }
+    ]
   }
 }

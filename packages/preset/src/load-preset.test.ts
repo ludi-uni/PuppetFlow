@@ -1,5 +1,7 @@
+import { compilePfScript } from "@puppetflow/pfscript-core";
 import { describe, expect, it } from "vitest";
-import { detectPresetMotionOverlaps, loadPreset } from "./load-preset.js";
+import { detectPresetMotionOverlaps } from "./collect-preset-motion-keys.js";
+import { loadPreset } from "./load-preset.js";
 
 describe("loadPreset", () => {
   it("loads v3 behavior, graph, and behaviorPlugins", () => {
@@ -231,13 +233,30 @@ describe("detectPresetMotionOverlaps", () => {
     expect(warnings[0]?.sources).toContain("plugin:attention");
   });
 
-  it("does not warn when multiple plugins share lookX", () => {
+  it("warns when PFScript ExprAssign and graph both output mouthX", () => {
+    const behavior = compilePfScript("mouthX = clamp(interest, 0, 1)");
+    const warnings = detectPresetMotionOverlaps({
+      behavior,
+      behaviorPlugins: [],
+      graph: {
+        nodes: [{ id: "out", type: "output", data: { key: "mouthX" } }],
+        edges: [],
+      },
+    });
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.motionKey).toBe("mouthX");
+    expect(warnings[0]?.sources).toEqual(["graph", "behavior"]);
+  });
+
+  it("warns when gaze and idle plugins both output lookX", () => {
     const warnings = detectPresetMotionOverlaps({
       behavior: { type: "Block", statements: [] },
       behaviorPlugins: [{ id: "gaze" }, { id: "idle" }],
       graph: { nodes: [], edges: [] },
     });
 
-    expect(warnings).toEqual([]);
+    expect(warnings).toHaveLength(2);
+    expect(warnings.map((warning) => warning.motionKey).sort()).toEqual(["lookX", "lookY"]);
   });
 });

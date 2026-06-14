@@ -25,7 +25,7 @@ export interface EditorGraphDocument {
 function numericConfigFromData(data: Record<string, unknown>): Record<string, number> {
   const config: Record<string, number> = {};
   for (const [key, value] of Object.entries(data)) {
-    if (key === "label" || key === "packId" || key === "generatorId") {
+    if (key === "label" || key === "packId" || key === "generatorId" || key === "functionName") {
       continue;
     }
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -53,6 +53,8 @@ export function mapEditorTypeToRuntime(type: string): string {
       return "motionPack";
     case "motionGenerator":
       return "motionGenerator";
+    case "motionFunction":
+      return "motionFunction";
     default:
       return type;
   }
@@ -76,6 +78,8 @@ export function mapRuntimeTypeToEditor(type: string): string {
       return "motionPack";
     case "motionGenerator":
       return "motionGenerator";
+    case "motionFunction":
+      return "motionFunction";
     default:
       return type;
   }
@@ -131,6 +135,13 @@ export function mapEditorNodeDataToRuntime(
     };
   }
 
+  if (type === "motionFunction") {
+    return {
+      functionName: String(node.data.functionName ?? ""),
+      ...numericConfigFromData(node.data),
+    };
+  }
+
   if (type.startsWith("ext:")) {
     return numericConfigFromData(node.data);
   }
@@ -155,6 +166,7 @@ function editorNodeDataFromRuntime(node: MotionGraphNode): Record<string, unknow
   if (
     node.type === "motionPack" ||
     node.type === "motionGenerator" ||
+    node.type === "motionFunction" ||
     node.type.startsWith("ext:") ||
     node.type === "oscillator" ||
     node.type === "smooth" ||
@@ -167,7 +179,11 @@ function editorNodeDataFromRuntime(node: MotionGraphNode): Record<string, unknow
   ) {
     return {
       label: String(
-        node.data.label ?? node.data.packId ?? node.data.generatorId ?? node.type,
+        node.data.label ??
+          node.data.packId ??
+          node.data.generatorId ??
+          node.data.functionName ??
+          node.type,
       ),
       ...node.data,
     };

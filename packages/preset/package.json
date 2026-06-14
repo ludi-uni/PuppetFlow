@@ -19,12 +19,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/read-pfscript-file.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/read-pfscript-file.ts src/build-official-presets.ts --format esm --dts --clean",
+    "build:official-presets": "node dist/build-official-presets.js",
     "test": "vitest run --dir ."
   },
   "dependencies": {
     "@puppetflow/behavior": "workspace:*",
     "@puppetflow/core": "workspace:*",
+    "@puppetflow/extension-bundled": "workspace:*",
     "@puppetflow/extension-core": "workspace:*",
     "@puppetflow/motion-graph": "workspace:*",
     "@puppetflow/pfscript-core": "workspace:*",

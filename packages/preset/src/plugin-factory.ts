@@ -14,6 +14,16 @@ export type BehaviorPluginFactory = (
   config?: Record<string, unknown>,
 ) => BehaviorPlugin;
 
+export const BUILTIN_BEHAVIOR_PLUGIN_IDS = [
+  "blink",
+  "gaze",
+  "idle",
+  "attention",
+  "emotion",
+] as const;
+
+export type BuiltinBehaviorPluginId = (typeof BUILTIN_BEHAVIOR_PLUGIN_IDS)[number];
+
 const pluginFactories = new Map<string, BehaviorPluginFactory>();
 
 export function registerBehaviorPlugin(

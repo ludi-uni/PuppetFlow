@@ -80,3 +80,5 @@ export function getBundledMotionRegistry(): MotionRegistryImpl {
 export function resetBundledMotionRegistry(): void {
   cachedRegistry = null;
 }
+
+export { collectExtensionCustomParameterIds } from "./collect-custom-parameter-ids.js";

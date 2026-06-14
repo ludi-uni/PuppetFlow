@@ -15,6 +15,13 @@ export interface ExtensionGraphGeneratorOption {
   configFields: PackConfigField[];
 }
 
+export interface ExtensionGraphFunctionOption {
+  name: string;
+  label: string;
+  description?: string;
+  configFields: PackConfigField[];
+}
+
 export interface ExtensionGraphCustomNodeOption {
   type: string;
   label: string;
@@ -55,6 +62,16 @@ export function getExtensionGraphGenerators(): ExtensionGraphGeneratorOption[] {
   }));
 }
 
+export function getExtensionGraphFunctions(): ExtensionGraphFunctionOption[] {
+  const registry = getBundledMotionRegistry();
+  return [...registry.functions.values()].map((fn) => ({
+    name: fn.name,
+    label: fn.label,
+    description: fn.description,
+    configFields: configFieldsFromPack(fn.parameters),
+  }));
+}
+
 export function getExtensionGraphCustomNodes(): ExtensionGraphCustomNodeOption[] {
   const registry = getBundledMotionRegistry();
   return [...registry.nodes.values()].map((node) => ({
@@ -88,6 +105,20 @@ export function defaultMotionGeneratorNodeData(
     generatorId,
   };
   for (const field of generator?.configFields ?? []) {
+    data[field.key] = field.default;
+  }
+  return data;
+}
+
+export function defaultMotionFunctionNodeData(
+  functionName: string,
+): Record<string, unknown> {
+  const fn = getExtensionGraphFunctions().find((entry) => entry.name === functionName);
+  const data: Record<string, unknown> = {
+    label: fn?.label ?? functionName,
+    functionName,
+  };
+  for (const field of fn?.configFields ?? []) {
     data[field.key] = field.default;
   }
   return data;

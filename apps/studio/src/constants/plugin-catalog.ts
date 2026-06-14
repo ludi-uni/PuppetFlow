@@ -1,4 +1,7 @@
 import { PLUGIN_MOTION_OUTPUTS, type MotionStateKey } from "@puppetflow/core";
+import {
+  OFFICIAL_BEHAVIOR_PLUGIN_IDS,
+} from "@puppetflow/core";
 
 export type CatalogPluginId = "gaze" | "blink" | "idle" | "attention" | "emotion";
 
@@ -208,6 +211,15 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     ],
   },
 ];
+
+export type PluginCatalogTier = "official" | "legacy";
+
+export function getPluginCatalogTier(id: CatalogPluginId): PluginCatalogTier {
+  if ((OFFICIAL_BEHAVIOR_PLUGIN_IDS as readonly string[]).includes(id)) {
+    return "official";
+  }
+  return "legacy";
+}
 
 export function getPluginCatalogEntry(id: CatalogPluginId): PluginCatalogEntry {
   const entry = PLUGIN_CATALOG.find((plugin) => plugin.id === id);

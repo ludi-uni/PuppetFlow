@@ -38,6 +38,14 @@ export {
 } from "./motion-aliases.js";
 export { evaluateExpression, evaluateExpressionAsNumber } from "./evaluate-expr.js";
 export { PFSCRIPT_BUILTIN_FUNCTIONS, callBuiltinFunction } from "./builtin-functions.js";
+export {
+  PFSCRIPT_BUILTIN_FUNCTION_NAMES,
+  PFSCRIPT_EXPRESSION_CALLEES,
+  PFSCRIPT_SPECIAL_FUNCTION_NAMES,
+  PFSCRIPT_STATEFUL_FUNCTION_NAMES,
+  isPfScriptBuiltinFunction,
+  isPfScriptStatefulFunction,
+} from "./pfscript-function-catalog.js";
 export type { BehaviorExecutionContext } from "./context.js";
 export {
   executeBehavior,

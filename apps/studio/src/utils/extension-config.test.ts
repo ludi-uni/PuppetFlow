@@ -57,8 +57,8 @@ describe("extension-config", () => {
     ).toEqual(["tailWag"]);
 
     expect(getActiveExtensionCustomParameterIds({ packs: [] })).toEqual([
-      "tailWag",
       "earAngle",
+      "tailWag",
     ]);
   });
 

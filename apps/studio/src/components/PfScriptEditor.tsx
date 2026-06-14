@@ -6,6 +6,8 @@ import {
   SPEC_SAMPLE_PFSCRIPT,
   tryCompilePfScriptSource,
 } from "../utils/pfscript-preset";
+import { collectPluginLayerGuidance } from "../utils/plugin-layer-warnings";
+import { extractBehaviorPluginsJson, extractGraphJson } from "../utils/preset-parts";
 import {
   applyEnterKey,
   applyTabKey,
@@ -66,6 +68,17 @@ export function PfScriptEditor({
       formatPfScriptDuplicateWarning(
         findPfScriptExtensionPackDuplicates(presetJson, source),
       ),
+    [presetJson, source],
+  );
+
+  const pluginLayerWarning = useMemo(
+    () =>
+      collectPluginLayerGuidance({
+        presetJson,
+        graphJson: extractGraphJson(presetJson),
+        behaviorPluginsJson: extractBehaviorPluginsJson(presetJson),
+        pfScriptDraft: source,
+      }),
     [presetJson, source],
   );
 
@@ -172,6 +185,12 @@ export function PfScriptEditor({
       {duplicateWarning ? (
         <p className="duplicate-pack-warning" role="status">
           {duplicateWarning}
+        </p>
+      ) : null}
+
+      {pluginLayerWarning ? (
+        <p className="hint emotion-plugin-hint" role="status">
+          ⚠ {pluginLayerWarning}
         </p>
       ) : null}
 

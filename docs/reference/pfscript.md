@@ -115,6 +115,23 @@ end
 
 `oscillator` / `wander` の出力は **-1〜+1** です。代入前にスケールしてください。
 
+---
+
+## 値域とマージ規則
+
+| 項目 | 規則 |
+| ---- | ---- |
+| **標準 Motion キー** | 代入値は実質 **0〜1**（`clamp` 推奨）。体の揺れは **0.5 前後を中心** に小さな振幅を足す |
+| **custom パラメータ** | 現状 **0〜1**（Extension Mapper も同様） |
+| **レイヤー合成** | Plugins + Behavior + Graph は `addMotionState`（デルタ加算）で合成 |
+| **静的統合** | `mergeMotionState` は平均（Graph と Behavior の重複キー用） |
+| **重複禁止** | 同一キーを Graph と PFScript の両方に書かない（load 時に警告） |
+| **意図的重複** | `eyeYaw` は PFScript（energy ベース）+ `blink` プラグインのレイヤリングを許可 |
+
+公式 Standard モデル: 笑顔=`mouthX`（Graph）、体・口=`mouthY` 等（PFScript）、瞬き=`blink`、低 interest 視線=`idle`。
+
+---
+
 Plugin / Extension 関数（`thinking()` 等）は **文としての呼び出し**（`CallStmt`）を使います。式中の任意関数呼び出しは Phase 1 非対応です。
 
 ---

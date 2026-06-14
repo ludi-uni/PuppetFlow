@@ -75,8 +75,8 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                   → mouthY 等を配置し Preset にエクスポート
                 </li>
                 <li>
-                  <strong>Plugins</strong> — Emotion 等。Emotion は Channel の{" "}
-                  <code>emotion</code> を参照します
+                  <strong>Plugins</strong> — 公式 preset は blink + idle。gaze / emotion
+                  はカスタム向け。Graph / PFScript とキーが重複すると警告
                 </li>
                 <li>
                   <strong>Input Sources</strong> — HTTP / WS / MQTT から state /

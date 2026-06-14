@@ -1,3 +1,4 @@
+import { Handle, Position } from "@xyflow/react";
 import type { PackConfigField } from "@puppetflow/extension-core";
 
 interface ConfigFieldProps {
@@ -78,6 +79,32 @@ export function MotionGeneratorNode({
         data={data}
         onChange={(key, value) => onChange({ [key]: value })}
       />
+    </div>
+  );
+}
+
+export function MotionFunctionNode({
+  data,
+  onChange,
+  configFields,
+}: {
+  data: Record<string, unknown>;
+  onChange: (patch: Record<string, unknown>) => void;
+  configFields: PackConfigField[];
+}) {
+  return (
+    <div className="node node-extension">
+      <Handle type="target" position={Position.Left} />
+      <strong>Extension Function</strong>
+      <p className="node-extension-title">
+        {String(data.label ?? data.functionName ?? "function")}
+      </p>
+      <ConfigFields
+        fields={configFields}
+        data={data}
+        onChange={(key, value) => onChange({ [key]: value })}
+      />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

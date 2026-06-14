@@ -657,6 +657,9 @@ importers:
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core
+      '@puppetflow/extension-bundled':
+        specifier: workspace:*
+        version: link:../extension-bundled
       '@puppetflow/extension-core':
         specifier: workspace:*
         version: link:../extension-core

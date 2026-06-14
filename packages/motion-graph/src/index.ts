@@ -17,4 +17,8 @@ export {
   mergeGraphIntoPresetJson,
   serializeEditorGraph,
 } from "./graph-editor-bridge.js";
-export { executeMotionGraph, type MotionGraphContext } from "./execute.js";
+export {
+  executeMotionGraph,
+  type ExtensionGraphFunctionEvaluator,
+  type MotionGraphContext,
+} from "./execute.js";

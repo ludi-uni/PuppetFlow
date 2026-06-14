@@ -17,14 +17,17 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { LIPSYNC_GRAPH_TEMPLATE } from "../constants/lipsync-template";
 import {
   defaultExtensionCustomNodeData,
+  defaultMotionFunctionNodeData,
   defaultMotionGeneratorNodeData,
   defaultMotionPackNodeData,
   getExtensionGraphCustomNodes,
+  getExtensionGraphFunctions,
   getExtensionGraphGenerators,
   getExtensionGraphPacks,
 } from "../constants/extension-graph-nodes";
 import {
   ExtensionCustomNode,
+  MotionFunctionNode,
   MotionGeneratorNode,
   MotionPackNode,
 } from "./graph/ExtensionGraphNodes";
@@ -70,6 +73,7 @@ const INITIAL_EDGES: Edge[] = [
 
 const EXTENSION_GRAPH_PACKS = getExtensionGraphPacks();
 const EXTENSION_GRAPH_GENERATORS = getExtensionGraphGenerators();
+const EXTENSION_GRAPH_FUNCTIONS = getExtensionGraphFunctions();
 const EXTENSION_GRAPH_CUSTOM_NODES = getExtensionGraphCustomNodes();
 
 function findPackConfigFields(packId: string) {
@@ -80,6 +84,12 @@ function findGeneratorConfigFields(generatorId: string) {
   return (
     EXTENSION_GRAPH_GENERATORS.find((generator) => generator.id === generatorId)
       ?.configFields ?? []
+  );
+}
+
+function findFunctionConfigFields(functionName: string) {
+  return (
+    EXTENSION_GRAPH_FUNCTIONS.find((fn) => fn.name === functionName)?.configFields ?? []
   );
 }
 
@@ -771,6 +781,13 @@ function GraphEditorContent({
           onChange={(patch) => updateNodeData(props.id, patch)}
         />
       ),
+      motionFunction: (props) => (
+        <MotionFunctionNode
+          data={props.data}
+          configFields={findFunctionConfigFields(String(props.data.functionName ?? ""))}
+          onChange={(patch) => updateNodeData(props.id, patch)}
+        />
+      ),
     };
 
     for (const customNode of EXTENSION_GRAPH_CUSTOM_NODES) {
@@ -812,7 +829,10 @@ function GraphEditorContent({
   );
 
   const addExtensionNode = useCallback(
-    (kind: "motionPack" | "motionGenerator" | "ext", targetId: string) => {
+    (
+      kind: "motionPack" | "motionGenerator" | "motionFunction" | "ext",
+      targetId: string,
+    ) => {
       markGraphDirty();
       const y = nodes.length * 80 + 40;
       const x = 640;
@@ -840,6 +860,20 @@ function GraphEditorContent({
             type: "motionGenerator",
             position: { x, y },
             data: defaultMotionGeneratorNodeData(targetId),
+          },
+        ]);
+        return;
+      }
+
+      if (kind === "motionFunction") {
+        const id = createNodeId("fn");
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type: "motionFunction",
+            position: { x, y },
+            data: defaultMotionFunctionNodeData(targetId),
           },
         ]);
         return;
@@ -1256,6 +1290,23 @@ function GraphEditorContent({
               + {generator.label}
             </button>
           ))}
+        </div>
+        <div className="graph-toolbar-group">
+          <span className="graph-toolbar-label">Function</span>
+          {EXTENSION_GRAPH_FUNCTIONS.map((fn) => (
+            <button
+              key={fn.name}
+              type="button"
+              className="graph-toolbar-extension"
+              title={fn.description}
+              onClick={() => addExtensionNode("motionFunction", fn.name)}
+            >
+              + {fn.label}
+            </button>
+          ))}
+        </div>
+        <div className="graph-toolbar-group">
+          <span className="graph-toolbar-label">Custom Node</span>
           {EXTENSION_GRAPH_CUSTOM_NODES.map((node) => (
             <button
               key={node.type}

@@ -208,4 +208,21 @@ describe("extension-core", () => {
     expect(result.standard.bodyLean).toBeGreaterThan(0.5);
     expect(result.invocations.some((inv) => inv.id === "heartbeat")).toBe(false);
   });
+
+  it("does not collect motionFunction graph nodes as extension invocations", () => {
+    const invocations = collectExtensionInvocations({
+      graph: {
+        nodes: [
+          {
+            id: "hb",
+            type: "motionFunction",
+            data: { functionName: "heartbeat", amplitude: 0.2 },
+          },
+        ],
+        edges: [],
+      },
+    });
+
+    expect(invocations).toEqual([]);
+  });
 });
