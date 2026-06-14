@@ -178,9 +178,9 @@ export function MotionMapperEditor({
 
       {extensionCustomParamIds.length > 0 ? (
         <>
-          <h3>Extension custom parameters</h3>
+          <h3>Custom parameters</h3>
           <p className="hint">
-            Motion Pack が <code>MotionState.custom</code>{" "}
+            PFScript や Motion Pack が <code>MotionState.custom</code>{" "}
             に書き込むパラメータです。空欄の項目は送信されません。
           </p>
           <div className="mapping-table mapper-table">

@@ -246,7 +246,10 @@ export function executeExtensions(
     );
   }
 
-  const mergedCustom = mergeCustomPartials(custom, customPartials);
+  const mergedCustom = mergeCustomPartials(
+    { ...(ctx.motion.custom ?? {}), ...custom },
+    customPartials,
+  );
   const standard = mergeMotionState(ctx.motion, standardPartials);
 
   return {

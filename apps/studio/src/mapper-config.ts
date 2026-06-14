@@ -28,6 +28,8 @@ export interface MotionMapperEditorConfig {
   vrm: ModelMapperConfig;
   loggerEnabled: boolean;
   loggerThrottleMs: number;
+  /** Simple mode viewer preset id (e.g. nijiexpose, vseeface). */
+  viewerPresetId?: string;
 }
 
 const TARGETS: MapperTarget[] = ["vmc", "live2d", "vrm"];
@@ -101,6 +103,7 @@ export function cloneMapperConfig(
     },
     loggerEnabled: config.loggerEnabled,
     loggerThrottleMs: config.loggerThrottleMs,
+    viewerPresetId: config.viewerPresetId,
   };
 }
 

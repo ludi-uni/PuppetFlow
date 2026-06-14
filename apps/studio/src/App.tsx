@@ -51,7 +51,8 @@ import {
   mergeGraphPart,
 } from "./utils/preset-parts";
 import { applyPresetToStudio } from "./utils/preset-apply";
-import { extractExtensionsJson, getActiveExtensionCustomParameterIds } from "./utils/extension-config";
+import { extractExtensionsJson } from "./utils/extension-config";
+import { collectMapperCustomParamIds } from "./utils/mapper-custom-params";
 import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "./utils/plugin-config";
 import { resolveNextStep } from "./utils/next-step";
 import { validatePresetJson } from "./utils/preset-validation";
@@ -247,16 +248,10 @@ export function App() {
       }),
     [appliedMapperConfig, graphJson, pluginsHaveChanges],
   );
-  const extensionCustomParamIds = useMemo(() => {
-    try {
-      const extensions = JSON.parse(extensionsJson) as Parameters<
-        typeof getActiveExtensionCustomParameterIds
-      >[0];
-      return getActiveExtensionCustomParameterIds(extensions);
-    } catch {
-      return [];
-    }
-  }, [extensionsJson]);
+  const extensionCustomParamIds = useMemo(
+    () => collectMapperCustomParamIds(assembledPresetJson, extensionsJson),
+    [assembledPresetJson, extensionsJson],
+  );
 
   const handleStudioModeChange = useCallback((nextMode: StudioMode) => {
     saveStudioMode(nextMode);

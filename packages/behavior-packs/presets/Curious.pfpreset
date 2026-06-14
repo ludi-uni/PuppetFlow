@@ -3,26 +3,326 @@
   "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": []
+    "statements": [
+      {
+        "type": "ExprAssign",
+        "target": "bodyLean",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Binary",
+              "op": "*",
+              "left": {
+                "type": "Call",
+                "callee": "oscillator",
+                "args": [
+                  {
+                    "name": "id",
+                    "value": {
+                      "type": "String",
+                      "value": "body"
+                    }
+                  },
+                  {
+                    "name": "frequency",
+                    "value": {
+                      "type": "Binary",
+                      "op": "+",
+                      "left": {
+                        "type": "Binary",
+                        "op": "*",
+                        "left": {
+                          "type": "Number",
+                          "value": 0.3
+                        },
+                        "right": {
+                          "type": "Identifier",
+                          "name": "interest"
+                        }
+                      },
+                      "right": {
+                        "type": "Number",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                ]
+              },
+              "right": {
+                "type": "Number",
+                "value": 0.1
+              }
+            },
+            "right": {
+              "type": "Call",
+              "callee": "clamp",
+              "args": [
+                {
+                  "value": {
+                    "type": "Identifier",
+                    "name": "interest"
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 0.3
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 1
+                  }
+                }
+              ]
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyRoll",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Binary",
+              "op": "*",
+              "left": {
+                "type": "Call",
+                "callee": "oscillator",
+                "args": [
+                  {
+                    "name": "id",
+                    "value": {
+                      "type": "String",
+                      "value": "body"
+                    }
+                  },
+                  {
+                    "name": "frequency",
+                    "value": {
+                      "type": "Binary",
+                      "op": "+",
+                      "left": {
+                        "type": "Binary",
+                        "op": "*",
+                        "left": {
+                          "type": "Number",
+                          "value": 0.3
+                        },
+                        "right": {
+                          "type": "Identifier",
+                          "name": "interest"
+                        }
+                      },
+                      "right": {
+                        "type": "Number",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                ]
+              },
+              "right": {
+                "type": "Number",
+                "value": 0.1
+              }
+            },
+            "right": {
+              "type": "Call",
+              "callee": "clamp",
+              "args": [
+                {
+                  "value": {
+                    "type": "Identifier",
+                    "name": "interest"
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 0.3
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 1
+                  }
+                }
+              ]
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyYaw",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "interest"
+            },
+            "right": {
+              "type": "Unary",
+              "op": "-",
+              "argument": {
+                "type": "Number",
+                "value": 0.3
+              }
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "mouthY",
+        "value": {
+          "type": "Identifier",
+          "name": "volume"
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "eyeYaw",
+        "value": {
+          "type": "Call",
+          "callee": "clamp",
+          "args": [
+            {
+              "value": {
+                "type": "Identifier",
+                "name": "energy"
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.4
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "custom:breath",
+        "value": {
+          "type": "Call",
+          "callee": "breath",
+          "args": [
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.1
+              }
+            }
+          ]
+        }
+      }
+    ]
   },
+  "behaviorPfScript": "-- 体の揺れ（きょろきょろ）\nbodyLean = oscillator(id = \"body\", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5\nbodyYaw = interest * -0.3 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.4, 1)\nbreath = breath(0.1)",
   "behaviorPlugins": [
-    { "id": "attention", "config": { "leanGain": 0.25, "tiltGain": 0.2 } },
-    { "id": "gaze", "config": { "wanderAmplitude": 0.04 } }
+    {
+      "id": "blink",
+      "config": {
+        "minInterval": 3,
+        "maxInterval": 8,
+        "closeDuration": 0.12,
+        "blinkStrength": 1
+      }
+    },
+    {
+      "id": "idle",
+      "config": {
+        "interestThreshold": 0.35,
+        "wanderBoost": 0.12
+      }
+    }
   ],
   "graph": {
     "nodes": [
-      { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.5 } },
-      { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } },
-      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
-      { "id": "mul-facePitch", "type": "multiply", "data": { "gain": 0.8 } },
-      { "id": "out-facePitch", "type": "output", "data": { "key": "facePitch" } }
+      {
+        "id": "interest",
+        "type": "stateInput",
+        "data": {
+          "key": "interest"
+        },
+        "position": {
+          "x": 0,
+          "y": 80
+        }
+      },
+      {
+        "id": "multiply",
+        "type": "multiply",
+        "data": {
+          "gain": 0.5
+        },
+        "position": {
+          "x": 220,
+          "y": 80
+        }
+      },
+      {
+        "id": "mouthX",
+        "type": "output",
+        "data": {
+          "key": "mouthX"
+        },
+        "position": {
+          "x": 460,
+          "y": 80
+        }
+      }
     ],
     "edges": [
-      { "id": "e1", "source": "in-interest-mouthX", "target": "mul-mouthX" },
-      { "id": "e2", "source": "mul-mouthX", "target": "out-mouthX" },
-      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-facePitch" },
-      { "id": "e4", "source": "mul-facePitch", "target": "out-facePitch" }
+      {
+        "id": "e1",
+        "source": "interest",
+        "target": "multiply"
+      },
+      {
+        "id": "e2",
+        "source": "multiply",
+        "target": "mouthX"
+      }
     ]
+  },
+  "extensions": {
+    "packs": []
   }
 }

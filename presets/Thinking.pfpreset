@@ -5,37 +5,287 @@
     "type": "Block",
     "statements": [
       {
-        "type": "If",
-        "condition": { "left": "interest", "op": ">", "right": 0.55 },
-        "then": [{ "type": "Assign", "key": "headTilt", "op": "add", "value": 0.08 }]
+        "type": "ExprAssign",
+        "target": "bodyLean",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "body"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.15
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.05
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyRoll",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "body"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.12
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.04
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyYaw",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "interest"
+            },
+            "right": {
+              "type": "Unary",
+              "op": "-",
+              "argument": {
+                "type": "Number",
+                "value": 0.2
+              }
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "headTilt",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Number",
+            "value": 0.5
+          },
+          "right": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "clamp",
+              "args": [
+                {
+                  "value": {
+                    "type": "Identifier",
+                    "name": "interest"
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 0.5
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 1
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.08
+            }
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "mouthY",
+        "value": {
+          "type": "Identifier",
+          "name": "volume"
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "eyeYaw",
+        "value": {
+          "type": "Call",
+          "callee": "clamp",
+          "args": [
+            {
+              "value": {
+                "type": "Identifier",
+                "name": "energy"
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.45
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "custom:breath",
+        "value": {
+          "type": "Call",
+          "callee": "breath",
+          "args": [
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.09
+              }
+            }
+          ]
+        }
       }
     ]
   },
+  "behaviorPfScript": "-- 体の揺れ（控えめ）\nbodyLean = oscillator(id = \"body\", frequency = 0.15) * 0.05 + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = 0.12) * 0.04 + 0.5\nbodyYaw = interest * -0.2 + 0.5\nheadTilt = 0.5 + clamp(interest, 0.5, 1) * 0.08\nmouthY = volume\neyeYaw = clamp(energy, 0.45, 1)\nbreath = breath(0.09)",
   "behaviorPlugins": [
-    { "id": "gaze", "config": { "wanderAmplitude": 0.03, "speed": 0.12 } }
+    {
+      "id": "blink",
+      "config": {
+        "minInterval": 3,
+        "maxInterval": 8,
+        "closeDuration": 0.12,
+        "blinkStrength": 1
+      }
+    },
+    {
+      "id": "idle",
+      "config": {
+        "interestThreshold": 0.4,
+        "wanderBoost": 0.08
+      }
+    }
   ],
-  "extensions": {
-    "packs": [{ "id": "thinking", "config": { "intensity": 0.65 } }]
-  },
   "graph": {
     "nodes": [
-      { "id": "in-stress-facePitch", "type": "stateInput", "data": { "key": "stress" } },
-      { "id": "mul-stress-facePitch", "type": "multiply", "data": { "gain": 0.25 } },
-      { "id": "out-stress-facePitch", "type": "output", "data": { "key": "facePitch" } },
-      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
-      { "id": "mul-energy-facePitch", "type": "multiply", "data": { "gain": 0.55 } },
-      { "id": "out-energy-facePitch", "type": "output", "data": { "key": "facePitch" } },
-      { "id": "in-interest-mouthX", "type": "stateInput", "data": { "key": "interest" } },
-      { "id": "mul-mouthX", "type": "multiply", "data": { "gain": 0.25 } },
-      { "id": "out-mouthX", "type": "output", "data": { "key": "mouthX" } }
+      {
+        "id": "interest",
+        "type": "stateInput",
+        "data": {
+          "key": "interest"
+        },
+        "position": {
+          "x": 0,
+          "y": 80
+        }
+      },
+      {
+        "id": "multiply",
+        "type": "multiply",
+        "data": {
+          "gain": 0.35
+        },
+        "position": {
+          "x": 220,
+          "y": 80
+        }
+      },
+      {
+        "id": "mouthX",
+        "type": "output",
+        "data": {
+          "key": "mouthX"
+        },
+        "position": {
+          "x": 460,
+          "y": 80
+        }
+      }
     ],
     "edges": [
-      { "id": "e1", "source": "in-stress-facePitch", "target": "mul-stress-facePitch" },
-      { "id": "e2", "source": "mul-stress-facePitch", "target": "out-stress-facePitch" },
-      { "id": "e3", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
-      { "id": "e4", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" },
-      { "id": "e5", "source": "in-interest-mouthX", "target": "mul-mouthX" },
-      { "id": "e6", "source": "mul-mouthX", "target": "out-mouthX" }
+      {
+        "id": "e1",
+        "source": "interest",
+        "target": "multiply"
+      },
+      {
+        "id": "e2",
+        "source": "multiply",
+        "target": "mouthX"
+      }
+    ]
+  },
+  "extensions": {
+    "packs": [
+      {
+        "id": "thinking",
+        "config": {
+          "intensity": 0.65
+        }
+      }
     ]
   }
 }

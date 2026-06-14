@@ -28,6 +28,9 @@ export class SmoothingModifier implements MotionModifier {
       result[key] = clamp01(current[key] + (target[key] - current[key]) * alpha);
     }
 
-    return result;
+    return {
+      ...result,
+      custom: { ...(target.custom ?? {}) },
+    };
   }
 }

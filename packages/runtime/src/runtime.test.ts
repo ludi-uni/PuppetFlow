@@ -266,6 +266,7 @@ end
     await runtime.start();
 
     expect(runtime.getTargetMotion().custom?.MouthA).toBeCloseTo(1, 2);
+    expect(runtime.getRenderedMotion().custom?.MouthA).toBeCloseTo(1, 2);
 
     await runtime.stop();
   });

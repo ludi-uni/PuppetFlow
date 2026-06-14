@@ -12,23 +12,29 @@ const CURIOUS_PRESET = readFileSync(
 );
 
 describe("PuppetFlowRuntime", () => {
-  it("runs Curious preset with stable head tilt at neutral interest", async () => {
+  it("runs Curious preset with PFScript mappings and idle wander", async () => {
     const runtime = new PuppetFlowRuntime().loadPreset(loadPreset(CURIOUS_PRESET));
     runtime.state.set("interest", 0.5);
     runtime.state.set("energy", 0.5);
 
     await runtime.start();
 
-    expect(runtime.getTargetMotion().headTilt).toBeCloseTo(0.5, 2);
+    expect(runtime.getTargetMotion().mouthX).toBeCloseTo(0.25, 2);
+    expect(runtime.getTargetMotion().bodyYaw).toBeCloseTo(0.35, 2);
 
-    const gazeOutput = runtime
+    runtime.state.set("interest", 0.2);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    const idleOutput = runtime
       .getPluginOutputs()
-      .find((entry) => entry.pluginId === "gaze")?.output;
-    expect(gazeOutput?.lookX).toBeDefined();
-    expect(gazeOutput?.lookX).not.toBe(0.5);
+      .find((entry) => entry.pluginId === "idle")?.output;
+    expect(idleOutput?.lookX).toBeDefined();
+    expect(idleOutput?.lookX).not.toBe(0.5);
 
     const mapped = mapMotion(runtime.getTargetMotion(), VMC_PROFILE);
-    expect(mapped.ParamAngleZ).toBeCloseTo(0, 2);
+    expect(mapped.ParamMouthForm).toBeCloseTo(0.1, 2);
 
     await runtime.stop();
   });

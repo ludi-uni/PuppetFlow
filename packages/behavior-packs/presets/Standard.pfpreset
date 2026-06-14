@@ -1,5 +1,5 @@
 {
-  "name": "Happy",
+  "name": "Standard",
   "version": 3,
   "behavior": {
     "type": "Block",
@@ -37,7 +37,7 @@
                         "op": "*",
                         "left": {
                           "type": "Number",
-                          "value": 0.35
+                          "value": 0.3
                         },
                         "right": {
                           "type": "Identifier",
@@ -46,7 +46,7 @@
                       },
                       "right": {
                         "type": "Number",
-                        "value": 0.15
+                        "value": 0.1
                       }
                     }
                   }
@@ -54,7 +54,7 @@
               },
               "right": {
                 "type": "Number",
-                "value": 0.12
+                "value": 0.1
               }
             },
             "right": {
@@ -70,7 +70,7 @@
                 {
                   "value": {
                     "type": "Number",
-                    "value": 0.2
+                    "value": 0.3
                   }
                 },
                 {
@@ -121,7 +121,7 @@
                         "op": "*",
                         "left": {
                           "type": "Number",
-                          "value": 0.35
+                          "value": 0.3
                         },
                         "right": {
                           "type": "Identifier",
@@ -130,7 +130,7 @@
                       },
                       "right": {
                         "type": "Number",
-                        "value": 0.15
+                        "value": 0.1
                       }
                     }
                   }
@@ -154,7 +154,7 @@
                 {
                   "value": {
                     "type": "Number",
-                    "value": 0.2
+                    "value": 0.3
                   }
                 },
                 {
@@ -190,7 +190,7 @@
               "op": "-",
               "argument": {
                 "type": "Number",
-                "value": 0.2
+                "value": 0.3
               }
             }
           },
@@ -217,30 +217,14 @@
           "args": [
             {
               "value": {
-                "type": "Binary",
-                "op": "+",
-                "left": {
-                  "type": "Binary",
-                  "op": "*",
-                  "left": {
-                    "type": "Identifier",
-                    "name": "energy"
-                  },
-                  "right": {
-                    "type": "Number",
-                    "value": 0.6
-                  }
-                },
-                "right": {
-                  "type": "Number",
-                  "value": 0.4
-                }
+                "type": "Identifier",
+                "name": "energy"
               }
             },
             {
               "value": {
                 "type": "Number",
-                "value": 0
+                "value": 0.4
               }
             },
             {
@@ -262,7 +246,7 @@
             {
               "value": {
                 "type": "Number",
-                "value": 0.12
+                "value": 0.1
               }
             }
           ]
@@ -270,7 +254,7 @@
       }
     ]
   },
-  "behaviorPfScript": "-- 体の揺れ（明るく活発）\nbodyLean = oscillator(id = \"body\", frequency = (0.35 * interest) + 0.15) * 0.12 * clamp(interest, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = (0.35 * interest) + 0.15) * 0.1 * clamp(interest, 0.2, 1) + 0.5\nbodyYaw = interest * -0.2 + 0.5\nmouthY = volume\neyeYaw = clamp(energy * 0.6 + 0.4, 0, 1)\nbreath = breath(0.12)",
+  "behaviorPfScript": "-- 体の揺れ\nbodyLean = oscillator(id = \"body\", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5\n\n-- 興味の度合いで前のめり\nbodyYaw = interest * -0.3 + 0.5\n\n-- RMSで口の開き\nmouthY = volume\n\n-- 疲れると眠そうに\neyeYaw = clamp(energy, 0.4, 1)\n\n-- 呼吸\nbreath = breath(0.1)",
   "behaviorPlugins": [
     {
       "id": "blink",
@@ -306,7 +290,7 @@
         "id": "multiply",
         "type": "multiply",
         "data": {
-          "gain": 0.8
+          "gain": 0.5
         },
         "position": {
           "x": 220,

@@ -45,3 +45,4 @@ export {
   type BehaviorExecutionResult,
   type BehaviorMotionPackInvocation,
 } from "./execute.js";
+export { collectBehaviorCustomMotionKeys } from "./collect-custom-keys.js";

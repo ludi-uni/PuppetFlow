@@ -41,7 +41,8 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                   <strong>動作確認</strong> — スライダーで試す
                 </li>
                 <li>
-                  <strong>キャラへの送信</strong> — 使っている Viewer アプリを選ぶ
+                  <strong>キャラへの送信</strong> — VSeeFace（VRM）や nijiexpose（Inochi2D
+                  / nijigenerate）など Viewer を選ぶ
                 </li>
               </ol>
               <p className="hint">

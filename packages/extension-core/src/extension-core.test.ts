@@ -71,6 +71,33 @@ function baseMotion(): MotionState {
 }
 
 describe("extension-core", () => {
+  it("preserves motion.custom from upstream behavior when merging extension output", () => {
+    const registry = createMotionRegistry();
+    registerExtensionPlugins(registry, [mockTailPlugin]);
+
+    const result = executeExtensions(
+      registry,
+      {
+        state: new StateStore(),
+        channels: new ChannelStore(),
+        deltaTime: 0.016,
+        time: 1,
+        timelineCurrentMs: 0,
+        activeTimelineEvents: [],
+        motion: { ...baseMotion(), custom: { MouthA: 1 } },
+      },
+      {
+        presetExtensions: {
+          packs: [{ id: "tailWag", config: { intensity: 0.7 } }],
+        },
+      },
+    );
+
+    expect(result.standard.custom?.MouthA).toBeCloseTo(1, 3);
+    expect(result.custom.MouthA).toBeCloseTo(1, 3);
+    expect(result.custom.tailWag).toBeDefined();
+  });
+
   it("executes motion packs and custom parameters", () => {
     const registry = createMotionRegistry();
     registerExtensionPlugins(registry, [mockThinkingPlugin, mockTailPlugin]);

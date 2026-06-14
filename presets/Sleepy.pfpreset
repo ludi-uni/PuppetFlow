@@ -3,27 +3,274 @@
   "version": 3,
   "behavior": {
     "type": "Block",
-    "statements": []
+    "statements": [
+      {
+        "type": "ExprAssign",
+        "target": "bodyLean",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Binary",
+              "op": "*",
+              "left": {
+                "type": "Call",
+                "callee": "oscillator",
+                "args": [
+                  {
+                    "name": "id",
+                    "value": {
+                      "type": "String",
+                      "value": "body"
+                    }
+                  },
+                  {
+                    "name": "frequency",
+                    "value": {
+                      "type": "Number",
+                      "value": 0.1
+                    }
+                  }
+                ]
+              },
+              "right": {
+                "type": "Number",
+                "value": 0.05
+              }
+            },
+            "right": {
+              "type": "Call",
+              "callee": "clamp",
+              "args": [
+                {
+                  "value": {
+                    "type": "Identifier",
+                    "name": "energy"
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 0.2
+                  }
+                },
+                {
+                  "value": {
+                    "type": "Number",
+                    "value": 1
+                  }
+                }
+              ]
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyRoll",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "body"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.08
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.04
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "bodyYaw",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Identifier",
+              "name": "interest"
+            },
+            "right": {
+              "type": "Unary",
+              "op": "-",
+              "argument": {
+                "type": "Number",
+                "value": 0.1
+              }
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "mouthY",
+        "value": {
+          "type": "Binary",
+          "op": "*",
+          "left": {
+            "type": "Identifier",
+            "name": "volume"
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.85
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "eyeYaw",
+        "value": {
+          "type": "Call",
+          "callee": "clamp",
+          "args": [
+            {
+              "value": {
+                "type": "Identifier",
+                "name": "energy"
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.2
+              }
+            },
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.75
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "custom:breath",
+        "value": {
+          "type": "Call",
+          "callee": "breath",
+          "args": [
+            {
+              "value": {
+                "type": "Number",
+                "value": 0.06
+              }
+            }
+          ]
+        }
+      }
+    ]
   },
+  "behaviorPfScript": "-- 体の揺れ（ゆっくり）\nbodyLean = oscillator(id = \"body\", frequency = 0.1) * 0.05 * clamp(energy, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = 0.08) * 0.04 + 0.5\nbodyYaw = interest * -0.1 + 0.5\nmouthY = volume * 0.85\neyeYaw = clamp(energy, 0.2, 0.75)\nbreath = breath(0.06)",
   "behaviorPlugins": [
-    { "id": "blink", "config": { "minInterval": 4, "maxInterval": 10, "closeDuration": 0.18 } },
-    { "id": "gaze", "config": { "wanderAmplitude": 0.02, "speed": 0.1 } },
-    { "id": "idle", "config": { "interestThreshold": 0.45, "wanderBoost": 0.08 } }
+    {
+      "id": "blink",
+      "config": {
+        "minInterval": 4,
+        "maxInterval": 10,
+        "closeDuration": 0.18,
+        "blinkStrength": 1
+      }
+    },
+    {
+      "id": "idle",
+      "config": {
+        "interestThreshold": 0.45,
+        "wanderBoost": 0.08
+      }
+    }
   ],
   "graph": {
     "nodes": [
-      { "id": "in-energy-facePitch", "type": "stateInput", "data": { "key": "energy" } },
-      { "id": "mul-energy-facePitch", "type": "multiply", "data": { "gain": 0.45 } },
-      { "id": "out-energy-facePitch", "type": "output", "data": { "key": "facePitch" } },
-      { "id": "in-stress-facePitch", "type": "stateInput", "data": { "key": "stress" } },
-      { "id": "mul-stress-facePitch", "type": "multiply", "data": { "gain": 0.35 } },
-      { "id": "out-stress-facePitch", "type": "output", "data": { "key": "facePitch" } }
+      {
+        "id": "interest",
+        "type": "stateInput",
+        "data": {
+          "key": "interest"
+        },
+        "position": {
+          "x": 0,
+          "y": 80
+        }
+      },
+      {
+        "id": "multiply",
+        "type": "multiply",
+        "data": {
+          "gain": 0.3
+        },
+        "position": {
+          "x": 220,
+          "y": 80
+        }
+      },
+      {
+        "id": "mouthX",
+        "type": "output",
+        "data": {
+          "key": "mouthX"
+        },
+        "position": {
+          "x": 460,
+          "y": 80
+        }
+      }
     ],
     "edges": [
-      { "id": "e1", "source": "in-energy-facePitch", "target": "mul-energy-facePitch" },
-      { "id": "e2", "source": "mul-energy-facePitch", "target": "out-energy-facePitch" },
-      { "id": "e3", "source": "in-stress-facePitch", "target": "mul-stress-facePitch" },
-      { "id": "e4", "source": "mul-stress-facePitch", "target": "out-stress-facePitch" }
+      {
+        "id": "e1",
+        "source": "interest",
+        "target": "multiply"
+      },
+      {
+        "id": "e2",
+        "source": "multiply",
+        "target": "mouthX"
+      }
     ]
+  },
+  "extensions": {
+    "packs": []
   }
 }

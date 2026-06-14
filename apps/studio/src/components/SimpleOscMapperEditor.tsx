@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   applyViewerPreset,
+  detectViewerPreset,
   VIEWER_PRESETS,
   type ViewerPreset,
 } from "../constants/viewer-presets";
@@ -11,24 +12,6 @@ interface SimpleOscMapperEditorProps {
   extensionCustomParamIds?: string[];
   onApply: (config: MotionMapperEditorConfig) => Promise<void>;
   onOpenExpert: () => void;
-}
-
-function detectViewerPreset(config: MotionMapperEditorConfig): string {
-  const enabled = (["vmc", "live2d", "vrm"] as const).find(
-    (target) => config[target].enabled,
-  );
-  if (!enabled) {
-    return "custom";
-  }
-
-  const model = config[enabled];
-  const match = VIEWER_PRESETS.find(
-    (preset) =>
-      preset.primaryTarget === enabled &&
-      preset.host === model.host &&
-      preset.port === model.port,
-  );
-  return match?.id ?? "custom";
 }
 
 export function SimpleOscMapperEditor({
@@ -79,11 +62,19 @@ export function SimpleOscMapperEditor({
           {selectedPreset.port}）
         </p>
         <p className="hint">
-          まず外部 Viewer を起動し、VMC / OSC 受信を有効にしてください。
+          まず外部 Viewer を起動し、OSC 受信を有効にしてください。
         </p>
+        {selectedPreset.id === "nijiexpose" ? (
+          <p className="hint emotion-plugin-hint">
+            Inochi2D（.inp）や nijigenerate（nijilive）のモデルを nijiexpose
+            で開き、Virtual Space で VMC 受信（ポート {selectedPreset.port}
+            ）を有効にしてください。モデル側のパラメータ名と PuppetFlow
+            の送信名（ParamAngleX 等）を紐づけると動きが反映されます。
+          </p>
+        ) : null}
         {extensionCustomParamIds.length > 0 ? (
           <p className="hint emotion-plugin-hint">
-            尻尾・耳などの拡張パラメータ（{extensionCustomParamIds.join(", ")}
+            カスタムパラメータ（{extensionCustomParamIds.join(", ")}
             ）の OSC 送信名は「詳細設定（エキスパート）」の Motion Mapper で設定してください。
           </p>
         ) : null}

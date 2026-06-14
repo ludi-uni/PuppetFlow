@@ -4,7 +4,7 @@
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "pnpm -r build",
+    "build:presets": "pnpm --filter @puppetflow/pfscript-core build && node scripts/build-official-presets.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
