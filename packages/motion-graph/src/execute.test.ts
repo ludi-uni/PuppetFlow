@@ -1,16 +1,28 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
+import { createDefaultStatefulRegistry, StatefulStore } from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
 import { executeMotionGraph } from "./execute.js";
 
 function createGraphContext(state: StateStore, channels = new ChannelStore()) {
+  const store = new StatefulStore();
+  const registry = createDefaultStatefulRegistry();
   return {
     state,
     channels,
     timeline: new TimelineStore(),
     timelineCurrentMs: 0,
     activeTimelineEvents: [],
-    deltaTime: 0.016,
+    deltaTime: 1 / 60,
     time: 0,
+    frame: {
+      deltaTime: 1 / 60,
+      frameNumber: 0,
+      elapsedTime: 0,
+    },
+    statefulStore: store,
+    statefulRegistry: registry,
+    store,
+    registry,
   };
 }
 
@@ -103,5 +115,104 @@ describe("executeMotionGraph", () => {
         createGraphContext(new StateStore()),
       ),
     ).toThrow(/cycle/i);
+  });
+
+  it("evaluates oscillator and smooth stateful nodes", () => {
+    const state = new StateStore();
+    state.set("interest", 1);
+
+    const ctx = createGraphContext(state);
+    let bodyLean = 0;
+
+    for (let frame = 0; frame < 120; frame++) {
+      ctx.frame = {
+        deltaTime: 1 / 60,
+        frameNumber: frame,
+        elapsedTime: frame / 60,
+      };
+      ctx.time = frame / 60;
+
+      const output = executeMotionGraph(
+        {
+          nodes: [
+            { id: "osc", type: "oscillator", data: { frequency: 0.4 } },
+            { id: "scale", type: "multiply", data: { gain: 0.1 } },
+            { id: "bias", type: "add", data: {} },
+            { id: "const", type: "constant", data: { value: 0.5 } },
+            { id: "out", type: "output", data: { key: "bodyLean" } },
+          ],
+          edges: [
+            { id: "e1", source: "osc", target: "scale" },
+            { id: "e2", source: "scale", target: "bias" },
+            { id: "e3", source: "const", target: "bias" },
+            { id: "e4", source: "bias", target: "out" },
+          ],
+        },
+        ctx,
+      );
+
+      bodyLean = output.bodyLean ?? 0;
+    }
+
+    expect(bodyLean).toBeGreaterThan(0.35);
+    expect(bodyLean).toBeLessThan(0.65);
+
+    const smoothOutput = executeMotionGraph(
+      {
+        nodes: [
+          { id: "in", type: "stateInput", data: { key: "interest" } },
+          { id: "smooth", type: "smooth", data: { speed: 2 } },
+          { id: "out", type: "output", data: { key: "mouthX" } },
+        ],
+        edges: [
+          { id: "e1", source: "in", target: "smooth" },
+          { id: "e2", source: "smooth", target: "out" },
+        ],
+      },
+      ctx,
+    );
+
+    expect(smoothOutput.mouthX).toBeGreaterThan(0);
+    expect(smoothOutput.mouthX).toBeLessThanOrEqual(1);
+
+    const springOutput = executeMotionGraph(
+      {
+        nodes: [
+          { id: "in", type: "stateInput", data: { key: "interest" } },
+          { id: "spring", type: "spring", data: { stiffness: 180, damping: 18 } },
+          { id: "out", type: "output", data: { key: "lookX" } },
+        ],
+        edges: [
+          { id: "e1", source: "in", target: "spring" },
+          { id: "e2", source: "spring", target: "out" },
+        ],
+      },
+      ctx,
+    );
+
+    expect(springOutput.lookX).toBeGreaterThan(0);
+    expect(springOutput.lookX).toBeLessThanOrEqual(1);
+
+    const holdOutput = executeMotionGraph(
+      {
+        nodes: [
+          { id: "hold", type: "randomHold", data: { interval: 2, min: -0.2, max: 0.2 } },
+          { id: "scale", type: "multiply", data: { gain: 0.5 } },
+          { id: "bias", type: "add", data: {} },
+          { id: "const", type: "constant", data: { value: 0.5 } },
+          { id: "out", type: "output", data: { key: "lookY" } },
+        ],
+        edges: [
+          { id: "e1", source: "hold", target: "scale" },
+          { id: "e2", source: "scale", target: "bias" },
+          { id: "e3", source: "const", target: "bias" },
+          { id: "e4", source: "bias", target: "out" },
+        ],
+      },
+      ctx,
+    );
+
+    expect(holdOutput.lookY).toBeGreaterThanOrEqual(0);
+    expect(holdOutput.lookY).toBeLessThanOrEqual(1);
   });
 });

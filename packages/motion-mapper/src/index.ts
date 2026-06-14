@@ -5,7 +5,7 @@ export {
   profileToTransforms,
   rebuildProfile,
 } from "./create-profile.js";
-export { createMotionMapper, mapMotion } from "./map-motion.js";
+export { createMotionMapper, mapCustomMotion, mapMotion } from "./map-motion.js";
 export {
   getDefaultProfile,
   LIVE2D_PROFILE,

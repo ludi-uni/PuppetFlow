@@ -1,6 +1,7 @@
 import {
   clamp01,
   type BehaviorPlugin,
+  type BehaviorPluginContext,
   type MotionState,
   type PluginInputStores,
 } from "@puppetflow/core";
@@ -30,7 +31,24 @@ export class BlinkPlugin implements BehaviorPlugin {
     this.blinkStrength = clamp01(config.blinkStrength ?? 0.15);
   }
 
-  process(_input: PluginInputStores, _motion: MotionState): Partial<MotionState> {
+  process(
+    _input: PluginInputStores,
+    _motion: MotionState,
+    context?: BehaviorPluginContext,
+  ): Partial<MotionState> {
+    const averageInterval = (this.minInterval + this.maxInterval) / 2;
+    const closeAmount = context?.runStatefulNumber?.("blink", "blink:eyes", {
+      averageInterval,
+      closeDuration: this.closeDuration,
+    });
+
+    if (closeAmount !== undefined) {
+      if (closeAmount <= 0) {
+        return {};
+      }
+      return { eyeYaw: clamp01(1 - closeAmount * this.blinkStrength) };
+    }
+
     const now = Date.now() / 1000;
 
     if (this.nextBlinkAt === null) {
@@ -47,8 +65,8 @@ export class BlinkPlugin implements BehaviorPlugin {
 
     if (this.blinkUntil > now) {
       const progress = 1 - (this.blinkUntil - now) / this.closeDuration;
-      const closeAmount = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
-      return { eyeYaw: clamp01(1 - closeAmount * this.blinkStrength) };
+      const legacyCloseAmount = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+      return { eyeYaw: clamp01(1 - legacyCloseAmount * this.blinkStrength) };
     }
 
     this.blinkUntil = 0;

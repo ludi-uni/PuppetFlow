@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import {
   findPfScriptExtensionPackDuplicates,
   formatPfScriptDuplicateWarning,
@@ -6,6 +6,11 @@ import {
   SPEC_SAMPLE_PFSCRIPT,
   tryCompilePfScriptSource,
 } from "../utils/pfscript-preset";
+import {
+  applyEnterKey,
+  applyTabKey,
+  handleBackspaceAtIndent,
+} from "../utils/pfscript-textarea";
 
 interface PfScriptEditorProps {
   presetJson: string;
@@ -13,6 +18,20 @@ interface PfScriptEditorProps {
   onPreviewJson: (behaviorJson: string) => void;
   onApply: (mergedPresetJson: string) => void;
   onStatus: (message: string, kind: "success" | "error" | "info") => void;
+}
+
+function applyTextEdit(
+  textarea: HTMLTextAreaElement,
+  nextValue: string,
+  selectionStart: number,
+  selectionEnd: number,
+  onValueChange: (value: string) => void,
+): void {
+  onValueChange(nextValue);
+  requestAnimationFrame(() => {
+    textarea.selectionStart = selectionStart;
+    textarea.selectionEnd = selectionEnd;
+  });
 }
 
 export function PfScriptEditor({
@@ -49,6 +68,41 @@ export function PfScriptEditor({
       ),
     [presetJson, source],
   );
+
+  const updateSource = (nextSource: string) => {
+    setSource(nextSource);
+    setCompileError(null);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const { selectionStart, selectionEnd, value } = textarea;
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      const result = applyTabKey(value, selectionStart, selectionEnd, event.shiftKey);
+      applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+      return;
+    }
+
+    if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
+      event.preventDefault();
+      const result = applyEnterKey(value, selectionStart, selectionEnd);
+      applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+      return;
+    }
+
+    if (event.key === "Backspace" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const result = handleBackspaceAtIndent(value, selectionStart, selectionEnd);
+      if (result) {
+        event.preventDefault();
+        applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+      }
+    }
+  };
 
   const handleCompile = () => {
     const trimmed = source.trim();
@@ -110,6 +164,10 @@ export function PfScriptEditor({
         をプレビューし、「Preset に適用」で <code>behaviorPfScript</code> とコンパイル済み{" "}
         <code>behavior</code> を保存します。Graph / behaviorPlugins は保持されます。
       </p>
+      <p className="hint pfscript-editor-keys">
+        <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> でインデント、<kbd>Enter</kbd>{" "}
+        で自動インデント（<code>then</code> / <code>=</code> / <code>(</code> の後など）。
+      </p>
 
       {duplicateWarning ? (
         <p className="duplicate-pack-warning" role="status">
@@ -122,12 +180,10 @@ export function PfScriptEditor({
         <textarea
           className="preset-editor pfscript-source"
           value={source}
-          onChange={(event) => {
-            setSource(event.target.value);
-            setCompileError(null);
-          }}
+          onChange={(event) => updateSource(event.target.value)}
+          onKeyDown={handleKeyDown}
           spellCheck={false}
-          placeholder={`-- 例\nsmile = interest * 0.4\nmouthOpen = volume`}
+          placeholder={`-- 例\nif interest > 0.7 then\n  smile = interest * 0.4\nend`}
         />
       </label>
 
@@ -146,8 +202,7 @@ export function PfScriptEditor({
         <button
           type="button"
           onClick={() => {
-            setSource(SPEC_SAMPLE_PFSCRIPT);
-            setCompileError(null);
+            updateSource(SPEC_SAMPLE_PFSCRIPT);
             onStatus("公式サンプルを挿入しました。", "info");
           }}
         >

@@ -3,6 +3,8 @@ import type { BehaviorPlugin, MotionState, PluginInputStores } from "@puppetflow
 import { SmoothingModifier } from "@puppetflow/modifier";
 import { loadPreset } from "@puppetflow/preset";
 import { describe, expect, it, vi } from "vitest";
+import { GazePlugin } from "@puppetflow/plugin-gaze";
+import { StatefulStore } from "@puppetflow/stateful-core";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 class TestPlugin implements BehaviorPlugin {
@@ -120,8 +122,21 @@ describe("PuppetFlowRuntime", () => {
     expect(
       lastCall?.pluginOutputs.some((snapshot) => snapshot.pluginId === "graph"),
     ).toBe(true);
+    expect(lastCall?.statefulSnapshot).toEqual([]);
 
     await runtime.stop();
+  });
+
+  it("clears stateful store when stopped", async () => {
+    const runtime = new PuppetFlowRuntime().use(new GazePlugin());
+    const store = (runtime as unknown as { statefulStore: StatefulStore }).statefulStore;
+
+    await runtime.start();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(store.snapshot().length).toBeGreaterThan(0);
+
+    await runtime.stop();
+    expect(store.snapshot()).toEqual([]);
   });
 
   it("does not run overlapping ticks while a source update is in flight", async () => {

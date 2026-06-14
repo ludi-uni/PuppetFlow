@@ -20,7 +20,7 @@ function formatCell(value: number | undefined): string {
   return value === undefined ? "—" : value.toFixed(3);
 }
 
-function collectKeys(
+function collectStandardKeys(
   columns: MotionTableColumn[],
   onlyDefined: boolean,
 ): MotionStateKey[] {
@@ -33,6 +33,21 @@ function collectKeys(
   );
 }
 
+function collectCustomKeys(
+  columns: MotionTableColumn[],
+  onlyDefined: boolean,
+): string[] {
+  const keys = new Set<string>();
+  for (const column of columns) {
+    for (const [key, value] of Object.entries(column.values.custom ?? {})) {
+      if (!onlyDefined || value !== undefined) {
+        keys.add(key);
+      }
+    }
+  }
+  return [...keys].sort();
+}
+
 export function MotionTable({
   columns,
   emptyHint,
@@ -42,8 +57,10 @@ export function MotionTable({
     return <p className="hint">{emptyHint ?? "No data."}</p>;
   }
 
-  const keys = collectKeys(columns, onlyDefined);
-  if (keys.length === 0) {
+  const standardKeys = collectStandardKeys(columns, onlyDefined);
+  const customKeys = collectCustomKeys(columns, onlyDefined);
+
+  if (standardKeys.length === 0 && customKeys.length === 0) {
     return <p className="hint">{emptyHint ?? "(no motion output this frame)"}</p>;
   }
 
@@ -61,11 +78,21 @@ export function MotionTable({
           </tr>
         </thead>
         <tbody>
-          {keys.map((key) => (
+          {standardKeys.map((key) => (
             <tr key={key}>
               <th scope="row">{key}</th>
               {columns.map((column) => (
                 <td key={`${column.id}-${key}`}>{formatCell(column.values[key])}</td>
+              ))}
+            </tr>
+          ))}
+          {customKeys.map((key) => (
+            <tr key={`custom-${key}`}>
+              <th scope="row">custom.{key}</th>
+              {columns.map((column) => (
+                <td key={`${column.id}-custom-${key}`}>
+                  {formatCell(column.values.custom?.[key])}
+                </td>
               ))}
             </tr>
           ))}

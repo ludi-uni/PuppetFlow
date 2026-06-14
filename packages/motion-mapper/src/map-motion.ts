@@ -1,6 +1,6 @@
 import { MOTION_STATE_KEYS, type MotionState } from "@puppetflow/core";
 import { applyTransform } from "./transform.js";
-import type { MappedMotion, MotionMapperProfile } from "./types.js";
+import type { MappedMotion, MotionMapperProfile, ValueTransform } from "./types.js";
 
 export function mapMotion(
   motion: MotionState,
@@ -15,6 +15,30 @@ export function mapMotion(
     }
 
     mapped[rule.param] = applyTransform(rule.transform, motion[key]);
+  }
+
+  return mapped;
+}
+
+export function mapCustomMotion(
+  motion: MotionState,
+  paramNames: Record<string, string>,
+  transforms: Record<string, ValueTransform> = {},
+): MappedMotion {
+  const mapped: MappedMotion = {};
+  const custom = motion.custom ?? {};
+
+  for (const [key, param] of Object.entries(paramNames)) {
+    if (!param) {
+      continue;
+    }
+
+    const value = custom[key];
+    if (value === undefined) {
+      continue;
+    }
+
+    mapped[param] = applyTransform(transforms[key] ?? "identity", value);
   }
 
   return mapped;

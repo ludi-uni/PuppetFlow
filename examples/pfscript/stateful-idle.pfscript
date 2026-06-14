@@ -1,0 +1,10 @@
+-- Idle motion: breath, wander gaze, automatic blink (PFScript / Behavior)
+
+breathValue = breath(id = "breath", rate = 0.22)
+bodyLean = breathValue * 0.12 + 0.48
+
+lookOffset = wander(id = "lookX", speed = 0.18)
+lookX = lookOffset * 0.15 + 0.5
+
+blinkValue = blink(id = "blink", averageInterval = 4.0)
+eyeYaw = 1 - blinkValue * 0.85

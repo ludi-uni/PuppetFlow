@@ -47,6 +47,7 @@ Adapters → 外部 Viewer
 | [Behavior と Motion Graph](reference/behavior-and-graph.md) | AST、Graph ノード、編集の分担            |
 | [Motion Extension](reference/motion-extension.md)           | Extension Layer、Pack、custom パラメータ |
 | [PFScript](reference/pfscript.md)                         | 上級者向け Behavior DSL（.pfscript）   |
+| [Stateful 関数](reference/stateful.md)                    | フレーム跨ぎ状態・Physics Pack 連携    |
 | [プリセット](reference/presets.md)                          | Preset v3（`.pfpreset`）と公式 Pack 6 種 |
 | [アダプタ](reference/adapters.md)                           | VMC / Live2D / VRM / WebSocket / Logger  |
 | [State Sources](reference/sources.md)                       | HTTP / WebSocket / MQTT / Discord        |
@@ -57,6 +58,9 @@ Adapters → 外部 Viewer
 | ---------------------------------------------------------------------- | -------------------------------------------------- |
 | [追加仕様（Motion Extension / PFScript 設計メモ）](追加仕様.md)        | PFScript DSL / Extension Layer の設計草案          |
 | [実装計画（PFScript）](implementation-plan-pfscript.md)                | PFScript Issue 分解・**M1–M6 完了**        |
+| [Stateful 関数](reference/stateful.md)                                  | フレーム跨ぎ状態・Physics Pack 連携        |
+| [実装計画（Stateful Node）](implementation-plan-stateful.md)           | Stateful 関数・ノード Issue 分解（**完了**） |
+| [設計決定（Stateful）](adr/stateful-design-decisions.md)             | Stateful / Modifier / Plugin の境界              |
 | [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（未着手）                      |
 | [設計決定（Input & Timeline）](adr/input-timeline-design-decisions.md) | sticky Channel / global clock / phoneme テーブル等 |
 

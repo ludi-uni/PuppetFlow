@@ -7,6 +7,7 @@ import type {
 } from "@puppetflow/behavior";
 import { MOTION_STATE_KEYS, type MotionStateKey } from "@puppetflow/core";
 import type * as Blockly from "blockly/core";
+import { statefulBlockToStatements } from "./stateful-blocks.js";
 
 function isCompareOp(value: string): value is CompareOp {
   return [">", ">=", "<", "<=", "==", "!="].includes(value);
@@ -25,11 +26,21 @@ function statementChain(first: Blockly.Block | null): BehaviorStatement[] {
   let block = first;
 
   while (block) {
-    statements.push(blockToStatement(block));
+    statements.push(...blockToStatements(block));
     block = block.getNextBlock();
   }
 
   return statements;
+}
+
+function blockToStatements(block: Blockly.Block): BehaviorStatement[] {
+  if (block.type.startsWith("pf_stateful_")) {
+    const statefulStatements = statefulBlockToStatements(block);
+    if (statefulStatements.length > 0) {
+      return statefulStatements;
+    }
+  }
+  return [blockToStatement(block)];
 }
 
 function blockToStatement(block: Blockly.Block): BehaviorStatement {

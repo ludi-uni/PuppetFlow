@@ -58,11 +58,12 @@ export function HelpGuide({ mode }: HelpGuideProps) {
               <ol>
                 <li>
                   <strong>Pipeline</strong> — State（長寿命）と Channel（volume /
-                  phoneme 等）を入力。 口を動かすには Graph で mouthX / mouthY
-                  へのマッピングが必要です
+                  phoneme 等）を入力。Pipeline Outputs と Stateful 状態一覧で各段階を監視。
+                  口を動かすには Graph で mouthX / mouthY へのマッピングが必要です
                 </li>
                 <li>
-                  <strong>Scratch (Blockly)</strong> — If / Assign をブロックで編集
+                  <strong>Scratch (Blockly)</strong> — If / Assign に加え、Natural Motion
+                  カテゴリで呼吸・追従・視線・瞬きの stateful ブロック
                 </li>
                 <li>
                   <strong>PFScript</strong> — 上級者向け DSL。コンパイルして behavior /

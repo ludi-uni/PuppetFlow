@@ -135,6 +135,17 @@ function lowerCondition(expression: PfScriptExpression): BehaviorCondition {
     };
   }
 
+  if (
+    expression.type === "Call" ||
+    expression.type === "Boolean" ||
+    expression.type === "Identifier"
+  ) {
+    return {
+      kind: "Expr",
+      expression: lowerExpression(expression),
+    };
+  }
+
   throw new Error(`unsupported PFScript condition expression: ${expression.type}`);
 }
 

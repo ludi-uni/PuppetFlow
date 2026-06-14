@@ -152,6 +152,286 @@ function MultiplyNode({
   );
 }
 
+function OscillatorNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; frequency: number; stateId?: string };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Oscillator</strong>
+      <label className="node-field">
+        <span>frequency</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.05}
+          max={4}
+          step={0.05}
+          value={data.frequency}
+          onChange={(event) =>
+            onChange(id, { frequency: Number(event.target.value) || 0.5 })
+          }
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function SmoothNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; speed: number; stateId?: string };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <Handle type="target" position={Position.Left} />
+      <strong>Smooth</strong>
+      <label className="node-field">
+        <span>speed</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.1}
+          max={20}
+          step={0.1}
+          value={data.speed}
+          onChange={(event) => onChange(id, { speed: Number(event.target.value) || 2 })}
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function SpringNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; stiffness: number; damping: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <Handle type="target" position={Position.Left} />
+      <strong>Spring</strong>
+      <label className="node-field">
+        <span>stiffness</span>
+        <input
+          className="node-input"
+          type="number"
+          min={10}
+          max={500}
+          step={10}
+          value={data.stiffness}
+          onChange={(event) =>
+            onChange(id, { stiffness: Number(event.target.value) || 180 })
+          }
+        />
+      </label>
+      <label className="node-field">
+        <span>damping</span>
+        <input
+          className="node-input"
+          type="number"
+          min={1}
+          max={80}
+          step={1}
+          value={data.damping}
+          onChange={(event) => onChange(id, { damping: Number(event.target.value) || 18 })}
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function RandomHoldNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; interval: number; min: number; max: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Random Hold</strong>
+      <label className="node-field">
+        <span>interval (s)</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.2}
+          max={30}
+          step={0.1}
+          value={data.interval}
+          onChange={(event) =>
+            onChange(id, { interval: Number(event.target.value) || 3 })
+          }
+        />
+      </label>
+      <label className="node-field">
+        <span>min</span>
+        <input
+          className="node-input"
+          type="number"
+          min={-1}
+          max={1}
+          step={0.05}
+          value={data.min}
+          onChange={(event) => onChange(id, { min: Number(event.target.value) })}
+        />
+      </label>
+      <label className="node-field">
+        <span>max</span>
+        <input
+          className="node-input"
+          type="number"
+          min={-1}
+          max={1}
+          step={0.05}
+          value={data.max}
+          onChange={(event) => onChange(id, { max: Number(event.target.value) })}
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function BlinkNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; averageInterval: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Blink</strong>
+      <label className="node-field">
+        <span>avg interval (s)</span>
+        <input
+          className="node-input"
+          type="number"
+          min={1}
+          max={20}
+          step={0.5}
+          value={data.averageInterval}
+          onChange={(event) =>
+            onChange(id, { averageInterval: Number(event.target.value) || 4 })
+          }
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function BreathNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; rate: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Breath</strong>
+      <label className="node-field">
+        <span>rate</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.05}
+          max={1}
+          step={0.05}
+          value={data.rate}
+          onChange={(event) => onChange(id, { rate: Number(event.target.value) || 0.25 })}
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function WanderNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; speed: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Wander</strong>
+      <label className="node-field">
+        <span>speed</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.05}
+          max={2}
+          step={0.05}
+          value={data.speed}
+          onChange={(event) => onChange(id, { speed: Number(event.target.value) || 0.2 })}
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function CooldownNode({
+  id,
+  data,
+  onChange,
+}: {
+  id: string;
+  data: { label: string; duration: number };
+  onChange: (nodeId: string, patch: Record<string, unknown>) => void;
+}) {
+  return (
+    <div className="node node-extension">
+      <strong>Cooldown</strong>
+      <label className="node-field">
+        <span>duration (s)</span>
+        <input
+          className="node-input"
+          type="number"
+          min={0.1}
+          max={30}
+          step={0.1}
+          value={data.duration}
+          onChange={(event) =>
+            onChange(id, { duration: Number(event.target.value) || 3 })
+          }
+        />
+      </label>
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
 function ChannelInputNode({
   id,
   data,
@@ -382,6 +662,62 @@ function GraphEditorContent({
           }}
         />
       ),
+      oscillator: (props) => (
+        <OscillatorNode
+          id={props.id}
+          data={props.data as { label: string; frequency: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      smooth: (props) => (
+        <SmoothNode
+          id={props.id}
+          data={props.data as { label: string; speed: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      spring: (props) => (
+        <SpringNode
+          id={props.id}
+          data={props.data as { label: string; stiffness: number; damping: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      randomHold: (props) => (
+        <RandomHoldNode
+          id={props.id}
+          data={props.data as { label: string; interval: number; min: number; max: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      blink: (props) => (
+        <BlinkNode
+          id={props.id}
+          data={props.data as { label: string; averageInterval: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      breath: (props) => (
+        <BreathNode
+          id={props.id}
+          data={props.data as { label: string; rate: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      wander: (props) => (
+        <WanderNode
+          id={props.id}
+          data={props.data as { label: string; speed: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
+      cooldown: (props) => (
+        <CooldownNode
+          id={props.id}
+          data={props.data as { label: string; duration: number }}
+          onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
+        />
+      ),
       channelInput: (props) => (
         <ChannelInputNode
           id={props.id}
@@ -531,6 +867,14 @@ function GraphEditorContent({
         | "volumeToMouth"
         | "phonemeToShape"
         | "multiply"
+        | "oscillator"
+        | "smooth"
+        | "spring"
+        | "randomHold"
+        | "blink"
+        | "breath"
+        | "wander"
+        | "cooldown"
         | "output",
     ) => {
       markGraphDirty();
@@ -597,6 +941,110 @@ function GraphEditorContent({
             type,
             position: { x: 220, y },
             data: { label: "Multiply", gain: 0.5 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "oscillator") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Oscillator", frequency: 0.5 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "smooth") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Smooth", speed: 2 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "spring") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Spring", stiffness: 180, damping: 18 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "randomHold") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "RandomHold", interval: 3, min: -0.3, max: 0.3 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "blink") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Blink", averageInterval: 4 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "breath") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Breath", rate: 0.25 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "wander") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Wander", speed: 0.2 },
+          },
+        ]);
+        return;
+      }
+
+      if (type === "cooldown") {
+        setNodes((current) => [
+          ...current,
+          {
+            id,
+            type,
+            position: { x: 220, y },
+            data: { label: "Cooldown", duration: 3 },
           },
         ]);
         return;
@@ -740,6 +1188,33 @@ function GraphEditorContent({
           </button>
           <button type="button" onClick={() => addNode("phonemeToShape")}>
             + Phoneme→Shape
+          </button>
+        </div>
+        <div className="graph-toolbar-group">
+          <span className="graph-toolbar-label">Stateful</span>
+          <button type="button" onClick={() => addNode("oscillator")}>
+            + Oscillator
+          </button>
+          <button type="button" onClick={() => addNode("smooth")}>
+            + Smooth
+          </button>
+          <button type="button" onClick={() => addNode("spring")}>
+            + Spring
+          </button>
+          <button type="button" onClick={() => addNode("randomHold")}>
+            + Random Hold
+          </button>
+          <button type="button" onClick={() => addNode("blink")}>
+            + Blink
+          </button>
+          <button type="button" onClick={() => addNode("breath")}>
+            + Breath
+          </button>
+          <button type="button" onClick={() => addNode("wander")}>
+            + Wander
+          </button>
+          <button type="button" onClick={() => addNode("cooldown")}>
+            + Cooldown
           </button>
         </div>
         <div className="graph-toolbar-group">

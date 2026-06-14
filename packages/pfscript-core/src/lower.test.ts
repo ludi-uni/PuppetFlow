@@ -164,6 +164,22 @@ end
       },
     });
   });
+
+  it("lowers call expression conditions", () => {
+    const program = parsePfScript(`if cooldown(id = "blink", duration = 3.0) then
+    eyeYaw = 0.2
+end`);
+    const behavior = lowerPfScriptToBehavior(program);
+    const rootIf = behavior.statements[0];
+
+    expect(rootIf).toMatchObject({
+      type: "If",
+      condition: {
+        kind: "Expr",
+        expression: { type: "Call", callee: "cooldown" },
+      },
+    });
+  });
 });
 
 describe("motion aliases", () => {

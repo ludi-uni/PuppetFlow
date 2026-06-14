@@ -36,9 +36,15 @@ export interface StringCompareCondition {
   right: string;
 }
 
+export interface BehaviorExprCondition {
+  kind: "Expr";
+  expression: BehaviorExpression;
+}
+
 export type BehaviorCondition =
   | CompareCondition
   | StringCompareCondition
+  | BehaviorExprCondition
   | LogicAnd
   | LogicOr
   | LogicNot;
@@ -92,6 +98,10 @@ export function isBehaviorCondition(value: unknown): value is BehaviorCondition 
     return true;
   }
 
+  if ("kind" in value && (value as { kind?: string }).kind === "Expr") {
+    return true;
+  }
+
   return (
     "type" in value &&
     ["And", "Or", "Not"].includes(String((value as { type?: string }).type))
@@ -141,6 +151,17 @@ function parseBehaviorCondition(value: unknown, path: string): BehaviorCondition
       left: condition.left,
       op: condition.op as CompareOp,
       right: condition.right,
+    };
+  }
+
+  if ("kind" in value && (value as { kind?: string }).kind === "Expr") {
+    const exprCondition = value as Partial<BehaviorExprCondition>;
+    if (!exprCondition.expression || typeof exprCondition.expression !== "object") {
+      throw new Error(`Expr condition requires expression at ${path}`);
+    }
+    return {
+      kind: "Expr",
+      expression: exprCondition.expression as BehaviorExpression,
     };
   }
 

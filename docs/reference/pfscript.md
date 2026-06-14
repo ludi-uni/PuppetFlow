@@ -102,6 +102,18 @@ end
 | Trigonometry   | `sin`, `cos`, `tan`                               |
 | Noise          | `noise(x)` — 決定論的 1D ノイズ [0, 1)            |
 | Timeline       | `eventActive("blink")` — アクティブイベント type 一致 |
+| **Stateful**   | `oscillator`, `smooth`, `spring`, `randomHold`, `blink`, `breath`, `wander`, `cooldown` |
+
+Stateful 関数は `id` でインスタンスを識別し、フレーム跨ぎで状態を保持します。詳細: [stateful.md](stateful.md)
+
+```pfscript
+bodyLean = oscillator(id = "body", frequency = 0.3) * 0.1 + 0.5
+if cooldown(id = "wave", duration = 3) then
+    wave()
+end
+```
+
+`oscillator` / `wander` の出力は **-1〜+1** です。代入前にスケールしてください。
 
 Plugin / Extension 関数（`thinking()` 等）は **文としての呼び出し**（`CallStmt`）を使います。式中の任意関数呼び出しは Phase 1 非対応です。
 
@@ -189,6 +201,9 @@ Node.js のファイル読込: `import { readPfScriptFile } from "@puppetflow/pr
 | [examples/pfscript/basic-smile.pfscript](../../examples/pfscript/basic-smile.pfscript) | 最小代入 |
 | [examples/pfscript/lipsync-thinking.pfscript](../../examples/pfscript/lipsync-thinking.pfscript) | リップシンク + thinking |
 | [examples/pfscript/pfscript-demo.pfpreset](../../examples/pfscript/pfscript-demo.pfpreset) | Preset 統合例 |
+| [examples/pfscript/stateful-breathing.pfscript](../../examples/pfscript/stateful-breathing.pfscript) | Stateful 呼吸 |
+| [examples/pfscript/stateful-spring-look.pfscript](../../examples/pfscript/stateful-spring-look.pfscript) | Spring + smooth |
+| [examples/pfscript/stateful-idle.pfscript](../../examples/pfscript/stateful-idle.pfscript) | 待機（blink / wander / cooldown） |
 
 ---
 
@@ -205,4 +220,4 @@ Node.js のファイル読込: `import { readPfScriptFile } from "@puppetflow/pr
 
 ---
 
-関連: [プリセット](presets.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [Motion Extension](motion-extension.md) / [実装計画（PFScript）](../implementation-plan-pfscript.md)
+関連: [プリセット](presets.md) / [Behavior と Motion Graph](behavior-and-graph.md) / [Stateful 関数](stateful.md) / [Motion Extension](motion-extension.md) / [実装計画（PFScript）](../implementation-plan-pfscript.md)

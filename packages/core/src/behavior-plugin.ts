@@ -7,7 +7,27 @@ export interface PluginInputStores {
   channels: ChannelStore;
 }
 
+export interface BehaviorPluginContext {
+  deltaTime: number;
+  time: number;
+  frame?: {
+    deltaTime: number;
+    frameNumber: number;
+    elapsedTime: number;
+  };
+  runStatefulNumber?: (
+    functionName: string,
+    instanceId: string,
+    config?: Record<string, number | string>,
+    input?: number,
+  ) => number | undefined;
+}
+
 export interface BehaviorPlugin {
   id: string;
-  process(input: PluginInputStores, motion: MotionState): Partial<MotionState>;
+  process(
+    input: PluginInputStores,
+    motion: MotionState,
+    context?: BehaviorPluginContext,
+  ): Partial<MotionState>;
 }

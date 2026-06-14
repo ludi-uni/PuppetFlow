@@ -1,7 +1,7 @@
 import { createSocket, type Socket } from "node:dgram";
 import type { Adapter } from "@puppetflow/adapter-core";
 import type { MotionState } from "@puppetflow/core";
-import { mapMotion, type MotionMapperProfile } from "@puppetflow/motion-mapper";
+import { mapCustomMotion, mapMotion, type MotionMapperProfile, type ValueTransform } from "@puppetflow/motion-mapper";
 import { encodeBlendShapeMessage } from "./osc-encoder.js";
 import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT } from "./types.js";
 
@@ -10,6 +10,8 @@ export interface NodeOscAdapterConfig {
   host?: string;
   port?: number;
   profile: MotionMapperProfile;
+  customParams?: Record<string, string>;
+  customTransforms?: Record<string, ValueTransform>;
 }
 
 export class NodeOscAdapter implements Adapter {
@@ -18,6 +20,8 @@ export class NodeOscAdapter implements Adapter {
   private readonly host: string;
   private readonly port: number;
   private readonly profile: MotionMapperProfile;
+  private readonly customParams: Record<string, string>;
+  private readonly customTransforms: Record<string, ValueTransform>;
   private socket: Socket | null = null;
 
   constructor(config: NodeOscAdapterConfig) {
@@ -25,6 +29,8 @@ export class NodeOscAdapter implements Adapter {
     this.host = config.host ?? DEFAULT_VMC_HOST;
     this.port = config.port ?? DEFAULT_VMC_PORT;
     this.profile = config.profile;
+    this.customParams = config.customParams ?? {};
+    this.customTransforms = config.customTransforms ?? {};
   }
 
   async initialize(): Promise<void> {
@@ -33,7 +39,10 @@ export class NodeOscAdapter implements Adapter {
 
   async update(motion: MotionState, _deltaTime: number): Promise<void> {
     const socket = this.getSocket();
-    const mapped = mapMotion(motion, this.profile);
+    const mapped = {
+      ...mapMotion(motion, this.profile),
+      ...mapCustomMotion(motion, this.customParams, this.customTransforms),
+    };
 
     for (const [param, value] of Object.entries(mapped)) {
       const packet = encodeBlendShapeMessage(param, value);

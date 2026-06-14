@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "@puppetflow/core": "workspace:*",
-    "@puppetflow/extension-core": "workspace:*"
+    "@puppetflow/extension-core": "workspace:*",
+    "@puppetflow/stateful-core": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.5.0"

@@ -19,6 +19,14 @@ import {
 import { executeMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
 import { executeExtensions, type PresetExtensions } from "@puppetflow/extension-core";
 import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
+import {
+  createRuntimeStatefulRegistry,
+  runStatefulNumber,
+  StatefulStore,
+  type FrameContext,
+  type StatefulEntrySnapshot,
+} from "@puppetflow/stateful-core";
+import type { BehaviorPluginContext } from "@puppetflow/core";
 import type { LoadedPreset } from "@puppetflow/preset";
 import type { StateSource } from "@puppetflow/source-core";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
@@ -41,6 +49,7 @@ export type MotionUpdateListener = (update: {
   channels: Record<string, number | string | boolean>;
   activeTimelineEvents: TimelineEvent[];
   timelineCurrentMs: number;
+  statefulSnapshot: StatefulEntrySnapshot[];
 }) => void;
 
 function now(): number {
@@ -68,6 +77,9 @@ export class PuppetFlowRuntime {
   private motionGraph: MotionGraphDocument = { nodes: [], edges: [] };
   private presetExtensions: PresetExtensions | undefined;
   private elapsedTime = 0;
+  private frameNumber = 0;
+  private readonly statefulStore = new StatefulStore();
+  private readonly statefulRegistry = createRuntimeStatefulRegistry();
   private timelineCurrentMs = 0;
   private activeTimelineEvents: TimelineEvent[] = [];
 
@@ -127,6 +139,8 @@ export class PuppetFlowRuntime {
     this.motionGraph = loaded.graph;
     this.presetExtensions = loaded.extensions;
     this.elapsedTime = 0;
+    this.frameNumber = 0;
+    this.statefulStore.reset();
 
     for (const plugin of loaded.plugins) {
       this.use(plugin);
@@ -177,6 +191,9 @@ export class PuppetFlowRuntime {
 
     await this.disposeAdapters();
     await this.disposeSources();
+    this.statefulStore.reset();
+    this.elapsedTime = 0;
+    this.frameNumber = 0;
   }
 
   isRunning(): boolean {
@@ -211,6 +228,7 @@ export class PuppetFlowRuntime {
       channels: this.channels.getAll(),
       activeTimelineEvents: this.activeTimelineEvents,
       timelineCurrentMs: this.timelineCurrentMs,
+      statefulSnapshot: this.statefulStore.snapshot(),
     };
   }
 
@@ -324,6 +342,11 @@ export class PuppetFlowRuntime {
           : (currentTime - this.lastTickTime) / 1000;
       this.lastTickTime = currentTime;
       this.elapsedTime += deltaTime;
+      const frame: FrameContext = {
+        deltaTime,
+        frameNumber: this.frameNumber++,
+        elapsedTime: this.elapsedTime,
+      };
       this.timelineCurrentMs = Math.floor(this.elapsedTime * 1000);
       this.activeTimelineEvents = this.timeline.getActiveEvents(this.timelineCurrentMs);
 
@@ -353,12 +376,31 @@ export class PuppetFlowRuntime {
       }
 
       const pluginInput = this.getPluginInput();
+      const pluginContext: BehaviorPluginContext = {
+        deltaTime,
+        time: this.elapsedTime,
+        frame,
+        runStatefulNumber: (functionName, instanceId, config, input) =>
+          runStatefulNumber(
+            {
+              deltaTime,
+              time: this.elapsedTime,
+              frame,
+              statefulStore: this.statefulStore,
+              statefulRegistry: this.statefulRegistry,
+            },
+            functionName,
+            instanceId,
+            config,
+            input ?? 0,
+          ),
+      };
       const pipelineOutputs: PluginOutputSnapshot[] = [];
       const partials: Partial<MotionState>[] = [];
 
       for (const plugin of this.plugins) {
         try {
-          const output = plugin.process(pluginInput, this.renderedMotion);
+          const output = plugin.process(pluginInput, this.renderedMotion, pluginContext);
           pipelineOutputs.push({ pluginId: plugin.id, output });
           partials.push(output);
         } catch (error) {
@@ -380,6 +422,10 @@ export class PuppetFlowRuntime {
           renderedMotion: this.renderedMotion,
           deltaTime,
           time: this.elapsedTime,
+          frameNumber: frame.frameNumber,
+          frame,
+          statefulStore: this.statefulStore,
+          statefulRegistry: this.statefulRegistry,
           activeTimelineEvents: this.activeTimelineEvents,
         });
         behaviorPackInvocations = behaviorResult.packInvocations.map((invocation) => ({
@@ -403,6 +449,9 @@ export class PuppetFlowRuntime {
           activeTimelineEvents: this.activeTimelineEvents,
           deltaTime,
           time: this.elapsedTime,
+          frame,
+          statefulStore: this.statefulStore,
+          statefulRegistry: this.statefulRegistry,
         });
         pipelineOutputs.push({ pluginId: "graph", output: graphOutput });
         partials.push(graphOutput);
@@ -432,6 +481,9 @@ export class PuppetFlowRuntime {
             timelineCurrentMs: this.timelineCurrentMs,
             activeTimelineEvents: this.activeTimelineEvents,
             motion: this.renderedMotion,
+            statefulStore: this.statefulStore,
+            statefulRegistry: this.statefulRegistry,
+            frame,
           },
           {
             presetExtensions: this.presetExtensions,

@@ -4,6 +4,7 @@ export {
   type BehaviorBlock,
   type BehaviorCondition,
   type BehaviorExprAssign,
+  type BehaviorExprCondition,
   type BehaviorIf,
   type BehaviorMotionPack,
   type BehaviorStatement,

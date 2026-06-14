@@ -1,5 +1,17 @@
 import { clamp01 } from "@puppetflow/core";
-import type { ExtensionPlugin, MotionRegistry } from "@puppetflow/extension-core";
+import type { ExtensionContext, ExtensionPlugin, MotionRegistry } from "@puppetflow/extension-core";
+import { runStatefulNumber } from "@puppetflow/stateful-core";
+
+function thinkingMotion(ctx: ExtensionContext, intensity: number) {
+  const oscLook = runStatefulNumber(ctx, "oscillator", "thinking:look", { frequency: 0.4 });
+  const lookOsc = oscLook ?? Math.sin(ctx.time * 0.4);
+  return {
+    lookX: clamp01(0.5 - intensity * 0.18 + lookOsc * intensity * 0.04),
+    lookY: clamp01(0.5 + intensity * 0.08),
+    headTilt: clamp01(0.5 + intensity * 0.12),
+    facePitch: clamp01(0.5 - intensity * 0.04),
+  };
+}
 
 export const thinkingExtensionPlugin: ExtensionPlugin = {
   id: "thinking",
@@ -22,15 +34,7 @@ export const thinkingExtensionPlugin: ExtensionPlugin = {
       ],
       execute(ctx, config) {
         const intensity = config.intensity ?? 0.8;
-        const phase = ctx.time * 0.4;
-        return {
-          standard: {
-            lookX: clamp01(0.5 - intensity * 0.18 + Math.sin(phase) * 0.04),
-            lookY: clamp01(0.5 + intensity * 0.08),
-            headTilt: clamp01(0.5 + intensity * 0.12),
-            facePitch: clamp01(0.5 - intensity * 0.04),
-          },
-        };
+        return { standard: thinkingMotion(ctx, intensity) };
       },
     });
   },

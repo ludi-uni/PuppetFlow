@@ -2,7 +2,7 @@ import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriOscAdapter } from "@puppetflow/adapter-vmc";
 import type { MotionState, StateValue } from "@puppetflow/core";
 import { loadPreset } from "@puppetflow/preset";
-import { PuppetFlowRuntime, type PluginOutputSnapshot } from "@puppetflow/runtime";
+import { PuppetFlowRuntime, type PluginOutputSnapshot, type StatefulEntrySnapshot } from "@puppetflow/runtime";
 import { HttpSource } from "@puppetflow/source-http";
 import { MqttSource } from "@puppetflow/source-mqtt";
 import { WebSocketSource } from "@puppetflow/source-websocket";
@@ -85,6 +85,8 @@ function attachMapperOutputs(instance: PuppetFlowRuntime): void {
         host: model.host,
         port: model.port,
         profile: toMotionMapperProfile(target, model),
+        customParams: model.customParams,
+        customTransforms: model.customTransforms,
       }),
     );
   }
@@ -300,6 +302,7 @@ export type MotionPipelineUpdate = {
     value: unknown;
   }>;
   timelineCurrentMs: number;
+  statefulSnapshot: StatefulEntrySnapshot[];
 };
 
 export function subscribeMotionPipeline(

@@ -6,6 +6,7 @@ import {
   cloneMapperConfig,
   exportModelProfile,
   getMapperTargets,
+  pruneUnusedCustomMappings,
   type MapperTarget,
   type MotionMapperEditorConfig,
   resetModelConfig,
@@ -22,12 +23,14 @@ const TARGET_LABELS: Record<MapperTarget, string> = {
 interface MotionMapperEditorProps {
   initialConfig: MotionMapperEditorConfig;
   activePluginIds: string[];
+  extensionCustomParamIds: string[];
   onApply: (config: MotionMapperEditorConfig) => Promise<void>;
 }
 
 export function MotionMapperEditor({
   initialConfig,
   activePluginIds,
+  extensionCustomParamIds,
   onApply,
 }: MotionMapperEditorProps) {
   const [config, setConfig] = useState<MotionMapperEditorConfig>(
@@ -173,6 +176,66 @@ export function MotionMapperEditor({
         ))}
       </div>
 
+      {extensionCustomParamIds.length > 0 ? (
+        <>
+          <h3>Extension custom parameters</h3>
+          <p className="hint">
+            Motion Pack が <code>MotionState.custom</code>{" "}
+            に書き込むパラメータです。空欄の項目は送信されません。
+          </p>
+          <div className="mapping-table mapper-table">
+            <div className="mapping-header">
+              <span>Custom Key</span>
+              <span>Parameter</span>
+              <span>Transform</span>
+            </div>
+            {extensionCustomParamIds.map((key) => (
+              <div key={key} className="mapping-row mapper-row">
+                <span>custom.{key}</span>
+                <input
+                  className="text-input"
+                  value={model.customParams[key] ?? ""}
+                  placeholder="(skip)"
+                  onChange={(event) => {
+                    setConfig((current) => ({
+                      ...current,
+                      [activeTarget]: {
+                        ...current[activeTarget],
+                        customParams: {
+                          ...current[activeTarget].customParams,
+                          [key]: event.target.value,
+                        },
+                      },
+                    }));
+                  }}
+                />
+                <select
+                  value={model.customTransforms[key] ?? "identity"}
+                  onChange={(event) => {
+                    setConfig((current) => ({
+                      ...current,
+                      [activeTarget]: {
+                        ...current[activeTarget],
+                        customTransforms: {
+                          ...current[activeTarget].customTransforms,
+                          [key]: event.target.value as ValueTransform,
+                        },
+                      },
+                    }));
+                  }}
+                >
+                  {TRANSFORM_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <h2>Logger</h2>
       <label className="row">
         <span>Enabled</span>
@@ -203,7 +266,12 @@ export function MotionMapperEditor({
       </label>
 
       <div className="adapter-actions">
-        <button type="button" onClick={() => void onApply(config)}>
+        <button
+          type="button"
+          onClick={() =>
+            void onApply(pruneUnusedCustomMappings(config, extensionCustomParamIds))
+          }
+        >
           Apply Mapper
         </button>
 

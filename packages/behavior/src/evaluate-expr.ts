@@ -2,6 +2,7 @@ import type { ChannelStore, StateStore } from "@puppetflow/core";
 import type { BehaviorExecutionContext } from "./context.js";
 import type { BehaviorExpression, BehaviorNamedArgExpr } from "./expr.js";
 import { callBuiltinFunction } from "./builtin-functions.js";
+import { callStatefulFunction } from "@puppetflow/stateful-core";
 import {
   resolveActiveTimelineEventIds,
   resolveCurrentPhoneme,
@@ -101,6 +102,37 @@ function evaluateCall(
   args: BehaviorNamedArgExpr[],
   ctx: BehaviorExecutionContext,
 ): number | string | boolean {
+  const namedRecord: Record<string, number | string | boolean> = {};
+  let inputValue = 0;
+
+  for (const arg of args) {
+    const value = evaluateExpression(arg.value, ctx);
+    if (!arg.name) {
+      continue;
+    }
+    if (arg.name === "value" || arg.name === "target") {
+      inputValue = typeof value === "number" ? value : Number(value) || 0;
+      continue;
+    }
+    if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
+      namedRecord[arg.name] = value;
+    }
+  }
+
+  if (ctx.statefulStore && ctx.statefulRegistry && ctx.frame) {
+    const statefulResult = callStatefulFunction(
+      ctx.statefulRegistry,
+      ctx.statefulStore,
+      ctx.frame,
+      callee,
+      namedRecord,
+      inputValue,
+    );
+    if (statefulResult !== undefined) {
+      return statefulResult;
+    }
+  }
+
   const positional = args.filter((arg) => !arg.name).map((arg) => evaluateExpression(arg.value, ctx));
   const named = args.filter((arg) => arg.name);
   const evaluatedArgs =

@@ -86,6 +86,9 @@ export interface ExtensionContext {
   activeTimelineEvents: readonly TimelineEvent[];
   motion: MotionState;
   custom: Readonly<Record<string, number>>;
+  statefulStore?: import("@puppetflow/stateful-core").StatefulStore;
+  statefulRegistry?: import("@puppetflow/stateful-core").StatefulRegistry;
+  frame?: import("@puppetflow/stateful-core").FrameContext;
 }
 
 export interface ExtensionPackEntry {

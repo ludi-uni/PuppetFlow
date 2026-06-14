@@ -1,5 +1,5 @@
 import type { MotionState } from "@puppetflow/core";
-import type { PluginOutputSnapshot } from "@puppetflow/runtime";
+import type { PluginOutputSnapshot, StatefulEntrySnapshot } from "@puppetflow/runtime";
 import {
   CHANNEL_SLIDERS,
   EMOTION_CHANNEL_OPTIONS,
@@ -11,6 +11,7 @@ import { KeyValueTable } from "./KeyValueTable";
 import { MotionTable } from "./MotionTable";
 import { MouthStatusBar } from "./MouthStatusBar";
 import { PluginOutputsPanel } from "./PluginOutputsPanel";
+import { StatefulDebugPanel } from "./StatefulDebugPanel";
 
 function formatValue(value: number): string {
   return value.toFixed(3);
@@ -40,6 +41,7 @@ export interface PipelineTabProps {
   stateSnapshot: Record<string, number>;
   behaviorPluginIds: string[];
   pipelineOutputs: PluginOutputSnapshot[];
+  statefulSnapshot: StatefulEntrySnapshot[];
 }
 
 export function PipelineTab({
@@ -66,6 +68,7 @@ export function PipelineTab({
   stateSnapshot,
   behaviorPluginIds,
   pipelineOutputs,
+  statefulSnapshot,
 }: PipelineTabProps) {
   return (
     <section className="preview-layout">
@@ -257,6 +260,14 @@ export function PipelineTab({
               behaviorPlugins / behavior / graph 各段階の MotionState（マージ前）。
             </p>
             <PluginOutputsPanel pluginOutputs={pipelineOutputs} />
+          </div>
+          <div className="pipeline-stages">
+            <h2>Stateful 状態</h2>
+            <p className="hint">
+              PFScript / Graph / Extension Pack が保持するフレーム跨ぎ状態（id /
+              現在値 / 内部 state）。
+            </p>
+            <StatefulDebugPanel entries={statefulSnapshot} />
           </div>
         </>
       ) : null}

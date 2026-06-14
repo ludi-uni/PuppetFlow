@@ -1,0 +1,7 @@
+-- Breathing motion via stateful oscillator (PFScript / Behavior)
+bodyOsc = oscillator(id = "body", frequency = 0.25)
+bodyLean = bodyOsc * 0.08 + 0.5
+
+-- Smooth interest changes before driving mouth
+smoothedInterest = smooth(id = "interest", value = interest, speed = 2.0)
+mouthX = smoothedInterest * 0.4

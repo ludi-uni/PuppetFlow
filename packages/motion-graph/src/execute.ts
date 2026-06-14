@@ -12,6 +12,12 @@ import {
 import type { StateStore } from "@puppetflow/core";
 import type { TimelineStore } from "@puppetflow/core";
 import {
+  evaluateStatefulGraphNode,
+  type FrameContext,
+  type StatefulRegistry,
+  type StatefulStore,
+} from "@puppetflow/stateful-core";
+import {
   isMotionStateKey,
   type MotionGraphDocument,
   type MotionGraphNode,
@@ -25,6 +31,9 @@ export interface MotionGraphContext {
   activeTimelineEvents: TimelineEvent[];
   deltaTime: number;
   time: number;
+  frame?: FrameContext;
+  statefulStore?: StatefulStore;
+  statefulRegistry?: StatefulRegistry;
 }
 
 function topologicalOrder(document: MotionGraphDocument): MotionGraphNode[] {
@@ -232,6 +241,28 @@ function evaluateNode(
     case "noise": {
       const amplitude = Number(node.data.amplitude ?? 0.02);
       return clamp01(0.5 + (Math.random() - 0.5) * amplitude * 2);
+    }
+    case "oscillator":
+    case "smooth":
+    case "spring":
+    case "randomHold":
+    case "blink":
+    case "breath":
+    case "wander":
+    case "cooldown": {
+      if (!ctx.statefulStore || !ctx.statefulRegistry || !ctx.frame) {
+        return 0;
+      }
+      const input = getSingleInput(node.id, values, document);
+      return evaluateStatefulGraphNode(
+        node.type,
+        node.data,
+        node.id,
+        input,
+        ctx.frame,
+        ctx.statefulStore,
+        ctx.statefulRegistry,
+      );
     }
     default:
       return 0;

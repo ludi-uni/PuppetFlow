@@ -1,0 +1,7 @@
+-- Spring-driven ear angle and random gaze hold (PFScript / Behavior)
+
+earOffset = spring(id = "ear", target = interest, stiffness = 160, damping = 16)
+earAngle = earOffset * 0.3 + 0.5
+
+lookOffset = randomHold(id = "look", interval = 2.5, min = -0.25, max = 0.25)
+lookX = lookOffset * 0.4 + 0.5

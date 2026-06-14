@@ -5,3 +5,4 @@ export {
   type MotionUpdateListener,
   type PluginOutputSnapshot,
 } from "./runtime.js";
+export type { StatefulEntrySnapshot } from "@puppetflow/stateful-core";

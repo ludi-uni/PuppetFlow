@@ -51,7 +51,7 @@ import {
   mergeGraphPart,
 } from "./utils/preset-parts";
 import { applyPresetToStudio } from "./utils/preset-apply";
-import { extractExtensionsJson } from "./utils/extension-config";
+import { extractExtensionsJson, getActiveExtensionCustomParameterIds } from "./utils/extension-config";
 import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "./utils/plugin-config";
 import { resolveNextStep } from "./utils/next-step";
 import { validatePresetJson } from "./utils/preset-validation";
@@ -160,6 +160,9 @@ export function App() {
   const [mqttTopic, setMqttTopic] = useState("");
   const [appliedSources, setAppliedSources] = useState<SourceConfig>(getSourceConfig());
   const [pipelineOutputs, setPipelineOutputs] = useState<PluginOutputSnapshot[]>([]);
+  const [statefulSnapshot, setStatefulSnapshot] = useState<
+    MotionPipelineUpdate["statefulSnapshot"]
+  >([]);
   const [behaviorPluginIds, setBehaviorPluginIds] = useState<string[]>(
     getPresetBehaviorPluginIds(getCurrentPreset()),
   );
@@ -244,6 +247,16 @@ export function App() {
       }),
     [appliedMapperConfig, graphJson, pluginsHaveChanges],
   );
+  const extensionCustomParamIds = useMemo(() => {
+    try {
+      const extensions = JSON.parse(extensionsJson) as Parameters<
+        typeof getActiveExtensionCustomParameterIds
+      >[0];
+      return getActiveExtensionCustomParameterIds(extensions);
+    } catch {
+      return [];
+    }
+  }, [extensionsJson]);
 
   const handleStudioModeChange = useCallback((nextMode: StudioMode) => {
     saveStudioMode(nextMode);
@@ -286,10 +299,12 @@ export function App() {
             channels,
             activeTimelineEvents: events,
             timelineCurrentMs: currentMs,
+            statefulSnapshot: statefulEntries,
           }) => {
             setTargetMotion(target);
             setRenderedMotion(rendered);
             setPipelineOutputs(outputs);
+            setStatefulSnapshot(statefulEntries);
             setChannelSnapshot(channels);
             setActiveTimelineEvents(events);
             setTimelineCurrentMs(currentMs);
@@ -703,6 +718,7 @@ export function App() {
           stateSnapshot={stateSnapshot}
           behaviorPluginIds={behaviorPluginIds}
           pipelineOutputs={pipelineOutputs}
+          statefulSnapshot={statefulSnapshot}
         />
       ) : null}
 
@@ -710,6 +726,7 @@ export function App() {
         <Suspense fallback={<p className="hint">Scratch Editor を読み込み中…</p>}>
           <ScratchEditor
             presetJson={assembledPresetJson}
+            behaviorPluginsJson={behaviorPluginsJson}
             activePluginIds={activePluginIds}
             onPreviewJson={setBehaviorPreviewJson}
             onApply={async (_behavior, merged) => {
@@ -1129,6 +1146,7 @@ export function App() {
           <SimpleOscMapperEditor
             key={mapperEditorKey}
             initialConfig={getMapperConfig()}
+            extensionCustomParamIds={extensionCustomParamIds}
             onApply={async (config) => {
               await setMapperConfig(config);
               setAppliedMapperConfig(getMapperConfig());
@@ -1146,6 +1164,7 @@ export function App() {
             key={mapperEditorKey}
             initialConfig={getMapperConfig()}
             activePluginIds={activePluginIds}
+            extensionCustomParamIds={extensionCustomParamIds}
             onApply={async (config) => {
               await setMapperConfig(config);
               setAppliedMapperConfig(getMapperConfig());

@@ -22,4 +22,26 @@ describe("BlinkPlugin", () => {
     const plugin = new BlinkPlugin({ blinkStrength: 5 });
     expect((plugin as unknown as { blinkStrength: number }).blinkStrength).toBe(1);
   });
+
+  it("uses stateful blink when runStatefulNumber is provided", () => {
+    const plugin = new BlinkPlugin({ blinkStrength: 0.5 });
+    const output = plugin.process(pluginInput(new StateStore()), DEFAULT_MOTION_STATE, {
+      deltaTime: 1 / 60,
+      time: 1,
+      runStatefulNumber: () => 0.8,
+    });
+
+    expect(output.eyeYaw).toBeCloseTo(0.6, 2);
+  });
+
+  it("returns empty output when stateful blink is idle", () => {
+    const plugin = new BlinkPlugin();
+    const output = plugin.process(pluginInput(new StateStore()), DEFAULT_MOTION_STATE, {
+      deltaTime: 1 / 60,
+      time: 1,
+      runStatefulNumber: () => 0,
+    });
+
+    expect(output).toEqual({});
+  });
 });

@@ -135,6 +135,19 @@ export function mapEditorNodeDataToRuntime(
     return numericConfigFromData(node.data);
   }
 
+  if (
+    type === "oscillator" ||
+    type === "smooth" ||
+    type === "spring" ||
+    type === "randomHold" ||
+    type === "blink" ||
+    type === "breath" ||
+    type === "wander" ||
+    type === "cooldown"
+  ) {
+    return numericConfigFromData(node.data);
+  }
+
   return { ...node.data };
 }
 
@@ -142,7 +155,15 @@ function editorNodeDataFromRuntime(node: MotionGraphNode): Record<string, unknow
   if (
     node.type === "motionPack" ||
     node.type === "motionGenerator" ||
-    node.type.startsWith("ext:")
+    node.type.startsWith("ext:") ||
+    node.type === "oscillator" ||
+    node.type === "smooth" ||
+    node.type === "spring" ||
+    node.type === "randomHold" ||
+    node.type === "blink" ||
+    node.type === "breath" ||
+    node.type === "wander" ||
+    node.type === "cooldown"
   ) {
     return {
       label: String(

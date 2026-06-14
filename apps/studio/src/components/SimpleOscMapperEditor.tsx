@@ -8,6 +8,7 @@ import { cloneMapperConfig, type MotionMapperEditorConfig } from "../mapper-conf
 
 interface SimpleOscMapperEditorProps {
   initialConfig: MotionMapperEditorConfig;
+  extensionCustomParamIds?: string[];
   onApply: (config: MotionMapperEditorConfig) => Promise<void>;
   onOpenExpert: () => void;
 }
@@ -32,6 +33,7 @@ function detectViewerPreset(config: MotionMapperEditorConfig): string {
 
 export function SimpleOscMapperEditor({
   initialConfig,
+  extensionCustomParamIds = [],
   onApply,
   onOpenExpert,
 }: SimpleOscMapperEditorProps) {
@@ -79,6 +81,12 @@ export function SimpleOscMapperEditor({
         <p className="hint">
           まず外部 Viewer を起動し、VMC / OSC 受信を有効にしてください。
         </p>
+        {extensionCustomParamIds.length > 0 ? (
+          <p className="hint emotion-plugin-hint">
+            尻尾・耳などの拡張パラメータ（{extensionCustomParamIds.join(", ")}
+            ）の OSC 送信名は「詳細設定（エキスパート）」の Motion Mapper で設定してください。
+          </p>
+        ) : null}
       </div>
 
       <div className="mapper-actions">

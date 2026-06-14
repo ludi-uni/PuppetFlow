@@ -27,11 +27,13 @@
     "@puppetflow/extension-core": "workspace:*",
     "@puppetflow/motion-graph": "workspace:*",
     "@puppetflow/preset": "workspace:*",
-    "@puppetflow/source-core": "workspace:*"
+    "@puppetflow/source-core": "workspace:*",
+    "@puppetflow/stateful-core": "workspace:*"
   },
   "devDependencies": {
     "@puppetflow/modifier": "workspace:*",
     "@puppetflow/motion-mapper": "workspace:*",
+    "@puppetflow/plugin-gaze": "workspace:*",
     "tsup": "^8.5.0"
   }
 }

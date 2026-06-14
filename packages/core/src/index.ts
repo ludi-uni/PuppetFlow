@@ -1,4 +1,4 @@
-export type { BehaviorPlugin, PluginInputStores } from "./behavior-plugin.js";
+export type { BehaviorPlugin, BehaviorPluginContext, PluginInputStores } from "./behavior-plugin.js";
 export {
   OFFICIAL_CHANNEL_KEYS,
   type AudioChannel,

@@ -1,6 +1,6 @@
 import { DEFAULT_MOTION_STATE } from "@puppetflow/core";
 import { describe, expect, it } from "vitest";
-import { mapMotion } from "./map-motion.js";
+import { mapCustomMotion, mapMotion } from "./map-motion.js";
 import { LIVE2D_PROFILE, VMC_PROFILE, VRM_PROFILE } from "./profiles.js";
 
 describe("mapMotion", () => {
@@ -38,5 +38,25 @@ describe("mapMotion", () => {
     const mapped = mapMotion({ ...DEFAULT_MOTION_STATE, mouthX: 0.8 }, VRM_PROFILE);
 
     expect(mapped.Fcl_MTH_Smile).toBe(0.8);
+  });
+});
+
+describe("mapCustomMotion", () => {
+  it("maps MotionState.custom keys to OSC params", () => {
+    const mapped = mapCustomMotion(
+      { ...DEFAULT_MOTION_STATE, custom: { tailWag: 0.75 } },
+      { tailWag: "ParamTail" },
+    );
+
+    expect(mapped.ParamTail).toBe(0.75);
+  });
+
+  it("skips empty param names and undefined custom values", () => {
+    const mapped = mapCustomMotion(
+      { ...DEFAULT_MOTION_STATE, custom: { tailWag: 0.5 } },
+      { tailWag: "", earAngle: "ParamEar" },
+    );
+
+    expect(mapped).toEqual({});
   });
 });

@@ -21,7 +21,8 @@
   "dependencies": {
     "@puppetflow/core": "workspace:*",
     "@puppetflow/behavior": "workspace:*",
-    "@puppetflow/motion-graph": "workspace:*"
+    "@puppetflow/motion-graph": "workspace:*",
+    "@puppetflow/stateful-core": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.5.0"

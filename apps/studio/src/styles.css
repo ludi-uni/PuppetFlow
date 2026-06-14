@@ -563,6 +563,22 @@ button:disabled {
 
 .pfscript-editor .pfscript-source {
   min-height: 360px;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.pfscript-editor-keys {
+  margin-top: -0.5rem;
+}
+
+.pfscript-editor-keys kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .pfscript-actions {
@@ -716,6 +732,31 @@ button:disabled {
   text-align: left;
   word-break: break-word;
   white-space: normal;
+}
+
+.stateful-debug-wrap {
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.stateful-debug-table th {
+  position: sticky;
+  top: 0;
+  background: #0f172a;
+  z-index: 1;
+}
+
+.stateful-state-details summary {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.stateful-state-json {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  max-height: 8rem;
+  overflow: auto;
 }
 
 .input-sources-panel {

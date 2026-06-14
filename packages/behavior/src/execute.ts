@@ -15,7 +15,7 @@ import type {
   StringCompareCondition,
 } from "./ast.js";
 import { applyAssign } from "./builtins.js";
-import { evaluateExpressionAsNumber } from "./evaluate-expr.js";
+import { evaluateExpression, evaluateExpressionAsNumber } from "./evaluate-expr.js";
 import { parseAssignTarget } from "./motion-aliases.js";
 import type { BehaviorExecutionContext } from "./context.js";
 import {
@@ -84,7 +84,17 @@ function isCompareCondition(condition: BehaviorCondition): condition is CompareC
   return "left" in condition && typeof (condition as CompareCondition).right === "number";
 }
 
+import type { BehaviorExprCondition } from "./ast.js";
+
+function isExprCondition(condition: BehaviorCondition): condition is BehaviorExprCondition {
+  return "kind" in condition && condition.kind === "Expr";
+}
+
 function evaluateCondition(ctx: BehaviorExecutionContext, condition: BehaviorCondition): boolean {
+  if (isExprCondition(condition)) {
+    return Boolean(evaluateExpression(condition.expression, ctx));
+  }
+
   if (isStringCompareCondition(condition)) {
     return evaluateStringCompare(ctx, condition);
   }

@@ -42,6 +42,10 @@ export function resolveNumericIdentifier(
     return ctx.time ?? 0;
   }
 
+  if (name === "deltaTime") {
+    return ctx.deltaTime;
+  }
+
   const channelValue = ctx.channels.get(name);
   if (channelValue !== undefined) {
     if (typeof channelValue === "number") {
