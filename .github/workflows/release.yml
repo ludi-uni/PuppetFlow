@@ -70,15 +70,15 @@ jobs:
           - os: windows-latest
             label: windows-x64
             platform: windows
-            args: ""
+            tauri_args: --no-bundle
           - os: ubuntu-22.04
             label: linux-x64
             platform: linux
-            args: ""
+            tauri_args: --no-bundle
           - os: macos-latest
             label: macos-universal
             platform: macos
-            args: "--target universal-apple-darwin"
+            tauri_args: --target universal-apple-darwin --bundles app
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -125,7 +125,7 @@ jobs:
       - run: pnpm build
 
       - name: Build PuppetFlow Studio
-        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.args }} --bundles app
+        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.tauri_args }}
         env:
           CI: true
 
