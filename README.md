@@ -99,7 +99,7 @@ Copy `.env.example` to `.env` when using optional integrations (e.g. Discord sou
 
 ## Releases
 
-Pre-built portable ZIPs are published on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases).
+Pre-built portable ZIPs are published automatically when changes are pushed to `main`.
 
 | Asset                              | Platform            | Notes                                       |
 | ---------------------------------- | ------------------- | ------------------------------------------- |
@@ -108,26 +108,21 @@ Pre-built portable ZIPs are published on [GitHub Releases](https://github.com/lu
 | `puppetflow-studio-*-portable.zip` | macOS               | Extract `PuppetFlow Studio.app` (Universal) |
 | `pf-cli-*.zip`                     | Win / Linux / macOS | Headless CLI — **requires Node.js 22+**     |
 
-### Release from GitHub Actions (recommended)
+### Automatic release (default)
 
-1. Open **Actions → Release → Run workflow**
-2. Enter a semver version (e.g. `0.1.4`) on the current branch
-3. CI runs (lint, test, build), then Studio/CLI artifacts are built and the release is **published automatically**
+Push to `main` and the [Release workflow](.github/workflows/release.yml) will:
 
-### Release from a git tag
+1. Bump the patch version from the latest `v*` tag (e.g. `v0.1.3` → `v0.1.4`)
+2. Run CI checks (lint, test, build)
+3. Build Studio + CLI portable ZIPs
+4. Create the git tag and publish a GitHub Release
 
-Push a `v*` tag to trigger the same [release workflow](.github/workflows/release.yml):
+Skip a release for a commit by including `[skip release]` in the commit message.
 
-```bash
-git tag v0.1.4
-git push origin v0.1.4
-```
+### Manual override
 
-With [GitHub CLI](https://cli.github.com/):
-
-```bash
-gh workflow run release.yml -f version=0.1.4
-```
+- **Actions → Release → Run workflow** — optional version override (leave empty to auto-bump patch)
+- Pull requests run the lighter [CI workflow](.github/workflows/ci.yml) only (no release)
 
 ## Contributing
 

@@ -2,34 +2,42 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main, master]
   workflow_dispatch:
     inputs:
       version:
-        description: "Semver version without v prefix (e.g. 0.1.4)"
-        required: true
+        description: "Optional semver override without v prefix (e.g. 0.2.0). Leave empty to auto-bump patch."
+        required: false
         type: string
 
 concurrency:
-  group: release-${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
+  group: release-main
   cancel-in-progress: true
 
-env:
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
-
 jobs:
+  plan:
+    name: Plan release
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.tag }}
+      should_release: ${{ steps.version.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - id: version
+        env:
+          MANUAL_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
+        run: node scripts/next-version.mjs
+
   verify:
     name: Verify (CI)
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Validate release version
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          VERSION: v${{ inputs.version }}
-        run: node --input-type=module -e "import { parseVersionTag } from './scripts/lib/semver-version.mjs'; const r = parseVersionTag(process.env.VERSION); if (!r.ok) { console.error('Invalid version:', process.env.VERSION); process.exit(1); }"
 
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
         with:
@@ -49,9 +57,12 @@ jobs:
 
   build-studio:
     name: Studio (${{ matrix.label }})
-    needs: verify
+    needs: [plan, verify]
+    if: needs.plan.outputs.should_release == 'true'
     permissions:
       contents: read
+    env:
+      RELEASE_TAG: ${{ needs.plan.outputs.release_tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -114,7 +125,7 @@ jobs:
       - run: pnpm build
 
       - name: Build PuppetFlow Studio
-        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.args }} -- --bundles app
+        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.args }} --bundles app
         env:
           CI: true
 
@@ -122,8 +133,6 @@ jobs:
         shell: bash
         run: |
           node scripts/package-portable-studio.mjs "${{ matrix.platform }}" "${{ matrix.label }}" "$RELEASE_TAG" dist-artifacts/studio
-        env:
-          RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -133,7 +142,8 @@ jobs:
 
   build-cli:
     name: CLI (${{ matrix.label }})
-    needs: verify
+    needs: [plan, verify]
+    if: needs.plan.outputs.should_release == 'true'
     permissions:
       contents: read
     strategy:
@@ -185,9 +195,12 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: [build-studio, build-cli]
+    needs: [plan, build-studio, build-cli]
+    if: needs.plan.outputs.should_release == 'true'
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ needs.plan.outputs.release_tag }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6

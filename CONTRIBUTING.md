@@ -41,32 +41,23 @@ CI runs the same checks on every push and pull request.
 
 ## Creating a release
 
-The [release workflow](.github/workflows/release.yml) runs CI checks, builds portable ZIPs, and publishes a GitHub Release in one go.
+Pushing to `main` triggers the [release workflow](.github/workflows/release.yml), which auto-bumps the patch version, runs CI, builds portable ZIPs, and publishes a GitHub Release.
 
-### Option A — GitHub Actions UI (easiest)
-
-1. Update [CHANGELOG.md](CHANGELOG.md) for the version and merge to `main`.
-2. Go to **Actions → Release → Run workflow**.
-3. Enter the semver version without `v` (e.g. `0.1.4`) and run.
-4. When the workflow finishes, assets appear on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases).
-
-### Option B — git tag
-
-```bash
-git tag v0.1.4
-git push origin v0.1.4
+```text
+push to main → plan (v0.1.3 → v0.1.4) → verify → build → publish
 ```
 
-### Option C — GitHub CLI
+### Skip a release
 
-```bash
-gh workflow run release.yml -f version=0.1.4
-```
+Add `[skip release]` to the commit message when merging documentation-only or WIP changes to `main`.
 
-Build artifacts:
+### Manual version override
 
-- **Studio** — portable ZIP per OS (Tauri app bundle)
-- **CLI** — `pf-cli-*.zip` per OS (Node 22+ required at runtime)
+Use **Actions → Release → Run workflow** on `main` and enter a specific version (e.g. `0.2.0`). Leave the field empty to auto-bump the patch version from the latest tag.
+
+### Pull requests
+
+PRs run the [CI workflow](.github/workflows/ci.yml) only. Releases happen after merge to `main`.
 
 Optional macOS code signing (not required for OSS): set repository secrets `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, and notarization credentials — see [Tauri macOS signing](https://v2.tauri.app/distribute/sign/macos/).
 
