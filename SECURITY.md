@@ -15,7 +15,7 @@ Security fixes are applied to the default branch (`main`) and may be backported 
 
 Instead:
 
-1. Use [GitHub private vulnerability reporting](https://github.com/puppetflow/puppetflow/security/advisories/new) if enabled for the repository, **or**
+1. Use [GitHub private vulnerability reporting](https://github.com/ludi-uni/PuppetFlow/security/advisories/new) if enabled for the repository, **or**
 2. Open a minimal-security-details issue asking for a contact address.
 
 Include:

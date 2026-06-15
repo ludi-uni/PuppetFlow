@@ -24,5 +24,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Initial public open-source release.
 
-[Unreleased]: https://github.com/puppetflow/puppetflow/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/puppetflow/puppetflow/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ludi-uni/PuppetFlow/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ludi-uni/PuppetFlow/releases/tag/v0.1.0

@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://github.com/puppetflow/puppetflow/blob/main/docs/README.md
+    url: https://github.com/ludi-uni/PuppetFlow/blob/main/docs/README.md
     about: Guides and reference (primarily Japanese)

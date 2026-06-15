@@ -1,6 +1,6 @@
 # PuppetFlow
 
-[![CI](https://github.com/puppetflow/puppetflow/actions/workflows/ci.yml/badge.svg)](https://github.com/puppetflow/puppetflow/actions/workflows/ci.yml)
+[![CI](https://github.com/ludi-uni/PuppetFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/ludi-uni/PuppetFlow/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Event-driven character runtime for VTuber-style avatars:
@@ -30,8 +30,8 @@ PuppetFlow computes motion; your **external viewer** (VMC, Live2D, VRM apps) ren
 ## Quick start
 
 ```bash
-git clone https://github.com/puppetflow/puppetflow.git
-cd puppetflow
+git clone https://github.com/ludi-uni/PuppetFlow.git
+cd PuppetFlow
 pnpm install
 pnpm build
 pnpm test
