@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
-import {
-  isBenignTauriDevExit,
-  isBenignTauriDevSignal,
-} from "./lib/tauri-dev-exit.mjs";
+import { isBenignTauriDevExit, isBenignTauriDevSignal } from "./lib/tauri-dev-exit.mjs";
 
 const strictMode =
   process.env.TAURI_DEV_STRICT === "1" || process.env.TAURI_DEV_STRICT === "true";

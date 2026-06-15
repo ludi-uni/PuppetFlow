@@ -11,7 +11,12 @@ describe("parseVersionTag", () => {
   });
 
   it("rejects invalid semver tags", () => {
-    for (const raw of ["v1.2", "v1.2.3_alpha", 'v1.2.3"; echo pwned', "not-a-version"]) {
+    for (const raw of [
+      "v1.2",
+      "v1.2.3_alpha",
+      'v1.2.3"; echo pwned',
+      "not-a-version",
+    ]) {
       expect(parseVersionTag(raw).ok, raw).toBe(false);
     }
   });

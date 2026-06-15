@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isBenignTauriDevExit,
-  isBenignTauriDevSignal,
-} from "./lib/tauri-dev-exit.mjs";
+import { isBenignTauriDevExit, isBenignTauriDevSignal } from "./lib/tauri-dev-exit.mjs";
 
 describe("tauri-dev exit codes", () => {
   it("normalizes benign dev teardown codes by default", () => {
