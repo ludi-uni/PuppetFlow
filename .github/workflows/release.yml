@@ -4,14 +4,52 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semver version without v prefix (e.g. 0.1.4)"
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref }}
   cancel-in-progress: true
 
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
+
 jobs:
+  verify:
+    name: Verify (CI)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate release version
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: v${{ inputs.version }}
+        run: node --input-type=module -e "import { parseVersionTag } from './scripts/lib/semver-version.mjs'; const r = parseVersionTag(process.env.VERSION); if (!r.ok) { console.error('Invalid version:', process.env.VERSION); process.exit(1); }"
+
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+        with:
+          cache: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm build:presets
+      - run: git diff --exit-code -- packages/behavior-packs/presets presets
+
   build-studio:
     name: Studio (${{ matrix.label }})
+    needs: verify
     permissions:
       contents: read
     strategy:
@@ -69,7 +107,7 @@ jobs:
 
       - name: Set version from tag
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ env.RELEASE_TAG }}
         run: node scripts/set-version.mjs
 
       - run: pnpm install --frozen-lockfile
@@ -83,8 +121,9 @@ jobs:
       - name: Package portable Studio
         shell: bash
         run: |
-          VERSION="${{ github.ref_name }}"
-          node scripts/package-portable-studio.mjs "${{ matrix.platform }}" "${{ matrix.label }}" "$VERSION" dist-artifacts/studio
+          node scripts/package-portable-studio.mjs "${{ matrix.platform }}" "${{ matrix.label }}" "$RELEASE_TAG" dist-artifacts/studio
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -94,6 +133,7 @@ jobs:
 
   build-cli:
     name: CLI (${{ matrix.label }})
+    needs: verify
     permissions:
       contents: read
     strategy:
@@ -165,10 +205,11 @@ jobs:
 
       - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
-          tag_name: ${{ github.ref_name }}
-          name: PuppetFlow ${{ github.ref_name }}
-          draft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: PuppetFlow ${{ env.RELEASE_TAG }}
+          draft: false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           generate_release_notes: true
           body: |
             ## PuppetFlow Studio

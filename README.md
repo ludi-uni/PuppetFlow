@@ -99,7 +99,7 @@ Copy `.env.example` to `.env` when using optional integrations (e.g. Discord sou
 
 ## Releases
 
-Pre-built binaries are published on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases) when a `v*` tag is pushed (e.g. `v0.1.0`).
+Pre-built portable ZIPs are published on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases).
 
 | Asset                              | Platform            | Notes                                       |
 | ---------------------------------- | ------------------- | ------------------------------------------- |
@@ -108,11 +108,25 @@ Pre-built binaries are published on [GitHub Releases](https://github.com/ludi-un
 | `puppetflow-studio-*-portable.zip` | macOS               | Extract `PuppetFlow Studio.app` (Universal) |
 | `pf-cli-*.zip`                     | Win / Linux / macOS | Headless CLI — **requires Node.js 22+**     |
 
-**Maintainers:** push a semver tag to trigger the [release workflow](.github/workflows/release.yml). The release is created as a **draft** for a final check before publishing.
+### Release from GitHub Actions (recommended)
+
+1. Open **Actions → Release → Run workflow**
+2. Enter a semver version (e.g. `0.1.4`) on the current branch
+3. CI runs (lint, test, build), then Studio/CLI artifacts are built and the release is **published automatically**
+
+### Release from a git tag
+
+Push a `v*` tag to trigger the same [release workflow](.github/workflows/release.yml):
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.4
+git push origin v0.1.4
+```
+
+With [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh workflow run release.yml -f version=0.1.4
 ```
 
 ## Contributing

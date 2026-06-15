@@ -41,12 +41,32 @@ CI runs the same checks on every push and pull request.
 
 ## Creating a release
 
-1. Update [CHANGELOG.md](CHANGELOG.md) for the version.
-2. Tag with semver: `git tag v0.1.0 && git push origin v0.1.0`
-3. GitHub Actions [release workflow](.github/workflows/release.yml) builds portable ZIPs:
-   - **Studio** — Windows / Linux / macOS (Tauri app bundle, no installers)
-   - **CLI** — portable `pnpm deploy` zip per OS (Node 22+ required at runtime)
-4. Open the draft release on GitHub, verify assets, then click **Publish release**.
+The [release workflow](.github/workflows/release.yml) runs CI checks, builds portable ZIPs, and publishes a GitHub Release in one go.
+
+### Option A — GitHub Actions UI (easiest)
+
+1. Update [CHANGELOG.md](CHANGELOG.md) for the version and merge to `main`.
+2. Go to **Actions → Release → Run workflow**.
+3. Enter the semver version without `v` (e.g. `0.1.4`) and run.
+4. When the workflow finishes, assets appear on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases).
+
+### Option B — git tag
+
+```bash
+git tag v0.1.4
+git push origin v0.1.4
+```
+
+### Option C — GitHub CLI
+
+```bash
+gh workflow run release.yml -f version=0.1.4
+```
+
+Build artifacts:
+
+- **Studio** — portable ZIP per OS (Tauri app bundle)
+- **CLI** — `pf-cli-*.zip` per OS (Node 22+ required at runtime)
 
 Optional macOS code signing (not required for OSS): set repository secrets `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, and notarization credentials — see [Tauri macOS signing](https://v2.tauri.app/distribute/sign/macos/).
 
