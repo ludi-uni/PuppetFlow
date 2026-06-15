@@ -64,6 +64,42 @@ describe("PuppetFlowRuntime", () => {
     expect(adapter.dispose).toHaveBeenCalledTimes(1);
   });
 
+  it("waits for in-flight tick before disposing adapters", async () => {
+    let blockUpdates = false;
+    let releaseBlockedUpdate: (() => void) | undefined;
+
+    const update = vi.fn(async () => {
+      if (!blockUpdates) {
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        releaseBlockedUpdate = resolve;
+      });
+    });
+    const adapter = createTestAdapter(update);
+
+    const runtime = new PuppetFlowRuntime()
+      .use(new TestPlugin({ mouthX: 0.5 }))
+      .attachAdapter(adapter);
+
+    await runtime.start();
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    expect(update).toHaveBeenCalled();
+
+    blockUpdates = true;
+    runtime.state.set("trigger", 1);
+
+    await vi.waitFor(() => expect(update.mock.calls.length).toBeGreaterThan(1));
+
+    const stopPromise = runtime.stop();
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    expect(adapter.dispose).not.toHaveBeenCalled();
+
+    releaseBlockedUpdate!();
+    await stopPromise;
+    expect(adapter.dispose).toHaveBeenCalledTimes(1);
+  });
+
   it("applies motion modifiers between target and rendered motion", async () => {
     const runtime = new PuppetFlowRuntime()
       .use(new TestPlugin({ mouthX: 1 }))

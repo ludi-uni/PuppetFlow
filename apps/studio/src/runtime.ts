@@ -46,6 +46,7 @@ class StaleRuntimeStartup extends Error {
 let runtime: PuppetFlowRuntime | null = null;
 let startupGeneration = 0;
 let startupPromise: Promise<PuppetFlowRuntime> | null = null;
+let shuttingDown = false;
 let currentPreset: PresetName = "Curious";
 let customPresetJson: string | null = null;
 let sourceConfig: SourceConfig = {
@@ -183,6 +184,7 @@ export async function restartRuntime(): Promise<PuppetFlowRuntime> {
 }
 
 export async function shutdownRuntime(): Promise<void> {
+  shuttingDown = true;
   startupGeneration++;
   startupPromise = null;
 
@@ -196,6 +198,10 @@ export async function shutdownRuntime(): Promise<void> {
 }
 
 export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
+  if (shuttingDown) {
+    throw new Error("Runtime is shutting down");
+  }
+
   if (runtime) {
     return runtime;
   }
@@ -212,6 +218,9 @@ export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
     return await startupPromise;
   } catch (error) {
     if (error instanceof StaleRuntimeStartup) {
+      if (shuttingDown) {
+        throw new Error("Runtime is shutting down");
+      }
       return ensureRuntime();
     }
 

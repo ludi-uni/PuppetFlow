@@ -1,14 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseVersionTag } from "./lib/semver-version.mjs";
 
 const raw = process.argv[2] ?? process.env.VERSION ?? "";
-const version = raw.replace(/^v/, "");
+const parsed = parseVersionTag(raw);
 
-if (!/^\d+\.\d+\.\d+/.test(version)) {
-  console.error(`Invalid version "${raw}" (expected vX.Y.Z tag)`);
+if (!parsed.ok) {
+  console.error(`Invalid version "${raw}" (expected vX.Y.Z semver tag)`);
   process.exit(1);
 }
+
+const version = parsed.version;
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 

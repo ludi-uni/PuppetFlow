@@ -197,9 +197,10 @@ export class PuppetFlowRuntime {
         setTimeout(resolve, 0);
       });
       if (++spinCount > 200) {
-        console.warn("[PuppetFlowRuntime] stop() timed out waiting for tick");
-        this.tickInProgress = false;
-        break;
+        console.warn(
+          "[PuppetFlowRuntime] stop() timed out waiting for tick; skipping dispose to avoid races",
+        );
+        return;
       }
     }
 
@@ -413,6 +414,10 @@ export class PuppetFlowRuntime {
       const partials: Partial<MotionState>[] = [];
 
       for (const plugin of this.plugins) {
+        if (!this.running) {
+          return;
+        }
+
         try {
           const output = plugin.process(
             pluginInput,

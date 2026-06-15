@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
+import {
+  isBenignTauriDevExit,
+  isBenignTauriDevSignal,
+} from "./lib/tauri-dev-exit.mjs";
+
+const strictMode =
+  process.env.TAURI_DEV_STRICT === "1" || process.env.TAURI_DEV_STRICT === "true";
 
 const appDir = process.cwd();
 const require = createRequire(path.join(appDir, "package.json"));
@@ -13,19 +20,6 @@ const child = spawn(process.execPath, [tauriCli, "dev"], {
 
 let finished = false;
 
-function isBenignTauriDevExit(code) {
-  if (code === null || code === 0) {
-    return true;
-  }
-  // Windows: UINT32 representation of -1 when the Tauri window is closed in dev.
-  if (code === 4294967295) {
-    return true;
-  }
-  const signed = code | 0;
-  // -1 / 255 on Windows; 130 (SIGINT) and 143 (SIGTERM) are common on Linux/macOS dev teardown.
-  return signed === -1 || signed === 255 || signed === 130 || signed === 143;
-}
-
 function finish(code, signal) {
   if (finished) {
     return;
@@ -33,7 +27,16 @@ function finish(code, signal) {
   finished = true;
 
   if (signal) {
+    if (strictMode && !isBenignTauriDevSignal(signal)) {
+      process.exit(1);
+      return;
+    }
     process.exit(0);
+    return;
+  }
+
+  if (strictMode) {
+    process.exit(code === 0 ? 0 : (code ?? 1));
     return;
   }
 
