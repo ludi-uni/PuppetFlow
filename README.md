@@ -1,5 +1,9 @@
 # PuppetFlow
 
+<p align="center">
+  <img src="logo.png" alt="PuppetFlow" width="128" height="128" />
+</p>
+
 [![CI](https://github.com/ludi-uni/PuppetFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/ludi-uni/PuppetFlow/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
@@ -92,6 +96,24 @@ pnpm build:presets   # regenerate official .pfpreset files
 ```
 
 Copy `.env.example` to `.env` when using optional integrations (e.g. Discord source).
+
+## Releases
+
+Pre-built binaries are published on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases) when a `v*` tag is pushed (e.g. `v0.1.0`).
+
+| Asset | Platform | Notes |
+| ----- | -------- | ----- |
+| PuppetFlow Studio `.msi` / `.exe` | Windows x64 | Tauri desktop app |
+| PuppetFlow Studio `.deb` / `.AppImage` | Linux x64 | Built on Ubuntu 22.04 |
+| PuppetFlow Studio `.dmg` | macOS | Universal (Apple Silicon + Intel) |
+| `pf-cli-*.zip` | Win / Linux / macOS | Headless CLI — **requires Node.js 22+** |
+
+**Maintainers:** push a semver tag to trigger the [release workflow](.github/workflows/release.yml). The release is created as a **draft** for a final check before publishing.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## Contributing
 

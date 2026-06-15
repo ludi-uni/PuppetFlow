@@ -39,6 +39,17 @@ Optional environment variables: copy [`.env.example`](.env.example) to `.env`.
 
 CI runs the same checks on every push and pull request.
 
+## Creating a release
+
+1. Update [CHANGELOG.md](CHANGELOG.md) for the version.
+2. Tag with semver: `git tag v0.1.0 && git push origin v0.1.0`
+3. GitHub Actions [release workflow](.github/workflows/release.yml) builds:
+   - **Studio** — Windows / Linux / macOS (Tauri)
+   - **CLI** — portable `pnpm deploy` zip per OS (Node 22+ required at runtime)
+4. Open the draft release on GitHub, verify assets, then click **Publish release**.
+
+Optional macOS code signing (not required for OSS): set repository secrets `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, and notarization credentials — see [Tauri macOS signing](https://v2.tauri.app/distribute/sign/macos/).
+
 ## Code style
 
 - TypeScript ESM across the monorepo

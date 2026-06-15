@@ -28,3 +28,7 @@ apps/*/src-tauri/gen/
 # Vite / Vitest cache
 .vite/
 node_modules/.vite/
+
+# pnpm deploy output (release packaging)
+deploy/
+apps/cli/deploy/
