@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "dev.puppetflow.playground",
   "build": {
-    "beforeDevCommand": "pnpm vite:dev",
+    "beforeDevCommand": "vite",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm vite:build",
+    "beforeBuildCommand": "vite build",
     "frontendDist": "../dist"
   },
   "app": {

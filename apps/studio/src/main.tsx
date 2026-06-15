@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { shutdownRuntime } from "./runtime";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -11,3 +12,12 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+if (
+  typeof globalThis !== "undefined" &&
+  Boolean((globalThis as { isTauri?: boolean }).isTauri)
+) {
+  window.addEventListener("pagehide", () => {
+    void shutdownRuntime();
+  });
+}

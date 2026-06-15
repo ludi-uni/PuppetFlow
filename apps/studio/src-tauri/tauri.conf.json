@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "dev.puppetflow.studio",
   "build": {
-    "beforeDevCommand": "pnpm vite:dev",
+    "beforeDevCommand": "vite",
     "devUrl": "http://localhost:1422",
-    "beforeBuildCommand": "pnpm vite:build",
+    "beforeBuildCommand": "vite build",
     "frontendDist": "../dist"
   },
   "app": {

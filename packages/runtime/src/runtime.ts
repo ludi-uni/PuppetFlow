@@ -191,10 +191,16 @@ export class PuppetFlowRuntime {
       this.intervalId = null;
     }
 
+    let spinCount = 0;
     while (this.tickInProgress) {
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 0);
       });
+      if (++spinCount > 200) {
+        console.warn("[PuppetFlowRuntime] stop() timed out waiting for tick");
+        this.tickInProgress = false;
+        break;
+      }
     }
 
     await this.disposeAdapters();

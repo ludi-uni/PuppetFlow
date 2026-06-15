@@ -182,6 +182,19 @@ export async function restartRuntime(): Promise<PuppetFlowRuntime> {
   return instance;
 }
 
+export async function shutdownRuntime(): Promise<void> {
+  startupGeneration++;
+  startupPromise = null;
+
+  if (!runtime) {
+    return;
+  }
+
+  const instance = runtime;
+  runtime = null;
+  await instance.stop();
+}
+
 export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
   if (runtime) {
     return runtime;
