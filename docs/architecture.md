@@ -86,12 +86,12 @@
 
 ### マージ規則（要点）
 
-| 段階 | 同一キー複数出力時 |
-| ---- | ------------------ |
+| 段階                                | 同一キー複数出力時                                           |
+| ----------------------------------- | ------------------------------------------------------------ |
 | Plugins + Behavior + Graph → Target | `addMotionState`（デルタ加算、0.5 中心キーは ±0.5 スケール） |
-| Graph 内の複数 output | 平均 |
-| Extension Layer | Pack 出力を平均マージ |
-| Modifiers | 前フレームからの補間 |
+| Graph 内の複数 output               | 平均                                                         |
+| Extension Layer                     | Pack 出力を平均マージ                                        |
+| Modifiers                           | 前フレームからの補間                                         |
 
 Overlap（Graph と PFScript が同じキーを書く等）は `loadPreset()` と Studio で警告します。[ADR: Preset 正本](adr/preset-canonical-model.md)
 
@@ -143,7 +143,12 @@ puppetflow/
 ```ts
 runtime.state.set("interest", 0.8);
 runtime.channels.set("volume", 0.6);
-runtime.timeline.push({ startMs: 0, endMs: 200, type: "phoneme", value: { phoneme: "A" } });
+runtime.timeline.push({
+  startMs: 0,
+  endMs: 200,
+  type: "phoneme",
+  value: { phoneme: "A" },
+});
 ```
 
 ### Preset v3
@@ -162,11 +167,11 @@ runtime.loadPreset(loaded); // behaviorPlugins + behaviorPfScript + graph + exte
 
 ### Behavior / Graph / Extension
 
-| 層 | API | 主なノード・文 |
-| --- | --- | --- |
-| Behavior | `executeBehaviorWithInvocations` | If, ExprAssign, MotionPack |
-| Graph | `executeMotionGraph` | stateInput, multiply, output, oscillator, motionFunction |
-| Extension | `executeExtensions` | motionPack, motionGenerator, ext:*, `extensions.packs` |
+| 層        | API                              | 主なノード・文                                           |
+| --------- | -------------------------------- | -------------------------------------------------------- |
+| Behavior  | `executeBehaviorWithInvocations` | If, ExprAssign, MotionPack                               |
+| Graph     | `executeMotionGraph`             | stateInput, multiply, output, oscillator, motionFunction |
+| Extension | `executeExtensions`              | motionPack, motionGenerator, ext:\*, `extensions.packs`  |
 
 編集分担: [behavior-and-graph.md](reference/behavior-and-graph.md) / [pfscript.md](reference/pfscript.md) / [motion-extension.md](reference/motion-extension.md)
 
@@ -212,11 +217,11 @@ await runtime.start();
 
 ## アプリケーションの役割
 
-| App | 用途 |
-| --- | --- |
+| App        | 用途                                                                        |
+| ---------- | --------------------------------------------------------------------------- |
 | **Studio** | Pipeline / Scratch / PFScript / Graph / Plugins / Preset / Sources / Mapper |
-| Playground | スライダー + VMC 送信の軽量デモ |
-| Editor | Graph → Preset のスタンドアロン版 |
-| Viewer | WebSocket 経由のモーション値確認 |
+| Playground | スライダー + VMC 送信の軽量デモ                                             |
+| Editor     | Graph → Preset のスタンドアロン版                                           |
+| Viewer     | WebSocket 経由のモーション値確認                                            |
 
 詳細は [Studio ガイド](guides/studio.md)。

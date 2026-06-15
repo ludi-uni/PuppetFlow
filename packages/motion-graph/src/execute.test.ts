@@ -1,5 +1,8 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
-import { createDefaultStatefulRegistry, StatefulStore } from "@puppetflow/stateful-core";
+import {
+  createDefaultStatefulRegistry,
+  StatefulStore,
+} from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
 import { executeMotionGraph } from "./execute.js";
 
@@ -196,7 +199,11 @@ describe("executeMotionGraph", () => {
     const holdOutput = executeMotionGraph(
       {
         nodes: [
-          { id: "hold", type: "randomHold", data: { interval: 2, min: -0.2, max: 0.2 } },
+          {
+            id: "hold",
+            type: "randomHold",
+            data: { interval: 2, min: -0.2, max: 0.2 },
+          },
           { id: "scale", type: "multiply", data: { gain: 0.5 } },
           { id: "bias", type: "add", data: {} },
           { id: "const", type: "constant", data: { value: 0.5 } },

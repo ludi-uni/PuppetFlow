@@ -1,0 +1,43 @@
+{
+  "name": "@puppetflow/runtime-launcher",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/node.ts --format esm --dts --clean",
+    "test": "vitest run --dir ."
+  },
+  "dependencies": {
+    "@puppetflow/adapter-live2d": "workspace:*",
+    "@puppetflow/adapter-logger": "workspace:*",
+    "@puppetflow/adapter-vmc": "workspace:*",
+    "@puppetflow/adapter-vrm": "workspace:*",
+    "@puppetflow/adapter-websocket": "workspace:*",
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/motion-mapper": "workspace:*",
+    "@puppetflow/preset": "workspace:*",
+    "@puppetflow/runtime": "workspace:*",
+    "@puppetflow/source-http": "workspace:*",
+    "@puppetflow/source-mqtt": "workspace:*",
+    "@puppetflow/source-websocket": "workspace:*"
+  },
+  "devDependencies": {
+    "@puppetflow/behavior-packs": "workspace:*",
+    "tsup": "^8.5.0"
+  }
+}

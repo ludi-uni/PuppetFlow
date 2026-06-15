@@ -10,7 +10,11 @@ export interface BlinkState {
   initialized: boolean;
 }
 
-function blinkCloseAmount(elapsedTime: number, blinkStart: number, closeDuration: number): number {
+function blinkCloseAmount(
+  elapsedTime: number,
+  blinkStart: number,
+  closeDuration: number,
+): number {
   const progress = (elapsedTime - blinkStart) / closeDuration;
   if (progress <= 0 || progress >= 1) {
     return 0;
@@ -28,7 +32,10 @@ export const blinkDefinition: StatefulFunctionDefinition<BlinkState> = {
   }),
   update(frame, state, config) {
     const averageInterval = Math.max(Number(config.averageInterval ?? 4), 0.5);
-    const closeDuration = Math.max(Number(config.closeDuration ?? DEFAULT_CLOSE_DURATION), 0.05);
+    const closeDuration = Math.max(
+      Number(config.closeDuration ?? DEFAULT_CLOSE_DURATION),
+      0.05,
+    );
     const instanceId = String(config.__instanceId ?? "blink");
 
     if (!state.initialized) {

@@ -9,6 +9,7 @@ interface ActiveConfigSummaryProps {
   pluginIds: string[];
   mapperConfig: MotionMapperEditorConfig;
   httpHealth: "unknown" | "ok" | "error" | "idle";
+  onExportCliConfig?: () => void;
 }
 
 function sourceLabel(
@@ -42,6 +43,7 @@ export function ActiveConfigSummary({
   pluginIds,
   mapperConfig,
   httpHealth,
+  onExportCliConfig,
 }: ActiveConfigSummaryProps) {
   const enabledOscTargets = (["vmc", "live2d", "vrm"] as const).filter(
     (target) => mapperConfig[target].enabled,
@@ -49,7 +51,19 @@ export function ActiveConfigSummary({
 
   return (
     <section className="config-summary" aria-label="適用済み設定">
-      <h2>適用済み設定</h2>
+      <div className="config-summary-header">
+        <h2>適用済み設定</h2>
+        {onExportCliConfig ? (
+          <button
+            type="button"
+            className="config-export-button"
+            onClick={onExportCliConfig}
+            title="CLI 用 puppetflow.yaml をダウンロード"
+          >
+            CLI 設定をエクスポート
+          </button>
+        ) : null}
+      </div>
       <dl className="summary-grid">
         <div>
           <dt>Preset</dt>

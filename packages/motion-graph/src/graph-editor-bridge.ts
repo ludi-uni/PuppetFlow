@@ -25,7 +25,12 @@ export interface EditorGraphDocument {
 function numericConfigFromData(data: Record<string, unknown>): Record<string, number> {
   const config: Record<string, number> = {};
   for (const [key, value] of Object.entries(data)) {
-    if (key === "label" || key === "packId" || key === "generatorId" || key === "functionName") {
+    if (
+      key === "label" ||
+      key === "packId" ||
+      key === "generatorId" ||
+      key === "functionName"
+    ) {
       continue;
     }
     if (typeof value === "number" && Number.isFinite(value)) {

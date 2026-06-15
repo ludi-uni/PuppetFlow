@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadPreset } from "./load-preset.js";
 
-const PRESETS_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../behavior-packs/presets");
+const PRESETS_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../behavior-packs/presets",
+);
 
 const OFFICIAL_PRESETS = [
   "Curious.pfpreset",

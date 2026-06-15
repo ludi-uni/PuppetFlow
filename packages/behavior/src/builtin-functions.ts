@@ -15,13 +15,21 @@ function requireNumber(value: number | string | boolean, name: string): number {
   return value;
 }
 
-function requireCount(args: Array<number | string | boolean>, count: number, name: string): void {
+function requireCount(
+  args: Array<number | string | boolean>,
+  count: number,
+  name: string,
+): void {
   if (args.length !== count) {
     throw new Error(`${name}() expects ${count} argument(s)`);
   }
 }
 
-function argAt(args: Array<number | string | boolean>, index: number, name: string): number | string | boolean {
+function argAt(
+  args: Array<number | string | boolean>,
+  index: number,
+  name: string,
+): number | string | boolean {
   const value = args[index];
   if (value === undefined) {
     throw new Error(`${name}() missing argument at index ${index}`);

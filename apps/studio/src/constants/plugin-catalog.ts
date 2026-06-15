@@ -1,7 +1,5 @@
 import { PLUGIN_MOTION_OUTPUTS, type MotionStateKey } from "@puppetflow/core";
-import {
-  OFFICIAL_BEHAVIOR_PLUGIN_IDS,
-} from "@puppetflow/core";
+import { OFFICIAL_BEHAVIOR_PLUGIN_IDS } from "@puppetflow/core";
 
 export type CatalogPluginId = "gaze" | "blink" | "idle" | "attention" | "emotion";
 
@@ -39,7 +37,8 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     id: "gaze",
     label: "Gaze",
     simpleLabel: "視線のゆらぎ",
-    description: "視線が左右・上下にゆっくり動きます（lookX / lookY）。Runtime では stateful oscillator を利用します",
+    description:
+      "視線が左右・上下にゆっくり動きます（lookX / lookY）。Runtime では stateful oscillator を利用します",
     motionOutputs: catalogMotionOutputs("gaze"),
     parameters: [
       {
@@ -68,7 +67,8 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     id: "blink",
     label: "Blink",
     simpleLabel: "まばたき",
-    description: "まばたきの間隔と閉じる強さを調整します（eyeYaw）。Runtime では stateful blink を利用します",
+    description:
+      "まばたきの間隔と閉じる強さを調整します（eyeYaw）。Runtime では stateful blink を利用します",
     motionOutputs: catalogMotionOutputs("blink"),
     parameters: [
       {

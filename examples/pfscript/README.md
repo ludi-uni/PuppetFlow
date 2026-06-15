@@ -4,21 +4,21 @@ PuppetFlow PFScript（Behavior DSL）の公式サンプルです。
 
 ## ファイル
 
-| ファイル | 説明 |
-| -------- | ---- |
-| `basic-smile.pfscript` | State / Channel から mouth へマッピングする最小例 |
-| `lipsync-thinking.pfscript` | リップシンク + 体のゆらぎ（単体 `.pfscript` では `smile` も含む） |
-| `stateful-*.pfscript` | Stateful 関数（呼吸・視線スプリング等）の断片例 |
-| `pfscript-demo.pfpreset` | **Standard モデル**準拠の Preset v3（PFScript + Graph + blink/idle + thinking） |
+| ファイル                    | 説明                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| `basic-smile.pfscript`      | State / Channel から mouth へマッピングする最小例                               |
+| `lipsync-thinking.pfscript` | リップシンク + 体のゆらぎ（単体 `.pfscript` では `smile` も含む）               |
+| `stateful-*.pfscript`       | Stateful 関数（呼吸・視線スプリング等）の断片例                                 |
+| `pfscript-demo.pfpreset`    | **Standard モデル**準拠の Preset v3（PFScript + Graph + blink/idle + thinking） |
 
 ### `pfscript-demo.pfpreset` の役割分担
 
-| 層 | 担当 |
-| ---- | ---- |
-| **Graph** | `interest × 0.4 → mouthX`（笑顔） |
-| **PFScript** | `mouthY = volume`、頭のゆらぎ、音素リップシンク |
+| 層                  | 担当                                                   |
+| ------------------- | ------------------------------------------------------ |
+| **Graph**           | `interest × 0.4 → mouthX`（笑顔）                      |
+| **PFScript**        | `mouthY = volume`、頭のゆらぎ、音素リップシンク        |
 | **behaviorPlugins** | `blink`（瞬き）、`idle`（低 interest 時の視線 wander） |
-| **extensions** | `thinking` Motion Pack |
+| **extensions**      | `thinking` Motion Pack                                 |
 
 `lipsync-thinking.pfscript` をそのまま貼るのではなく、笑顔は Graph・thinking は extensions に分離した構成です。
 

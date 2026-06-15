@@ -24,11 +24,11 @@ PuppetFlowRuntime
 
 ## FrameContext
 
-| フィールド      | 説明                         |
-| --------------- | ---------------------------- |
-| `deltaTime`     | 前フレームからの経過秒       |
-| `frameNumber`   | 累積フレーム番号             |
-| `elapsedTime`   | ランタイム開始からの経過秒   |
+| フィールド    | 説明                       |
+| ------------- | -------------------------- |
+| `deltaTime`   | 前フレームからの経過秒     |
+| `frameNumber` | 累積フレーム番号           |
+| `elapsedTime` | ランタイム開始からの経過秒 |
 
 Runtime が毎 tick 生成し、Behavior / Graph / Extension に渡します。
 
@@ -44,18 +44,18 @@ Runtime が毎 tick 生成し、Behavior / Graph / Extension に渡します。
 
 ## 組み込み関数一覧
 
-| 関数 | 出力レンジ | 主な config | 用途 |
-| ---- | ---------- | ----------- | ---- |
-| `oscillator` | **-1〜+1** | `frequency` | 周期振動（位相保持） |
-| `smooth` | 入力に追従 | `speed` + 入力 `value` | 指数平滑 |
-| `spring` | 入力に追従 | `stiffness`, `damping` + 入力 `target` | バネ追従 |
-| `randomHold` | `min`〜`max` | `interval`, `min`, `max` | 一定間隔で値更新 |
-| `blink` | 0〜1 | `averageInterval` | 瞬きパルス |
-| `breath` | 0〜1 | `rate` | 呼吸サイクル |
-| `wander` | おおよそ **-1〜+1** | `speed` | ランダム目標へ滑らか移動 |
-| `cooldown` | **boolean** | `duration` | クールダウン窓（1 回だけ true） |
-| `tailPhysics` | 0〜1 | `frequency`, `amplitude`, `stiffness`, `damping` | 尻尾スプリング振り |
-| `earPhysics` | 0〜1 | `intensity`, `holdInterval`, `stiffness`, `damping` | 耳ぴくぴく（ランダム保持 + スプリング） |
+| 関数          | 出力レンジ          | 主な config                                         | 用途                                    |
+| ------------- | ------------------- | --------------------------------------------------- | --------------------------------------- |
+| `oscillator`  | **-1〜+1**          | `frequency`                                         | 周期振動（位相保持）                    |
+| `smooth`      | 入力に追従          | `speed` + 入力 `value`                              | 指数平滑                                |
+| `spring`      | 入力に追従          | `stiffness`, `damping` + 入力 `target`              | バネ追従                                |
+| `randomHold`  | `min`〜`max`        | `interval`, `min`, `max`                            | 一定間隔で値更新                        |
+| `blink`       | 0〜1                | `averageInterval`                                   | 瞬きパルス                              |
+| `breath`      | 0〜1                | `rate`                                              | 呼吸サイクル                            |
+| `wander`      | おおよそ **-1〜+1** | `speed`                                             | ランダム目標へ滑らか移動                |
+| `cooldown`    | **boolean**         | `duration`                                          | クールダウン窓（1 回だけ true）         |
+| `tailPhysics` | 0〜1                | `frequency`, `amplitude`, `stiffness`, `damping`    | 尻尾スプリング振り                      |
+| `earPhysics`  | 0〜1                | `intensity`, `holdInterval`, `stiffness`, `damping` | 耳ぴくぴく（ランダム保持 + スプリング） |
 
 `tailPhysics` / `earPhysics` は Runtime 登録時に Physics プラグイン経由で追加されます（`createRuntimeStatefulRegistry()`）。
 
@@ -95,23 +95,23 @@ const wag = runStatefulNumber(ctx, "tailPhysics", "tailWag", {
 
 ### M4 で stateful 化した Pack
 
-| Pack | 利用関数 |
-| ---- | -------- |
-| `tailWag` | `tailPhysics` |
-| `earTwitch` | `earPhysics` |
-| `thinking` | `oscillator`（視線の微振動） |
-| `lookAround` | `wander` + `oscillator` |
+| Pack         | 利用関数                     |
+| ------------ | ---------------------------- |
+| `tailWag`    | `tailPhysics`                |
+| `earTwitch`  | `earPhysics`                 |
+| `thinking`   | `oscillator`（視線の微振動） |
+| `lookAround` | `wander` + `oscillator`      |
 
 既存の `gaze` / `blink` **behaviorPlugins** は Runtime 注入時に stateful 関数へ委譲します（設定キーは従来どおり）。Scratch の **Natural Motion** カテゴリから同等の動きを behavior へ追加できます。
 
-| Plugin / ブロック | 内部関数 |
-| ----------------- | -------- |
-| `gaze` plugin | `oscillator`（lookX / lookY、位相オフセット） |
-| `blink` plugin | `blink` |
-| Scratch「呼吸する」 | `breath` |
-| Scratch「ゆっくり追従する」 | `smooth` |
-| Scratch「ランダムに視線移動」 | `wander` |
-| Scratch「一定間隔で瞬き」 | `blink` |
+| Plugin / ブロック             | 内部関数                                      |
+| ----------------------------- | --------------------------------------------- |
+| `gaze` plugin                 | `oscillator`（lookX / lookY、位相オフセット） |
+| `blink` plugin                | `blink`                                       |
+| Scratch「呼吸する」           | `breath`                                      |
+| Scratch「ゆっくり追従する」   | `smooth`                                      |
+| Scratch「ランダムに視線移動」 | `wander`                                      |
+| Scratch「一定間隔で瞬き」     | `blink`                                       |
 
 ---
 
@@ -132,11 +132,11 @@ registerStatefulPlugins(registry, [myPlugin]);
 
 ## 公式サンプル
 
-| ファイル | 内容 |
-| -------- | ---- |
-| [stateful-breathing.pfscript](../../examples/pfscript/stateful-breathing.pfscript) | `breath` + `oscillator` |
-| [stateful-spring-look.pfscript](../../examples/pfscript/stateful-spring-look.pfscript) | `spring` + `smooth` |
-| [stateful-idle.pfscript](../../examples/pfscript/stateful-idle.pfscript) | 待機（blink / wander / cooldown） |
+| ファイル                                                                               | 内容                              |
+| -------------------------------------------------------------------------------------- | --------------------------------- |
+| [stateful-breathing.pfscript](../../examples/pfscript/stateful-breathing.pfscript)     | `breath` + `oscillator`           |
+| [stateful-spring-look.pfscript](../../examples/pfscript/stateful-spring-look.pfscript) | `spring` + `smooth`               |
+| [stateful-idle.pfscript](../../examples/pfscript/stateful-idle.pfscript)               | 待機（blink / wander / cooldown） |
 
 ---
 

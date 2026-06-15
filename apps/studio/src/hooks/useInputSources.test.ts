@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isExternalInputActive,
-  sourcesDirty,
-} from "./useInputSources";
+import { isExternalInputActive, sourcesDirty } from "./useInputSources";
 
 describe("useInputSources helpers", () => {
   it("detects draft vs applied source changes", () => {

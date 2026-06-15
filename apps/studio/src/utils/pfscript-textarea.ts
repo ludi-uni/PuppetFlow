@@ -1,7 +1,6 @@
 export const PFSCRIPT_INDENT = "  ";
 
-const BLOCK_OPENER =
-  /\b(then|else|elseif\b.*)\s*(--.*)?$|\($/i;
+const BLOCK_OPENER = /\b(then|else|elseif\b.*)\s*(--.*)?$|\($/i;
 
 export function getLineIndent(line: string): string {
   return line.match(/^[\t ]*/)?.[0]?.replace(/\t/g, PFSCRIPT_INDENT) ?? "";
@@ -28,7 +27,10 @@ export function shouldIncreaseIndentOnBreak(trimmedLinePrefix: string): boolean 
   return /=(\s*(--.*)?)?$/.test(trimmed);
 }
 
-export function computeNextLineIndent(currentLine: string, cursorInLine: number): string {
+export function computeNextLineIndent(
+  currentLine: string,
+  cursorInLine: number,
+): string {
   const base = getLineIndent(currentLine);
   const beforeCursor = currentLine.slice(0, cursorInLine);
   const trimmedLine = currentLine.trim();
@@ -63,7 +65,11 @@ export function insertTextAtSelection(
   };
 }
 
-function lineRange(value: string, selectionStart: number, selectionEnd: number): {
+function lineRange(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+): {
   lineStart: number;
   lineEnd: number;
 } {
@@ -120,7 +126,8 @@ export function indentSelectedLines(
     return line;
   });
 
-  const nextValue = value.slice(0, lineStart) + modified.join("\n") + value.slice(lineEnd);
+  const nextValue =
+    value.slice(0, lineStart) + modified.join("\n") + value.slice(lineEnd);
   const nextStart = Math.max(lineStart, selectionStart + startDelta);
   const nextEnd = Math.max(nextStart, selectionEnd + endDelta);
 
@@ -174,10 +181,7 @@ export function applyEnterKey(
 ): TextEditResult {
   const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
   const lineEnd = value.indexOf("\n", selectionStart);
-  const currentLine = value.slice(
-    lineStart,
-    lineEnd === -1 ? value.length : lineEnd,
-  );
+  const currentLine = value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd);
   const cursorInLine = selectionStart - lineStart;
   const nextIndent = computeNextLineIndent(currentLine, cursorInLine);
   return insertTextAtSelection(value, selectionStart, selectionEnd, `\n${nextIndent}`);
@@ -214,10 +218,5 @@ export function applyTabKey(
     return { value, selectionStart, selectionEnd };
   }
 
-  return insertTextAtSelection(
-    value,
-    selectionStart,
-    selectionEnd,
-    PFSCRIPT_INDENT,
-  );
+  return insertTextAtSelection(value, selectionStart, selectionEnd, PFSCRIPT_INDENT);
 }

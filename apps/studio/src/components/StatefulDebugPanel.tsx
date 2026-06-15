@@ -10,7 +10,11 @@ interface StatefulDebugPanelProps {
 
 export function StatefulDebugPanel({ entries }: StatefulDebugPanelProps) {
   if (entries.length === 0) {
-    return <p className="hint">（stateful インスタンスなし — PFScript / Graph / Pack を実行すると表示されます）</p>;
+    return (
+      <p className="hint">
+        （stateful インスタンスなし — PFScript / Graph / Pack を実行すると表示されます）
+      </p>
+    );
   }
 
   return (

@@ -1,9 +1,23 @@
 {
   "name": "puppetflow",
   "private": true,
+  "description": "Event-driven VTuber character runtime — State, Behavior, PFScript, Motion Graph, and VMC OSC output",
   "type": "module",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/puppetflow/puppetflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/puppetflow/puppetflow/issues"
+  },
+  "homepage": "https://github.com/puppetflow/puppetflow#readme",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "build": "pnpm -r --filter \"./packages/**\" run build && pnpm --filter @puppetflow/cli run build",
     "build:presets": "pnpm --filter @puppetflow/preset build && pnpm --filter @puppetflow/preset build:official-presets",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,7 +28,8 @@
     "dev:editor": "pnpm --filter @puppetflow/editor dev",
     "dev:studio": "pnpm --filter @puppetflow/studio dev",
     "dev:viewer": "pnpm --filter @puppetflow/viewer dev",
-    "example:ecosystem": "pnpm --filter @puppetflow/example-ecosystem start"
+    "example:ecosystem": "pnpm --filter @puppetflow/example-ecosystem start",
+    "pf": "pnpm --filter @puppetflow/cli exec tsx src/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

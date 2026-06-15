@@ -1,9 +1,15 @@
 import { clamp01 } from "@puppetflow/core";
-import type { ExtensionContext, ExtensionPlugin, MotionRegistry } from "@puppetflow/extension-core";
+import type {
+  ExtensionContext,
+  ExtensionPlugin,
+  MotionRegistry,
+} from "@puppetflow/extension-core";
 import { runStatefulNumber } from "@puppetflow/stateful-core";
 
 function thinkingMotion(ctx: ExtensionContext, intensity: number) {
-  const oscLook = runStatefulNumber(ctx, "oscillator", "thinking:look", { frequency: 0.4 });
+  const oscLook = runStatefulNumber(ctx, "oscillator", "thinking:look", {
+    frequency: 0.4,
+  });
   const lookOsc = oscLook ?? Math.sin(ctx.time * 0.4);
   return {
     lookX: clamp01(0.5 - intensity * 0.18 + lookOsc * intensity * 0.04),

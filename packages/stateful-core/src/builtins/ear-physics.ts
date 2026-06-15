@@ -30,17 +30,15 @@ export const earPhysicsDefinition: StatefulFunctionDefinition<EarPhysicsState> =
     const instanceId = String(config.__instanceId ?? "earPhysics");
     const dt = Math.min(Math.max(frame.deltaTime, 0), MAX_DELTA_TIME);
 
-    let {
-      holdValue,
-      nextHoldAt,
-      holdIndex,
-      position,
-      velocity,
-      initialized,
-    } = state;
+    let { holdValue, nextHoldAt, holdIndex, position, velocity, initialized } = state;
 
     if (!initialized) {
-      holdValue = randomInRange(instanceId, 0, 0.5 - intensity * 0.2, 0.5 + intensity * 0.2);
+      holdValue = randomInRange(
+        instanceId,
+        0,
+        0.5 - intensity * 0.2,
+        0.5 + intensity * 0.2,
+      );
       nextHoldAt = frame.elapsedTime + holdInterval;
       initialized = true;
     } else if (frame.elapsedTime >= nextHoldAt) {

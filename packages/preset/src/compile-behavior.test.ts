@@ -1,6 +1,9 @@
 import { compilePfScript } from "@puppetflow/pfscript-core";
 import { describe, expect, it } from "vitest";
-import { compilePresetBehavior, materializePresetBehavior } from "./compile-behavior.js";
+import {
+  compilePresetBehavior,
+  materializePresetBehavior,
+} from "./compile-behavior.js";
 
 describe("materializePresetBehavior", () => {
   it("recompiles behavior cache from behaviorPfScript", () => {

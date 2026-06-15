@@ -17,11 +17,7 @@ export {
 } from "./collect-mapper-custom-params.js";
 export type { PuppetFlowPreset } from "./types.js";
 export { assemblePreset, splitPreset, type PresetParts } from "./assemble-preset.js";
-export {
-  loadPreset,
-  parsePreset,
-  type LoadedPreset,
-} from "./load-preset.js";
+export { loadPreset, parsePreset, type LoadedPreset } from "./load-preset.js";
 export {
   compilePresetBehavior,
   materializePresetBehavior,

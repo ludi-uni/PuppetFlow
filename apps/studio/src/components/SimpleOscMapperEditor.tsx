@@ -61,9 +61,7 @@ export function SimpleOscMapperEditor({
           送信先: <strong>{selectedPreset.label}</strong>（{selectedPreset.host}:
           {selectedPreset.port}）
         </p>
-        <p className="hint">
-          まず外部 Viewer を起動し、OSC 受信を有効にしてください。
-        </p>
+        <p className="hint">まず外部 Viewer を起動し、OSC 受信を有効にしてください。</p>
         {selectedPreset.id === "nijiexpose" ? (
           <p className="hint emotion-plugin-hint">
             Inochi2D（.inp）や nijigenerate（nijilive）のモデルを nijiexpose
@@ -75,7 +73,8 @@ export function SimpleOscMapperEditor({
         {extensionCustomParamIds.length > 0 ? (
           <p className="hint emotion-plugin-hint">
             カスタムパラメータ（{extensionCustomParamIds.join(", ")}
-            ）の OSC 送信名は「詳細設定（エキスパート）」の Motion Mapper で設定してください。
+            ）の OSC 送信名は「詳細設定（エキスパート）」の Motion Mapper
+            で設定してください。
           </p>
         ) : null}
       </div>

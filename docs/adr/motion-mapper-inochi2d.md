@@ -10,11 +10,11 @@
 
 **専用 `inochi2d` Mapper ターゲットは Phase R4 では追加しない。**
 
-| 項目 | 方針 |
-| ---- | ---- |
-| nijiexpose 向け送信 | 既存 `live2d` ターゲット + `viewer-presets.ts` の nijiexpose プリセット |
-| パラメータ名 | `packages/motion-mapper/profiles/live2d.json` の `Param*` マッピングを正とする |
-| 将来 | モデル固有マッピングが必要になった時点で `adapter-inochi2d` または `inochi2d` プロファイルを別 Epic で検討 |
+| 項目                | 方針                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| nijiexpose 向け送信 | 既存 `live2d` ターゲット + `viewer-presets.ts` の nijiexpose プリセット                                    |
+| パラメータ名        | `packages/motion-mapper/profiles/live2d.json` の `Param*` マッピングを正とする                             |
+| 将来                | モデル固有マッピングが必要になった時点で `adapter-inochi2d` または `inochi2d` プロファイルを別 Epic で検討 |
 
 ## 理由
 

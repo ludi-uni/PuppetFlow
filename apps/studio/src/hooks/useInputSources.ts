@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getSourceConfig, setSourceConfig, type SourceConfig } from "../runtime";
 import {
-  getSourceConfig,
-  setSourceConfig,
-  type SourceConfig,
-} from "../runtime";
+  loadPersistedSourceConfig,
+  loadPersistedSourceDraft,
+  savePersistedSourceConfig,
+  savePersistedSourceDraft,
+} from "../utils/studio-config-storage";
 import type { StatusKind } from "../components/StatusBanner";
+
+function initialSourceFields() {
+  const draft = loadPersistedSourceDraft();
+  const applied = loadPersistedSourceConfig();
+  return {
+    httpUrl: draft?.httpUrl ?? applied?.httpUrl ?? "",
+    wsUrl: draft?.wsUrl ?? applied?.wsUrl ?? "",
+    mqttBroker: draft?.mqttBroker ?? applied?.mqttBroker ?? "",
+    mqttTopic: draft?.mqttTopic ?? applied?.mqttTopic ?? "",
+  };
+}
 
 export function sourcesDirty(draft: SourceConfig, applied: SourceConfig): boolean {
   return (
@@ -17,9 +30,7 @@ export function sourcesDirty(draft: SourceConfig, applied: SourceConfig): boolea
 
 export function isExternalInputActive(sources: SourceConfig): boolean {
   return Boolean(
-    sources.httpUrl ||
-    sources.wsUrl ||
-    (sources.mqttBroker && sources.mqttTopic),
+    sources.httpUrl || sources.wsUrl || (sources.mqttBroker && sources.mqttTopic),
   );
 }
 
@@ -30,10 +41,11 @@ export interface UseInputSourcesOptions {
 }
 
 export function useInputSources({ notify }: UseInputSourcesOptions) {
-  const [httpUrl, setHttpUrl] = useState("");
-  const [wsUrl, setWsUrl] = useState("");
-  const [mqttBroker, setMqttBroker] = useState("");
-  const [mqttTopic, setMqttTopic] = useState("");
+  const initial = initialSourceFields();
+  const [httpUrl, setHttpUrl] = useState(initial.httpUrl);
+  const [wsUrl, setWsUrl] = useState(initial.wsUrl);
+  const [mqttBroker, setMqttBroker] = useState(initial.mqttBroker);
+  const [mqttTopic, setMqttTopic] = useState(initial.mqttTopic);
   const [appliedSources, setAppliedSources] = useState<SourceConfig>(getSourceConfig());
   const [applyingSources, setApplyingSources] = useState(false);
   const [httpHealth, setHttpHealth] = useState<HttpHealth>("idle");
@@ -50,6 +62,15 @@ export function useInputSources({ notify }: UseInputSourcesOptions) {
 
   const sourcesHaveChanges = sourcesDirty(draftSources, appliedSources);
   const externalInputActive = isExternalInputActive(appliedSources);
+
+  useEffect(() => {
+    savePersistedSourceDraft({
+      httpUrl,
+      wsUrl,
+      mqttBroker,
+      mqttTopic,
+    });
+  }, [httpUrl, wsUrl, mqttBroker, mqttTopic]);
 
   const syncFromRuntime = useCallback(() => {
     const sources = getSourceConfig();
@@ -108,6 +129,7 @@ export function useInputSources({ notify }: UseInputSourcesOptions) {
     try {
       await setSourceConfig(draftSources);
       setAppliedSources(draftSources);
+      savePersistedSourceConfig(draftSources);
       notify("Input Sources を適用しました。", "success");
     } catch (error) {
       notify(

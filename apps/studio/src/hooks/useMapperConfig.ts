@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { getMapperConfig, setMapperConfig } from "../runtime";
 import { collectMapperCustomParamIds } from "../utils/mapper-custom-params";
+import { savePersistedMapperConfig } from "../utils/studio-config-storage";
 import type { MotionMapperEditorConfig } from "../mapper-config";
 import type { StatusKind } from "../components/StatusBanner";
 
@@ -32,6 +33,7 @@ export function useMapperConfig({
     async (config: MotionMapperEditorConfig, successMessage: string) => {
       await setMapperConfig(config);
       setAppliedMapperConfig(getMapperConfig());
+      savePersistedMapperConfig(getMapperConfig());
       setMapperEditorKey((current) => current + 1);
       notify(successMessage, "success");
     },

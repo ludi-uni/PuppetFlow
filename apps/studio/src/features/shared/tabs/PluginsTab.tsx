@@ -1,6 +1,9 @@
 import { ExtensionPackEditor } from "../../../components/ExtensionPackEditor";
 import { PluginMotionEditor } from "../../../components/PluginMotionEditor";
-import { isPluginEnabled, mergeBehaviorPluginsIntoPreset } from "../../../utils/plugin-config";
+import {
+  isPluginEnabled,
+  mergeBehaviorPluginsIntoPreset,
+} from "../../../utils/plugin-config";
 
 export interface PluginsTabProps {
   isSimpleMode: boolean;

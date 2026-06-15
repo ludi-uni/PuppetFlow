@@ -1,14 +1,14 @@
 import { parseBehaviorRoot, type BehaviorBlock } from "@puppetflow/behavior";
-import {
-  LEGACY_BEHAVIOR_PLUGIN_IDS,
-  OFFICIAL_BEHAVIOR_PLUGIN_IDS,
-} from "@puppetflow/core";
+import { LEGACY_BEHAVIOR_PLUGIN_IDS } from "@puppetflow/core";
 import {
   detectPresetStageOverlaps,
   formatOverlapWarnings,
   parseBehaviorPluginsJson,
 } from "./preset-warnings.js";
-import { tryCompilePfScriptSource, type PfScriptCompileResult } from "./pfscript-preset.js";
+import {
+  tryCompilePfScriptSource,
+  type PfScriptCompileResult,
+} from "./pfscript-preset.js";
 import { extractBehaviorPluginsJson, extractGraphJson } from "./preset-parts.js";
 
 export {

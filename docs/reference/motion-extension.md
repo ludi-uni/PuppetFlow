@@ -57,12 +57,12 @@ State / Channel / Timeline
 
 ## 編集面
 
-| UI                      | 内容                                                        |
-| ----------------------- | ----------------------------------------------------------- |
-| Studio → オプション動き | Motion Pack ON/OFF + パラメータ                             |
-| Scratch                 | Motion Packs カテゴリ（考え込む等）                         |
-| Graph                   | `motionPack` / `motionGenerator` / `motionFunction` / `ext:*` ノード           |
-| PFScript                | `@puppetflow/pfscript-core` で `thinking(intensity=0.8)` 等 |
+| UI                      | 内容                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| Studio → オプション動き | Motion Pack ON/OFF + パラメータ                                      |
+| Scratch                 | Motion Packs カテゴリ（考え込む等）                                  |
+| Graph                   | `motionPack` / `motionGenerator` / `motionFunction` / `ext:*` ノード |
+| PFScript                | `@puppetflow/pfscript-core` で `thinking(intensity=0.8)` 等          |
 
 ## 新規プラグインの追加
 

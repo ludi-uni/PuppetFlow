@@ -22,7 +22,10 @@ export function parseBehaviorPluginsJson(
   behaviorPluginsJson: string,
 ): Array<{ id: string; config?: Record<string, unknown> }> {
   try {
-    const parsed = JSON.parse(behaviorPluginsJson) as Array<{ id?: string; config?: unknown }>;
+    const parsed = JSON.parse(behaviorPluginsJson) as Array<{
+      id?: string;
+      config?: unknown;
+    }>;
     if (!Array.isArray(parsed)) {
       return [];
     }

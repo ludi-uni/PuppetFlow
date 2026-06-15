@@ -6,12 +6,12 @@
 
 公式プリセットは `Standard.pfpreset` を基準に、次の **役割分担** で構成します。
 
-| 層 | 担当 | 例 |
-| ---- | ---- | ---- |
+| 層                                | 担当                                                                                | 例                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- |
 | **PFScript** (`behaviorPfScript`) | 体の揺れ、前のめり、口開き（volume）、まぶた開き（energy→`eyeYaw`）、呼吸（custom） | `bodyLean`, `mouthY`, `eyeYaw`, `custom:breath` |
-| **Graph** | かんたんモードで編集する笑顔マッピング | `interest × gain → mouthX` |
-| **behaviorPlugins** | 瞬き（`eyeYaw` 上書き）・低 interest 時の視線 wander | `blink`, `idle` |
-| **extensions** | Motion Pack（Thinking 等） | `thinking` |
+| **Graph**                         | かんたんモードで編集する笑顔マッピング                                              | `interest × gain → mouthX`                      |
+| **behaviorPlugins**               | 瞬き（`eyeYaw` 上書き）・低 interest 時の視線 wander                                | `blink`, `idle`                                 |
+| **extensions**                    | Motion Pack（Thinking 等）                                                          | `thinking`                                      |
 
 **同一 Motion キーを PFScript と Graph の両方に書かない** こと（load 時に overlap 警告）。笑顔は Graph、体・呼吸は PFScript に寄せます。
 
@@ -44,15 +44,15 @@
 }
 ```
 
-| フィールド           | 必須 | 説明                                            |
-| -------------------- | ---- | ----------------------------------------------- |
-| `name`               | ✅   | プリセット名                                    |
-| `version`            | ✅   | **`3` のみ**                                    |
-| `behavior`           | △   | Behavior AST（`behaviorPfScript` があればキャッシュ） |
-| `behaviorPfScript`   | —    | PFScript ソース（load 時に `behavior` へコンパイル） |
-| `graph`              | ✅   | Motion Graph（`nodes` + `edges`）               |
-| `behaviorPlugins` | —    | blink / idle 等のプラグイン定義                 |
-| `extensions`      | —    | Motion Pack / 独自パラメータ（Extension Layer） |
+| フィールド         | 必須 | 説明                                                  |
+| ------------------ | ---- | ----------------------------------------------------- |
+| `name`             | ✅   | プリセット名                                          |
+| `version`          | ✅   | **`3` のみ**                                          |
+| `behavior`         | △    | Behavior AST（`behaviorPfScript` があればキャッシュ） |
+| `behaviorPfScript` | —    | PFScript ソース（load 時に `behavior` へコンパイル）  |
+| `graph`            | ✅   | Motion Graph（`nodes` + `edges`）                     |
+| `behaviorPlugins`  | —    | blink / idle 等のプラグイン定義                       |
+| `extensions`       | —    | Motion Pack / 独自パラメータ（Extension Layer）       |
 
 `behavior` または `behaviorPfScript` のどちらか一方が必要です。両方ある場合 **ソース（`behaviorPfScript`）が優先** されます。
 
@@ -71,15 +71,15 @@
 
 ## 公式プリセット（6 種 + Standard）
 
-| 名前     | 概要 |
-| -------- | ---- |
+| 名前         | 概要                                                     |
+| ------------ | -------------------------------------------------------- |
 | **Standard** | 基準テンプレート（PFScript + blink/idle + Graph mouthX） |
-| Curious  | Standard 同等・きょろきょろ |
-| Happy    | 活発な揺れ・明るい笑顔（Graph gain 0.8） |
-| Idle     | 控えめな揺れ・待機向け |
-| Thinking | 控えめ + `headTilt` + `thinking` Pack |
-| Sleepy   | ゆっくり・半開き目・長めのまばたき |
-| Focused  | 引き締め・前のめり強め |
+| Curious      | Standard 同等・きょろきょろ                              |
+| Happy        | 活発な揺れ・明るい笑顔（Graph gain 0.8）                 |
+| Idle         | 控えめな揺れ・待機向け                                   |
+| Thinking     | 控えめ + `headTilt` + `thinking` Pack                    |
+| Sleepy       | ゆっくり・半開き目・長めのまばたき                       |
+| Focused      | 引き締め・前のめり強め                                   |
 
 ```ts
 import { getPresetJson, listPresetNames } from "@puppetflow/behavior-packs";
@@ -106,14 +106,14 @@ await runtime.start();
 
 ## Studio での編集
 
-| タブ              | 編集対象                                  |
-| ----------------- | ----------------------------------------- |
-| Scratch (Blockly) | `behavior`（If / Assign）                 |
+| タブ              | 編集対象                                     |
+| ----------------- | -------------------------------------------- |
+| Scratch (Blockly) | `behavior`（If / Assign）                    |
 | **PFScript**      | `behaviorPfScript` + コンパイル済 `behavior` |
-| Graph Editor      | `graph`                                   |
-| 動きのつなぎ      | `graph`（かんたんモードの表 UI）          |
-| オプション動き    | `behaviorPlugins` / `extensions`        |
-| Preset Manager    | JSON 直接編集                             |
+| Graph Editor      | `graph`                                      |
+| 動きのつなぎ      | `graph`（かんたんモードの表 UI）             |
+| オプション動き    | `behaviorPlugins` / `extensions`             |
+| Preset Manager    | JSON 直接編集                                |
 
 適用前に `loadPreset()` 相当のバリデーションが走ります。
 

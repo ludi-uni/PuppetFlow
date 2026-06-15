@@ -23,7 +23,10 @@ export function formatBehaviorMotionKey(target: string): string {
   return `custom:${resolved.custom}`;
 }
 
-function collectFromStatements(statements: BehaviorStatement[], keys: Set<string>): void {
+function collectFromStatements(
+  statements: BehaviorStatement[],
+  keys: Set<string>,
+): void {
   for (const statement of statements) {
     switch (statement.type) {
       case "Block":
@@ -106,7 +109,9 @@ export function collectPresetMotionKeys(input: {
     sources.set(key, list);
   };
 
-  for (const [key, pluginSources] of collectPluginMotionKeys(input.behaviorPlugins ?? [])) {
+  for (const [key, pluginSources] of collectPluginMotionKeys(
+    input.behaviorPlugins ?? [],
+  )) {
     for (const source of pluginSources) {
       add(key, source);
     }
@@ -144,9 +149,7 @@ function shouldWarnOverlappingSources(motionKey: string, sources: string[]): boo
   }
 
   return (
-    (hasGraph && hasPlugin) ||
-    (hasBehavior && hasPlugin) ||
-    (hasGraph && hasBehavior)
+    (hasGraph && hasPlugin) || (hasBehavior && hasPlugin) || (hasGraph && hasBehavior)
   );
 }
 

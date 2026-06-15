@@ -31,7 +31,9 @@ export interface ApplyPresetOptions {
   presetName?: PresetName;
 }
 
-export async function applyPresetToStudio(options: ApplyPresetOptions): Promise<boolean> {
+export async function applyPresetToStudio(
+  options: ApplyPresetOptions,
+): Promise<boolean> {
   const {
     json,
     custom,

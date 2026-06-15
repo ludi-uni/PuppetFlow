@@ -55,14 +55,13 @@ export function clamp01(value: number): number {
 }
 
 /** Legacy keys removed from MotionState — migrated automatically when loading presets */
-export const LEGACY_MOTION_KEY_REPLACEMENTS: Readonly<
-  Record<string, MotionStateKey>
-> = {
-  faceRoll: "headTilt",
-  bodyPitch: "bodyLean",
-  eyeX: "lookX",
-  eyeY: "lookY",
-};
+export const LEGACY_MOTION_KEY_REPLACEMENTS: Readonly<Record<string, MotionStateKey>> =
+  {
+    faceRoll: "headTilt",
+    bodyPitch: "bodyLean",
+    eyeX: "lookX",
+    eyeY: "lookY",
+  };
 
 export function migrateLegacyMotionKey(key: string): {
   key: string;
@@ -96,8 +95,6 @@ export const LEGACY_BEHAVIOR_PLUGIN_IDS = ["gaze", "attention", "emotion"] as co
 
 export type LegacyBehaviorPluginId = (typeof LEGACY_BEHAVIOR_PLUGIN_IDS)[number];
 
-export function getPluginMotionOutputs(
-  pluginId: string,
-): readonly MotionStateKey[] {
+export function getPluginMotionOutputs(pluginId: string): readonly MotionStateKey[] {
   return PLUGIN_MOTION_OUTPUTS[pluginId] ?? [];
 }

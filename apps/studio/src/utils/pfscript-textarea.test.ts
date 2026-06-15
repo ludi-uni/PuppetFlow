@@ -10,9 +10,7 @@ import {
 
 describe("pfscript-textarea", () => {
   it("continues indent after if/then", () => {
-    expect(computeNextLineIndent("if interest > 0.7 then", 22)).toBe(
-      PFSCRIPT_INDENT,
-    );
+    expect(computeNextLineIndent("if interest > 0.7 then", 22)).toBe(PFSCRIPT_INDENT);
   });
 
   it("continues indent after assignment with trailing =", () => {

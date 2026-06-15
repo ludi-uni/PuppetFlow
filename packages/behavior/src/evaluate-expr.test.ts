@@ -4,7 +4,9 @@ import { executeBehavior } from "./execute.js";
 import { evaluateExpressionAsNumber } from "./evaluate-expr.js";
 import type { BehaviorExecutionContext } from "./context.js";
 
-function createContext(overrides: Partial<BehaviorExecutionContext> = {}): BehaviorExecutionContext {
+function createContext(
+  overrides: Partial<BehaviorExecutionContext> = {},
+): BehaviorExecutionContext {
   return {
     state: new StateStore(),
     channels: new ChannelStore(),
@@ -60,23 +62,14 @@ describe("evaluateExpressionAsNumber", () => {
     const ctx = createContext({ state, channels, time: 2 });
 
     expect(
-      evaluateExpressionAsNumber(
-        { type: "Identifier", name: "interest" },
-        ctx,
-      ),
+      evaluateExpressionAsNumber({ type: "Identifier", name: "interest" }, ctx),
     ).toBe(0.8);
     expect(
-      evaluateExpressionAsNumber(
-        { type: "Identifier", name: "volume" },
-        ctx,
-      ),
+      evaluateExpressionAsNumber({ type: "Identifier", name: "volume" }, ctx),
     ).toBe(0.6);
-    expect(
-      evaluateExpressionAsNumber(
-        { type: "Identifier", name: "time" },
-        ctx,
-      ),
-    ).toBe(2);
+    expect(evaluateExpressionAsNumber({ type: "Identifier", name: "time" }, ctx)).toBe(
+      2,
+    );
   });
 });
 

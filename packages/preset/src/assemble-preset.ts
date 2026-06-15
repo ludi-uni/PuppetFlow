@@ -22,12 +22,17 @@ export function splitPreset(preset: PuppetFlowPreset): PresetParts {
   };
 }
 
-export function assemblePreset(base: PuppetFlowPreset, parts: Partial<PresetParts>): PuppetFlowPreset {
+export function assemblePreset(
+  base: PuppetFlowPreset,
+  parts: Partial<PresetParts>,
+): PuppetFlowPreset {
   return {
     ...base,
     behavior: parts.behavior ?? base.behavior,
     behaviorPfScript:
-      parts.behaviorPfScript !== undefined ? parts.behaviorPfScript : base.behaviorPfScript,
+      parts.behaviorPfScript !== undefined
+        ? parts.behaviorPfScript
+        : base.behaviorPfScript,
     behaviorPlugins: parts.behaviorPlugins ?? base.behaviorPlugins,
     graph: parts.graph ?? base.graph,
     extensions: parts.extensions !== undefined ? parts.extensions : base.extensions,

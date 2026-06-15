@@ -49,7 +49,9 @@ describe("assemblePresetFromParts", () => {
     });
     const assembled = assemblePresetFromParts(base, {
       graphJson: extractGraphJson(base),
-      behaviorPluginsJson: JSON.stringify([{ id: "gaze", config: { wanderAmplitude: 0.04 } }]),
+      behaviorPluginsJson: JSON.stringify([
+        { id: "gaze", config: { wanderAmplitude: 0.04 } },
+      ]),
     });
 
     const pfScript = "smile = interest * 0.4";

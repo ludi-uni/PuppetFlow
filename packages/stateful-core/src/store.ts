@@ -58,11 +58,14 @@ export class StatefulStore {
     const key = entryKey(functionName, instanceId);
     const existing = this.entries.get(key);
     const state =
-      existing?.defName === functionName
-        ? existing.state
-        : def.createState(config);
+      existing?.defName === functionName ? existing.state : def.createState(config);
 
-    const result = def.update(frame, state, { ...config, __instanceId: instanceId }, input);
+    const result = def.update(
+      frame,
+      state,
+      { ...config, __instanceId: instanceId },
+      input,
+    );
     this.entries.set(key, {
       defName: functionName,
       instanceId,

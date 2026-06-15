@@ -2,10 +2,12 @@ import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriOscAdapter } from "@puppetflow/adapter-vmc";
 import type { MotionState, StateValue } from "@puppetflow/core";
 import { loadPreset } from "@puppetflow/preset";
-import { PuppetFlowRuntime, type PluginOutputSnapshot, type StatefulEntrySnapshot } from "@puppetflow/runtime";
-import { HttpSource } from "@puppetflow/source-http";
-import { MqttSource } from "@puppetflow/source-mqtt";
-import { WebSocketSource } from "@puppetflow/source-websocket";
+import {
+  PuppetFlowRuntime,
+  type PluginOutputSnapshot,
+  type StatefulEntrySnapshot,
+} from "@puppetflow/runtime";
+import { attachSources, type SourceLaunchConfig } from "@puppetflow/runtime-launcher";
 import curiousPreset from "@puppetflow/behavior-packs/presets/Curious.pfpreset?raw";
 import focusedPreset from "@puppetflow/behavior-packs/presets/Focused.pfpreset?raw";
 import happyPreset from "@puppetflow/behavior-packs/presets/Happy.pfpreset?raw";
@@ -19,6 +21,10 @@ import {
   toMotionMapperProfile,
   type MotionMapperEditorConfig,
 } from "./mapper-config";
+import {
+  loadPersistedMapperConfig,
+  loadPersistedSourceConfig,
+} from "./utils/studio-config-storage";
 
 const PRESETS = {
   Curious: curiousPreset,
@@ -31,12 +37,7 @@ const PRESETS = {
 
 export type PresetName = keyof typeof PRESETS;
 
-export type SourceConfig = {
-  httpUrl: string | null;
-  wsUrl: string | null;
-  mqttBroker: string | null;
-  mqttTopic: string | null;
-};
+export type SourceConfig = SourceLaunchConfig;
 
 class StaleRuntimeStartup extends Error {
   override readonly name = "StaleRuntimeStartup";
@@ -54,6 +55,16 @@ let sourceConfig: SourceConfig = {
   mqttTopic: null,
 };
 let mapperConfig: MotionMapperEditorConfig = cloneMapperConfig(DEFAULT_MAPPER_CONFIG);
+
+const persistedMapper = loadPersistedMapperConfig();
+if (persistedMapper) {
+  mapperConfig = persistedMapper;
+}
+
+const persistedSources = loadPersistedSourceConfig();
+if (persistedSources) {
+  sourceConfig = { ...persistedSources };
+}
 
 const pipelineListenerSet = new Set<(update: MotionPipelineUpdate) => void>();
 const pipelineListenerUnsubs = new Map<
@@ -108,24 +119,7 @@ function buildRuntime(): PuppetFlowRuntime {
     );
   }
 
-  if (sourceConfig.httpUrl) {
-    instance.attachSource(
-      new HttpSource({ url: sourceConfig.httpUrl, intervalMs: 1000 }),
-    );
-  }
-
-  if (sourceConfig.wsUrl) {
-    instance.attachSource(new WebSocketSource({ url: sourceConfig.wsUrl }));
-  }
-
-  if (sourceConfig.mqttBroker && sourceConfig.mqttTopic) {
-    instance.attachSource(
-      new MqttSource({
-        brokerUrl: sourceConfig.mqttBroker,
-        topic: sourceConfig.mqttTopic,
-      }),
-    );
-  }
+  attachSources(instance, sourceConfig);
 
   return instance;
 }

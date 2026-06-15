@@ -94,7 +94,13 @@ export function PfScriptEditor({
     if (event.key === "Tab") {
       event.preventDefault();
       const result = applyTabKey(value, selectionStart, selectionEnd, event.shiftKey);
-      applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+      applyTextEdit(
+        textarea,
+        result.value,
+        result.selectionStart,
+        result.selectionEnd,
+        updateSource,
+      );
       return;
     }
 
@@ -104,15 +110,32 @@ export function PfScriptEditor({
       }
       event.preventDefault();
       const result = applyEnterKey(value, selectionStart, selectionEnd);
-      applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+      applyTextEdit(
+        textarea,
+        result.value,
+        result.selectionStart,
+        result.selectionEnd,
+        updateSource,
+      );
       return;
     }
 
-    if (event.key === "Backspace" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    if (
+      event.key === "Backspace" &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
       const result = handleBackspaceAtIndent(value, selectionStart, selectionEnd);
       if (result) {
         event.preventDefault();
-        applyTextEdit(textarea, result.value, result.selectionStart, result.selectionEnd, updateSource);
+        applyTextEdit(
+          textarea,
+          result.value,
+          result.selectionStart,
+          result.selectionEnd,
+          updateSource,
+        );
       }
     }
   };
@@ -173,13 +196,15 @@ export function PfScriptEditor({
   return (
     <section className="pfscript-editor">
       <p className="hint">
-        PFScript（上級者向け DSL）で behavior を記述します。「コンパイル」で behavior AST
-        をプレビューし、「Preset に適用」で <code>behaviorPfScript</code> とコンパイル済み{" "}
-        <code>behavior</code> を保存します。Graph / behaviorPlugins は保持されます。
+        PFScript（上級者向け DSL）で behavior を記述します。「コンパイル」で behavior
+        AST をプレビューし、「Preset に適用」で <code>behaviorPfScript</code>{" "}
+        とコンパイル済み <code>behavior</code> を保存します。Graph / behaviorPlugins
+        は保持されます。
       </p>
       <p className="hint pfscript-editor-keys">
         <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> でインデント、<kbd>Enter</kbd>{" "}
-        で自動インデント（<code>then</code> / <code>=</code> / <code>(</code> の後など）。
+        で自動インデント（<code>then</code> / <code>=</code> / <code>(</code>{" "}
+        の後など）。
       </p>
 
       {duplicateWarning ? (

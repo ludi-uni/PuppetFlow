@@ -59,6 +59,13 @@ export function evaluateStatefulGraphNode(
     }
   }
 
-  const result = store.evaluate(functionName, instanceId, config, input, frame, registry);
+  const result = store.evaluate(
+    functionName,
+    instanceId,
+    config,
+    input,
+    frame,
+    registry,
+  );
   return typeof result === "boolean" ? (result ? 1 : 0) : result;
 }

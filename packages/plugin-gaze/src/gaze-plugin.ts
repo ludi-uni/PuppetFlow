@@ -34,10 +34,7 @@ export class GazePlugin implements BehaviorPlugin {
     this.wanderAmplitude = clamp01(
       Math.min(MAX_WANDER, Math.max(MIN_WANDER, config.wanderAmplitude ?? 0.05)),
     );
-    this.speed = Math.min(
-      MAX_SPEED,
-      Math.max(MIN_SPEED, config.speed ?? 0.12),
-    );
+    this.speed = Math.min(MAX_SPEED, Math.max(MIN_SPEED, config.speed ?? 0.12));
   }
 
   process(
@@ -46,7 +43,9 @@ export class GazePlugin implements BehaviorPlugin {
     context?: BehaviorPluginContext,
   ): Partial<MotionState> {
     const frequency = this.speed / (Math.PI * 2);
-    const lookXOsc = context?.runStatefulNumber?.("oscillator", "gaze:lookX", { frequency });
+    const lookXOsc = context?.runStatefulNumber?.("oscillator", "gaze:lookX", {
+      frequency,
+    });
     const lookYOsc = context?.runStatefulNumber?.("oscillator", "gaze:lookY", {
       frequency,
       phaseOffset: LOOK_Y_PHASE_OFFSET,

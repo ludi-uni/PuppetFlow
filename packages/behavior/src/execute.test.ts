@@ -1,11 +1,16 @@
 import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
-import { createDefaultStatefulRegistry, StatefulStore } from "@puppetflow/stateful-core";
+import {
+  createDefaultStatefulRegistry,
+  StatefulStore,
+} from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
 import type { BehaviorBlock } from "./ast.js";
 import { executeBehavior, executeBehaviorWithInvocations } from "./execute.js";
 import type { BehaviorExecutionContext } from "./context.js";
 
-function createCtx(overrides: Partial<BehaviorExecutionContext> = {}): BehaviorExecutionContext {
+function createCtx(
+  overrides: Partial<BehaviorExecutionContext> = {},
+): BehaviorExecutionContext {
   const store = overrides.statefulStore ?? new StatefulStore();
   return {
     state: overrides.state ?? new StateStore(),
@@ -81,7 +86,9 @@ describe("executeBehavior", () => {
         {
           type: "If",
           condition: { left: "interest", op: ">", right: 0.7 },
-          then: [{ type: "MotionPack", packId: "thinking", config: { intensity: 0.8 } }],
+          then: [
+            { type: "MotionPack", packId: "thinking", config: { intensity: 0.8 } },
+          ],
           else: [{ type: "MotionPack", packId: "idle", config: { strength: 0.3 } }],
         },
       ],
@@ -130,11 +137,19 @@ describe("executeBehavior", () => {
 
     const allowed = executeBehavior(
       root,
-      createCtx({ statefulStore: store, time: 0, frame: { deltaTime: 1 / 60, frameNumber: 0, elapsedTime: 0 } }),
+      createCtx({
+        statefulStore: store,
+        time: 0,
+        frame: { deltaTime: 1 / 60, frameNumber: 0, elapsedTime: 0 },
+      }),
     );
     const blocked = executeBehavior(
       root,
-      createCtx({ statefulStore: store, time: 1 / 60, frame: { deltaTime: 1 / 60, frameNumber: 1, elapsedTime: 1 / 60 } }),
+      createCtx({
+        statefulStore: store,
+        time: 1 / 60,
+        frame: { deltaTime: 1 / 60, frameNumber: 1, elapsedTime: 1 / 60 },
+      }),
     );
 
     expect(allowed.eyeYaw).toBeCloseTo(0.2, 3);

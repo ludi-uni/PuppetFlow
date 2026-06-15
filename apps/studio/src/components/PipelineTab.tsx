@@ -80,8 +80,7 @@ export function PipelineTab({
       />
       {externalInputActive ? (
         <p className="external-input-banner">
-          外部 Input Source から channels
-          を受信中です。スライダーは受信値に同期します。
+          外部 Input Source から channels を受信中です。スライダーは受信値に同期します。
         </p>
       ) : null}
       <div className="panel-grid">
@@ -209,7 +208,10 @@ export function PipelineTab({
               <h2>Channel 一覧</h2>
               <KeyValueTable rows={channelTableRows} emptyHint="（channel 未設定）" />
               <h2>Timeline 稼働中（{timelineCurrentMs} ms）</h2>
-              <KeyValueTable rows={timelineTableRows} emptyHint="（active イベントなし）" />
+              <KeyValueTable
+                rows={timelineTableRows}
+                emptyHint="（active イベントなし）"
+              />
               <details className="inspector-details">
                 <summary>State JSON（詳細）</summary>
                 <pre>{JSON.stringify(stateSnapshot, null, 2)}</pre>
@@ -244,8 +246,7 @@ export function PipelineTab({
           <div className="pipeline-motion">
             <h2>Motion (merged → rendered)</h2>
             <p className="hint">
-              Target は各段階のマージ結果。Rendered は modifier
-              適用後の最終出力です。
+              Target は各段階のマージ結果。Rendered は modifier 適用後の最終出力です。
             </p>
             <MotionTable
               columns={[
@@ -264,8 +265,8 @@ export function PipelineTab({
           <div className="pipeline-stages">
             <h2>Stateful 状態</h2>
             <p className="hint">
-              PFScript / Graph / Extension Pack が保持するフレーム跨ぎ状態（id /
-              現在値 / 内部 state）。
+              PFScript / Graph / Extension Pack が保持するフレーム跨ぎ状態（id / 現在値
+              / 内部 state）。
             </p>
             <StatefulDebugPanel entries={statefulSnapshot} />
           </div>

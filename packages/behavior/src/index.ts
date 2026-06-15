@@ -37,7 +37,10 @@ export {
   resolveMotionAlias,
 } from "./motion-aliases.js";
 export { evaluateExpression, evaluateExpressionAsNumber } from "./evaluate-expr.js";
-export { PFSCRIPT_BUILTIN_FUNCTIONS, callBuiltinFunction } from "./builtin-functions.js";
+export {
+  PFSCRIPT_BUILTIN_FUNCTIONS,
+  callBuiltinFunction,
+} from "./builtin-functions.js";
 export {
   PFSCRIPT_BUILTIN_FUNCTION_NAMES,
   PFSCRIPT_EXPRESSION_CALLEES,

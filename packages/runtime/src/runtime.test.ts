@@ -47,6 +47,23 @@ describe("PuppetFlowRuntime", () => {
     expect(adapter.dispose).toHaveBeenCalledTimes(1);
   });
 
+  it("stops adapter updates after stop is requested", async () => {
+    const update = vi.fn(async () => {});
+    const adapter = createTestAdapter(update);
+
+    const runtime = new PuppetFlowRuntime().attachAdapter(adapter);
+    await runtime.start();
+
+    expect(update.mock.calls.length).toBeGreaterThan(0);
+
+    await runtime.stop();
+
+    const callsAtStop = update.mock.calls.length;
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    expect(update.mock.calls.length).toBe(callsAtStop);
+    expect(adapter.dispose).toHaveBeenCalledTimes(1);
+  });
+
   it("applies motion modifiers between target and rendered motion", async () => {
     const runtime = new PuppetFlowRuntime()
       .use(new TestPlugin({ mouthX: 1 }))
@@ -129,7 +146,8 @@ describe("PuppetFlowRuntime", () => {
 
   it("clears stateful store when stopped", async () => {
     const runtime = new PuppetFlowRuntime().use(new GazePlugin());
-    const store = (runtime as unknown as { statefulStore: StatefulStore }).statefulStore;
+    const store = (runtime as unknown as { statefulStore: StatefulStore })
+      .statefulStore;
 
     await runtime.start();
     await new Promise((resolve) => setTimeout(resolve, 80));

@@ -1,4 +1,8 @@
-export type { BehaviorPlugin, BehaviorPluginContext, PluginInputStores } from "./behavior-plugin.js";
+export type {
+  BehaviorPlugin,
+  BehaviorPluginContext,
+  PluginInputStores,
+} from "./behavior-plugin.js";
 export {
   OFFICIAL_CHANNEL_KEYS,
   type AudioChannel,
@@ -22,7 +26,11 @@ export {
   type MotionStateKey,
   type OfficialBehaviorPluginId,
 } from "./motion-state.js";
-export { createEmptyMotionState, addMotionState, mergeMotionState } from "./merge-motion-state.js";
+export {
+  createEmptyMotionState,
+  addMotionState,
+  mergeMotionState,
+} from "./merge-motion-state.js";
 export { StateStore, type StateValue } from "./state-store.js";
 export {
   DEFAULT_PHONEME_SHAPES,

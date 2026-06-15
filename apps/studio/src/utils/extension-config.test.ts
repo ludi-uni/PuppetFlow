@@ -63,7 +63,9 @@ describe("extension-config", () => {
   });
 
   it("formats pack output hints", () => {
-    const row = parseExtensionPackRows(undefined).find((item) => item.id === "thinking");
+    const row = parseExtensionPackRows(undefined).find(
+      (item) => item.id === "thinking",
+    );
     expect(row).toBeDefined();
     expect(formatExtensionPackOutputs(row!)).toContain("lookX");
   });

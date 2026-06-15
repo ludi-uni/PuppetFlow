@@ -23,7 +23,11 @@ describe("statefulBlockToStatements", () => {
         callee: "smooth",
       },
     });
-    const call = (statements[0] as { value: { args: Array<{ name?: string; value: { type: string } }> } }).value;
+    const call = (
+      statements[0] as {
+        value: { args: Array<{ name?: string; value: { type: string } }> };
+      }
+    ).value;
     const valueArg = call.args.find((arg) => arg.name === "value");
     expect(valueArg?.value).toEqual({ type: "Identifier", name: "interest" });
   });

@@ -1,5 +1,8 @@
 import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
-import { createDefaultStatefulRegistry, StatefulStore } from "@puppetflow/stateful-core";
+import {
+  createDefaultStatefulRegistry,
+  StatefulStore,
+} from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
 import { evaluateExpressionAsNumber } from "./evaluate-expr.js";
 import type { BehaviorExecutionContext } from "./context.js";

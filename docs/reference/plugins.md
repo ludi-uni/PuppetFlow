@@ -26,22 +26,22 @@ Adapters
 
 公式 6 種は **blink + idle** を基本とし、性格表現の多くは **PFScript** に移しています。
 
-| プラグイン | 公式 preset での役割 |
-| ---------- | -------------------- |
-| `blink`    | まばたき（`eyeYaw`） |
+| プラグイン | 公式 preset での役割                                  |
+| ---------- | ----------------------------------------------------- |
+| `blink`    | まばたき（`eyeYaw`）                                  |
 | `idle`     | interest が低いときの視線 wander（`lookX` / `lookY`） |
 
 `gaze` / `attention` / `emotion` はカスタム preset やランタイム `use()` 向け。公式 preset では PFScript（`bodyLean`, `bodyYaw` 等）と役割が重なるため採用しません。
 
 ## レガシープラグインと代替手段
 
-| やりたいこと | 公式のやり方 | レガシー |
-| ------------ | ------------ | -------- |
-| まばたき | `blink` | Scratch `blink()` + PFScript `eyeYaw`（レイヤー可） |
-| 低 interest 時の視線 | `idle` | — |
-| 常時視線ゆらぎ | PFScript `wander()` / Scratch | `gaze` |
-| 体・頭の傾き | PFScript `oscillator` 等 | `attention` |
-| 感情連動の表情 | Graph + PFScript | `emotion` |
+| やりたいこと         | 公式のやり方                  | レガシー                                            |
+| -------------------- | ----------------------------- | --------------------------------------------------- |
+| まばたき             | `blink`                       | Scratch `blink()` + PFScript `eyeYaw`（レイヤー可） |
+| 低 interest 時の視線 | `idle`                        | —                                                   |
+| 常時視線ゆらぎ       | PFScript `wander()` / Scratch | `gaze`                                              |
+| 体・頭の傾き         | PFScript `oscillator` 等      | `attention`                                         |
+| 感情連動の表情       | Graph + PFScript              | `emotion`                                           |
 
 `gaze` と `idle` を同時に有効にすると `lookX` / `lookY` が重複します。Preset load 時と Studio で警告されます。
 
@@ -49,13 +49,13 @@ Adapters
 
 ## 公式プラグイン（全パッケージ）
 
-| パッケージ                     | id          | 動かす Motion キー             |
-| ------------------------------ | ----------- | ------------------------------ |
-| `@puppetflow/plugin-blink`     | `blink`     | `eyeYaw`                       |
+| パッケージ                     | id          | 動かす Motion キー                 |
+| ------------------------------ | ----------- | ---------------------------------- |
+| `@puppetflow/plugin-blink`     | `blink`     | `eyeYaw`                           |
 | `@puppetflow/plugin-idle`      | `idle`      | `lookX`, `lookY`（低 interest 時） |
-| `@puppetflow/plugin-gaze`      | `gaze`      | `lookX`, `lookY`               |
-| `@puppetflow/plugin-attention` | `attention` | `bodyLean`, `headTilt`         |
-| `@puppetflow/plugin-emotion`   | `emotion`   | `mouthX`, `facePitch`, `lookX` |
+| `@puppetflow/plugin-gaze`      | `gaze`      | `lookX`, `lookY`                   |
+| `@puppetflow/plugin-attention` | `attention` | `bodyLean`, `headTilt`             |
+| `@puppetflow/plugin-emotion`   | `emotion`   | `mouthX`, `facePitch`, `lookX`     |
 
 ### Preset での定義（公式例）
 

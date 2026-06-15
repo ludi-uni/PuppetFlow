@@ -11,7 +11,12 @@ function hashInstanceSeed(instanceId: string): number {
   return hash;
 }
 
-export function randomInRange(instanceId: string, changeIndex: number, min: number, max: number): number {
+export function randomInRange(
+  instanceId: string,
+  changeIndex: number,
+  min: number,
+  max: number,
+): number {
   const seed = hashInstanceSeed(instanceId) + changeIndex * 97.13;
   return min + deterministicUnitRandom(seed) * (max - min);
 }

@@ -1,0 +1,27 @@
+{
+  "name": "@puppetflow/cli",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "pf": "./dist/cli.js"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "build": "tsup src/cli.ts --format esm --dts --clean",
+    "test": "vitest run --dir ."
+  },
+  "dependencies": {
+    "@puppetflow/behavior-packs": "workspace:*",
+    "@puppetflow/cli-config": "workspace:*",
+    "@puppetflow/preset": "workspace:*",
+    "@puppetflow/runtime-launcher": "workspace:*",
+    "commander": "^13.1.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.4"
+  }
+}

@@ -1,5 +1,8 @@
 import type { Adapter } from "@puppetflow/adapter-core";
-import { executeBehaviorWithInvocations, type BehaviorBlock } from "@puppetflow/behavior";
+import {
+  executeBehaviorWithInvocations,
+  type BehaviorBlock,
+} from "@puppetflow/behavior";
 import {
   addMotionState,
   createEmptyMotionState,
@@ -182,6 +185,7 @@ export class PuppetFlowRuntime {
     }
 
     this.running = false;
+    this.tickPending = false;
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -404,7 +408,11 @@ export class PuppetFlowRuntime {
 
       for (const plugin of this.plugins) {
         try {
-          const output = plugin.process(pluginInput, this.renderedMotion, pluginContext);
+          const output = plugin.process(
+            pluginInput,
+            this.renderedMotion,
+            pluginContext,
+          );
           pipelineOutputs.push({ pluginId: plugin.id, output });
           partials.push(output);
         } catch (error) {
@@ -529,6 +537,10 @@ export class PuppetFlowRuntime {
       }
 
       for (const adapter of this.adapters) {
+        if (!this.running) {
+          return;
+        }
+
         try {
           await adapter.update(this.renderedMotion, deltaTime);
         } catch (error) {

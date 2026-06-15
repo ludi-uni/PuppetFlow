@@ -1,12 +1,10 @@
 import { blinkDefinition } from "./blink.js";
 import { breathDefinition } from "./breath.js";
 import { cooldownDefinition } from "./cooldown.js";
-import { earPhysicsDefinition } from "./ear-physics.js";
 import { oscillatorDefinition } from "./oscillator.js";
 import { randomHoldDefinition } from "./random-hold.js";
 import { smoothDefinition } from "./smooth.js";
 import { springDefinition } from "./spring.js";
-import { tailPhysicsDefinition } from "./tail-physics.js";
 import { wanderDefinition } from "./wander.js";
 
 export { blinkDefinition, type BlinkState } from "./blink.js";

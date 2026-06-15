@@ -39,11 +39,11 @@ export function formatTimelineTableRows(
   }));
 }
 
-function isReceivingExternalInput(sources: ReturnType<typeof getSourceConfig>): boolean {
+function isReceivingExternalInput(
+  sources: ReturnType<typeof getSourceConfig>,
+): boolean {
   return Boolean(
-    sources.httpUrl ||
-    sources.wsUrl ||
-    (sources.mqttBroker && sources.mqttTopic),
+    sources.httpUrl || sources.wsUrl || (sources.mqttBroker && sources.mqttTopic),
   );
 }
 

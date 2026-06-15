@@ -1,5 +1,9 @@
 import { clamp01 } from "@puppetflow/core";
-import type { ExtensionContext, ExtensionPlugin, MotionRegistry } from "@puppetflow/extension-core";
+import type {
+  ExtensionContext,
+  ExtensionPlugin,
+  MotionRegistry,
+} from "@puppetflow/extension-core";
 import { runStatefulNumber } from "@puppetflow/stateful-core";
 
 function computeEarAngle(ctx: ExtensionContext, intensity: number): number {

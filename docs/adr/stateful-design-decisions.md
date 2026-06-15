@@ -7,12 +7,12 @@
 
 PuppetFlow には時間依存の動きを実現する仕組みが複数ある。
 
-| 仕組み | 例 |
-| ------ | -- |
-| **Motion Modifier** | `SmoothingModifier` — Rendered 全体を低域通過 |
+| 仕組み              | 例                                               |
+| ------------------- | ------------------------------------------------ |
+| **Motion Modifier** | `SmoothingModifier` — Rendered 全体を低域通過    |
 | **Behavior Plugin** | `gaze` / `blink` — 個別に phase / タイマーを保持 |
-| **Extension Pack** | `lookAround` — `ctx.time` + `Math.sin` |
-| **Stateful 関数** | `oscillator` / `spring` / `wander` 等 |
+| **Extension Pack**  | `lookAround` — `ctx.time` + `Math.sin`           |
+| **Stateful 関数**   | `oscillator` / `spring` / `wander` 等            |
 
 仕様（[追加仕様.md](../追加仕様.md)）では Stateful を第一級とし、既存手段との境界を明確にする必要がある。
 
@@ -54,8 +54,8 @@ PuppetFlow には時間依存の動きを実現する仕組みが複数ある。
 
 ## 却下した案
 
-| 案 | 却下理由 |
-| -- | -------- |
-| Stateful を独立パイプライン段にする | Behavior → Stateful → Graph の二重評価が複雑 |
-| Modifier を stateful に統合 | Rendered 全体平滑と信号単位平滑の要件が異なる |
-| gaze / blink を M4 で即時削除 | 既存 Preset との互換性を損なう |
+| 案                                  | 却下理由                                      |
+| ----------------------------------- | --------------------------------------------- |
+| Stateful を独立パイプライン段にする | Behavior → Stateful → Graph の二重評価が複雑  |
+| Modifier を stateful に統合         | Rendered 全体平滑と信号単位平滑の要件が異なる |
+| gaze / blink を M4 で即時削除       | 既存 Preset との互換性を損なう                |

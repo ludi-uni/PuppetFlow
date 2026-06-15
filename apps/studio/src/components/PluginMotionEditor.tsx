@@ -59,7 +59,9 @@ export function PluginMotionEditor({
             <label className="row plugin-toggle-row">
               <span>
                 {simpleMode ? plugin.simpleLabel : plugin.label}
-                <span className="badge">{tier === "official" ? "公式" : "レガシー"}</span>
+                <span className="badge">
+                  {tier === "official" ? "公式" : "レガシー"}
+                </span>
                 <span className="hint plugin-toggle-desc">{plugin.description}</span>
               </span>
               <input

@@ -23,6 +23,8 @@ import {
   mergeGraphPart,
 } from "../utils/preset-parts";
 import { validatePresetJson } from "../utils/preset-validation";
+import { saveTextFile } from "../utils/save-text-file";
+import { saveTextFile } from "../utils/save-text-file";
 import type { StatusKind } from "../components/StatusBanner";
 
 export const PRESET_OPTIONS: PresetName[] = [
@@ -52,7 +54,9 @@ export function usePresetState({ notify }: UsePresetStateOptions) {
   const [appliedBehaviorPluginsJson, setAppliedBehaviorPluginsJson] = useState(
     extractBehaviorPluginsJson(initialJson),
   );
-  const [extensionsJson, setExtensionsJson] = useState(extractExtensionsJson(initialJson));
+  const [extensionsJson, setExtensionsJson] = useState(
+    extractExtensionsJson(initialJson),
+  );
   const [appliedExtensionsJson, setAppliedExtensionsJson] = useState(
     extractExtensionsJson(initialJson),
   );
@@ -140,11 +144,8 @@ export function usePresetState({ notify }: UsePresetStateOptions) {
       return;
     }
 
-    await runPresetApply(
-      presetJson,
-      true,
-      "カスタム Preset を適用しました。",
-      () => loadCustomPreset(presetJson),
+    await runPresetApply(presetJson, true, "カスタム Preset を適用しました。", () =>
+      loadCustomPreset(presetJson),
     );
   }, [notify, presetJson, runPresetApply]);
 
@@ -162,21 +163,35 @@ export function usePresetState({ notify }: UsePresetStateOptions) {
     [runPresetApply],
   );
 
-  const handleDownloadPreset = useCallback(() => {
+  const handleDownloadPreset = useCallback(async () => {
     const validationError = validatePresetJson(presetJson);
     if (validationError) {
       notify(`ダウンロード前に JSON を修正してください: ${validationError}`, "error");
       return;
     }
 
-    const blob = new Blob([presetJson], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${preset}.pfpreset`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    notify("Preset ファイルをダウンロードしました。", "success");
+    const result = await saveTextFile({
+      suggestedName: `${preset}.pfpreset`,
+      contents: presetJson,
+      description: "PuppetFlow Preset",
+      extensions: [".pfpreset", ".json"],
+      mimeType: "application/json",
+    });
+
+    if (!result.ok) {
+      if (result.reason === "cancelled") {
+        return;
+      }
+      notify(`Preset の保存に失敗しました: ${result.message}`, "error");
+      return;
+    }
+
+    notify(
+      result.method === "picker"
+        ? `${result.fileName} を保存しました。`
+        : "Preset ファイルをダウンロードしました。",
+      "success",
+    );
   }, [notify, preset, presetJson]);
 
   const handleImportPresetFile = useCallback(
@@ -240,17 +255,23 @@ export function usePresetState({ notify }: UsePresetStateOptions) {
     }
   }, [bumpGraphEditorKey, exportJson, notify, syncPresetParts]);
 
-  const handlePresetGraphChange = useCallback((nextGraphJson: string, merged: string) => {
-    setGraphJson(nextGraphJson);
-    setPresetJson(merged);
-  }, []);
+  const handlePresetGraphChange = useCallback(
+    (nextGraphJson: string, merged: string) => {
+      setGraphJson(nextGraphJson);
+      setPresetJson(merged);
+    },
+    [],
+  );
 
-  const selectBuiltinPresetDraft = useCallback((presetName: PresetName) => {
-    const json = getPresetJson(presetName);
-    setPreset(presetName);
-    setPresetJson(json);
-    syncPresetParts(json);
-  }, [syncPresetParts]);
+  const selectBuiltinPresetDraft = useCallback(
+    (presetName: PresetName) => {
+      const json = getPresetJson(presetName);
+      setPreset(presetName);
+      setPresetJson(json);
+      syncPresetParts(json);
+    },
+    [syncPresetParts],
+  );
 
   const applyMergedCustomPreset = useCallback(
     async (merged: string, successMessage: string) => {

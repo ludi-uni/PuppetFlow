@@ -1,3 +1,10 @@
+import {
+  loadPersistedStudioMode,
+  loadPersistedTab,
+  savePersistedStudioMode,
+  savePersistedTab,
+} from "../utils/studio-config-storage";
+
 export type StudioMode = "simple" | "expert";
 
 export type TabId =
@@ -11,19 +18,20 @@ export type TabId =
   | "sources"
   | "mapper";
 
-const STORAGE_KEY = "puppetflow.studio.mode";
-
 export function loadStudioMode(): StudioMode {
-  if (typeof localStorage === "undefined") {
-    return "simple";
-  }
-
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "expert" ? "expert" : "simple";
+  return loadPersistedStudioMode();
 }
 
 export function saveStudioMode(mode: StudioMode): void {
-  localStorage.setItem(STORAGE_KEY, mode);
+  savePersistedStudioMode(mode);
+}
+
+export function loadStudioTab(mode: StudioMode): TabId | undefined {
+  return loadPersistedTab(mode);
+}
+
+export function saveStudioTab(mode: StudioMode, tab: TabId): void {
+  savePersistedTab(mode, tab);
 }
 
 export function getTabsForMode(

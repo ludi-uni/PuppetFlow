@@ -175,7 +175,10 @@ export function StudioTabPanel({
         behaviorPreviewJson={preset.behaviorPreviewJson}
         onPreviewJson={preset.setBehaviorPreviewJson}
         onApply={async (merged) => {
-          await preset.applyMergedCustomPreset(merged, "PFScript を Preset に適用しました。");
+          await preset.applyMergedCustomPreset(
+            merged,
+            "PFScript を Preset に適用しました。",
+          );
         }}
         onStatus={notify}
       />

@@ -1,0 +1,20 @@
+version: 1
+preset: ../../presets/Standard.pfpreset
+
+state:
+  interest: 0.6
+  energy: 0.5
+
+sources:
+  http: http://127.0.0.1:3000/input
+  websocket: ws://127.0.0.1:8080/input
+
+adapters:
+  vmc:
+    enabled: true
+    host: 127.0.0.1
+    port: 39539
+  logger:
+    enabled: true
+    throttleMs: 5000
+    label: PuppetFlow CLI

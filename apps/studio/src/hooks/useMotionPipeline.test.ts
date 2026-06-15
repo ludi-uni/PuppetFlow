@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatChannelTableRows,
-  formatTimelineTableRows,
-} from "./useMotionPipeline";
+import { formatChannelTableRows, formatTimelineTableRows } from "./useMotionPipeline";
 
 describe("useMotionPipeline helpers", () => {
   it("formats channel snapshot rows", () => {

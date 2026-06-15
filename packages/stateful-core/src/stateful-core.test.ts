@@ -20,8 +20,22 @@ describe("StatefulStore", () => {
     const store = new StatefulStore();
     const registry = createDefaultStatefulRegistry();
 
-    const a = store.evaluate("oscillator", "a", { frequency: 1 }, 0, frame(0.016, 0), registry);
-    const b = store.evaluate("oscillator", "b", { frequency: 2 }, 0, frame(0.016, 0), registry);
+    const a = store.evaluate(
+      "oscillator",
+      "a",
+      { frequency: 1 },
+      0,
+      frame(0.016, 0),
+      registry,
+    );
+    const b = store.evaluate(
+      "oscillator",
+      "b",
+      { frequency: 2 },
+      0,
+      frame(0.016, 0),
+      registry,
+    );
 
     expect(a).not.toBe(b);
   });
@@ -30,7 +44,14 @@ describe("StatefulStore", () => {
     const store = new StatefulStore();
     const registry = createDefaultStatefulRegistry();
 
-    store.evaluate("oscillator", "body", { frequency: 1 }, 0, frame(0.016, 0), registry);
+    store.evaluate(
+      "oscillator",
+      "body",
+      { frequency: 1 },
+      0,
+      frame(0.016, 0),
+      registry,
+    );
     expect(store.peek("oscillator", "body")).toBeDefined();
 
     store.reset();
@@ -42,7 +63,14 @@ describe("StatefulStore", () => {
     const store = new StatefulStore();
     const registry = createDefaultStatefulRegistry();
 
-    store.evaluate("oscillator", "body", { frequency: 0.5 }, 0, frame(1 / 60, 0), registry);
+    store.evaluate(
+      "oscillator",
+      "body",
+      { frequency: 0.5 },
+      0,
+      frame(1 / 60, 0),
+      registry,
+    );
     store.evaluate("smooth", "interest", { speed: 2 }, 1, frame(1 / 60, 1), registry);
 
     const snapshot = store.snapshot();
@@ -175,7 +203,14 @@ describe("spring", () => {
     const registry = createDefaultStatefulRegistry();
 
     for (let i = 0; i < 10; i++) {
-      store.evaluate("spring", "step", { stiffness: 120, damping: 16 }, 0, frame(1 / 60, i), registry);
+      store.evaluate(
+        "spring",
+        "step",
+        { stiffness: 120, damping: 16 },
+        0,
+        frame(1 / 60, i),
+        registry,
+      );
     }
 
     const afterStep = store.evaluate(
@@ -288,7 +323,14 @@ describe("breath", () => {
 
     for (let i = 0; i < 240; i++) {
       values.push(
-        store.evaluate("breath", "chest", { rate: 0.25 }, 0, frame(1 / 60, i), registry) as number,
+        store.evaluate(
+          "breath",
+          "chest",
+          { rate: 0.25 },
+          0,
+          frame(1 / 60, i),
+          registry,
+        ) as number,
       );
     }
 
@@ -463,7 +505,9 @@ describe("earPhysics", () => {
 
 describe("runStatefulNumber", () => {
   it("returns undefined when store or registry is missing", () => {
-    expect(runStatefulNumber({ deltaTime: 0.016, time: 1 }, "oscillator", "x")).toBeUndefined();
+    expect(
+      runStatefulNumber({ deltaTime: 0.016, time: 1 }, "oscillator", "x"),
+    ).toBeUndefined();
   });
 
   it("evaluates through extension context", () => {

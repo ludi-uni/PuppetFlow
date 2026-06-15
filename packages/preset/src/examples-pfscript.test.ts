@@ -20,7 +20,10 @@ describe("examples/pfscript presets", () => {
 
     expect(loaded.behaviorPfScript).toContain("mouthY");
     expect(loaded.behavior.statements.length).toBeGreaterThan(0);
-    expect(loaded.behaviorPlugins?.map((plugin) => plugin.id)).toEqual(["blink", "idle"]);
+    expect(loaded.behaviorPlugins?.map((plugin) => plugin.id)).toEqual([
+      "blink",
+      "idle",
+    ]);
     expect(loaded.extensions?.packs?.[0]?.id).toBe("thinking");
 
     const motionKeys = collectPresetMotionKeys({

@@ -33,10 +33,9 @@ export function SourcesTab({
   return (
     <section className="input-sources-panel">
       <p className="hint">
-        HTTP / WebSocket / MQTT から <strong>state / channels / timeline</strong> を JSON
-        で注入します。フラットな <code>{`{ "interest": 0.8 }`}</code>{" "}
-        形式（state のみ）も引き続き利用できます。変更後は「Apply
-        Sources」で反映してください。
+        HTTP / WebSocket / MQTT から <strong>state / channels / timeline</strong> を
+        JSON で注入します。フラットな <code>{`{ "interest": 0.8 }`}</code> 形式（state
+        のみ）も引き続き利用できます。変更後は「Apply Sources」で反映してください。
       </p>
       <label className="row">
         <span>HTTP URL</span>

@@ -42,7 +42,12 @@ end
       behavior,
       graph: {
         nodes: [
-          { id: "out", type: "output", data: { key: "mouthX" }, position: { x: 0, y: 0 } },
+          {
+            id: "out",
+            type: "output",
+            data: { key: "mouthX" },
+            position: { x: 0, y: 0 },
+          },
         ],
         edges: [],
       },
@@ -69,15 +74,18 @@ end
       behavior,
       graph: {
         nodes: [
-          { id: "out", type: "output", data: { key: "mouthX" }, position: { x: 0, y: 0 } },
+          {
+            id: "out",
+            type: "output",
+            data: { key: "mouthX" },
+            position: { x: 0, y: 0 },
+          },
         ],
         edges: [],
       },
     });
 
-    expect(overlaps).toEqual([
-      { motionKey: "mouthX", sources: ["graph", "behavior"] },
-    ]);
+    expect(overlaps).toEqual([{ motionKey: "mouthX", sources: ["graph", "behavior"] }]);
   });
 
   it("detectPresetMotionOverlaps warns when multiple plugins share lookX", () => {

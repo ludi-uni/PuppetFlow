@@ -56,11 +56,7 @@ export function detectViewerPreset(config: MotionMapperEditorConfig): string {
   const stored = findViewerPreset(config.viewerPresetId);
   if (stored) {
     const model = config[stored.primaryTarget];
-    if (
-      model.enabled &&
-      model.host === stored.host &&
-      model.port === stored.port
-    ) {
+    if (model.enabled && model.host === stored.host && model.port === stored.port) {
       return stored.id;
     }
   }

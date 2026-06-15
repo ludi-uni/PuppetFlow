@@ -7,16 +7,28 @@ import type { PuppetFlowPreset } from "./types.js";
 import { compilePfScript } from "@puppetflow/pfscript-core";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
-const OUT_DIRS = [
-  join(ROOT, "packages/behavior-packs/presets"),
-  join(ROOT, "presets"),
-];
+const OUT_DIRS = [join(ROOT, "packages/behavior-packs/presets"), join(ROOT, "presets")];
 
 const BASE_GRAPH = (mouthGain: number) => ({
   nodes: [
-    { id: "interest", type: "stateInput", data: { key: "interest" }, position: { x: 0, y: 80 } },
-    { id: "multiply", type: "multiply", data: { gain: mouthGain }, position: { x: 220, y: 80 } },
-    { id: "mouthX", type: "output", data: { key: "mouthX" }, position: { x: 460, y: 80 } },
+    {
+      id: "interest",
+      type: "stateInput",
+      data: { key: "interest" },
+      position: { x: 0, y: 80 },
+    },
+    {
+      id: "multiply",
+      type: "multiply",
+      data: { gain: mouthGain },
+      position: { x: 220, y: 80 },
+    },
+    {
+      id: "mouthX",
+      type: "output",
+      data: { key: "mouthX" },
+      position: { x: 460, y: 80 },
+    },
   ],
   edges: [
     { id: "e1", source: "interest", target: "multiply" },
@@ -109,7 +121,12 @@ breath = breath(0.09)`,
     behaviorPlugins: [
       {
         id: "blink",
-        config: { minInterval: 3, maxInterval: 8, closeDuration: 0.12, blinkStrength: 1 },
+        config: {
+          minInterval: 3,
+          maxInterval: 8,
+          closeDuration: 0.12,
+          blinkStrength: 1,
+        },
       },
       { id: "idle", config: { interestThreshold: 0.4, wanderBoost: 0.08 } },
     ],
@@ -127,7 +144,12 @@ breath = breath(0.06)`,
     behaviorPlugins: [
       {
         id: "blink",
-        config: { minInterval: 4, maxInterval: 10, closeDuration: 0.18, blinkStrength: 1 },
+        config: {
+          minInterval: 4,
+          maxInterval: 10,
+          closeDuration: 0.18,
+          blinkStrength: 1,
+        },
       },
       { id: "idle", config: { interestThreshold: 0.45, wanderBoost: 0.08 } },
     ],
@@ -145,7 +167,12 @@ breath = breath(0.08)`,
     behaviorPlugins: [
       {
         id: "blink",
-        config: { minInterval: 3, maxInterval: 8, closeDuration: 0.12, blinkStrength: 1 },
+        config: {
+          minInterval: 3,
+          maxInterval: 8,
+          closeDuration: 0.12,
+          blinkStrength: 1,
+        },
       },
       { id: "idle", config: { interestThreshold: 0.4, wanderBoost: 0.06 } },
     ],
@@ -175,4 +202,6 @@ for (const outDir of OUT_DIRS) {
   }
 }
 
-console.log(`Wrote ${Object.keys(PRESET_VARIANTS).length} presets to ${OUT_DIRS.join(", ")}`);
+console.log(
+  `Wrote ${Object.keys(PRESET_VARIANTS).length} presets to ${OUT_DIRS.join(", ")}`,
+);

@@ -60,6 +60,28 @@ describe("HttpSource", () => {
     await source.dispose();
   });
 
+  it("aborts in-flight fetch on dispose", async () => {
+    vi.mocked(fetch).mockImplementation(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+
+    const source = new HttpSource({ url: "http://example.com/state", intervalMs: 0 });
+    const target = {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      timeline: new TimelineStore(),
+    };
+
+    const pending = source.update(target);
+    await source.dispose();
+    await expect(pending).resolves.toBeUndefined();
+  });
+
   it("throws when the response is not ok", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,

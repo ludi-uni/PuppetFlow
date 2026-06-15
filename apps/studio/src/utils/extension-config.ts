@@ -105,7 +105,8 @@ export function parseExtensionCustomParameterRows(
   return [...registry.parameters.values()].map((def) => {
     const relatedPackIds = CUSTOM_PARAM_PACKS[def.id] ?? [];
     const packDriving =
-      relatedPackIds.length > 0 && relatedPackIds.some((packId) => enabledSet.has(packId));
+      relatedPackIds.length > 0 &&
+      relatedPackIds.some((packId) => enabledSet.has(packId));
     const active = relatedPackIds.length === 0 || !packDriving;
     return {
       id: def.id,

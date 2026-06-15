@@ -27,6 +27,7 @@ export interface StudioChromeProps {
   onDismissStatus: () => void;
   onGoToNextStepTab: () => void;
   onSelectTab: (tab: TabId) => void;
+  onExportCliConfig?: () => void;
 }
 
 export function StudioChrome({
@@ -47,6 +48,7 @@ export function StudioChrome({
   onDismissStatus,
   onGoToNextStepTab,
   onSelectTab,
+  onExportCliConfig,
 }: StudioChromeProps) {
   const configSummary = (
     <ActiveConfigSummary
@@ -57,6 +59,7 @@ export function StudioChrome({
       pluginIds={activePluginIds}
       mapperConfig={appliedMapperConfig}
       httpHealth={httpHealth}
+      onExportCliConfig={onExportCliConfig}
     />
   );
 

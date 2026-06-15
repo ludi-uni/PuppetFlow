@@ -153,10 +153,14 @@ describe("extension-core", () => {
           { type: "MotionPack", packId: "thinking", config: { intensity: 0.5 } },
         ],
       },
-      behaviorPackInvocations: [{ kind: "pack", id: "idle", config: { strength: 0.2 } }],
+      behaviorPackInvocations: [
+        { kind: "pack", id: "idle", config: { strength: 0.2 } },
+      ],
     });
 
-    expect(invocations).toEqual([{ kind: "pack", id: "idle", config: { strength: 0.2 } }]);
+    expect(invocations).toEqual([
+      { kind: "pack", id: "idle", config: { strength: 0.2 } },
+    ]);
   });
 
   it("executes ext: graph nodes without treating them as pack invocations", () => {

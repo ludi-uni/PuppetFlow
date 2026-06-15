@@ -61,9 +61,6 @@ export function tryCompilePfScriptSource(
     return { message };
   }
 }
-
-import type { PfScriptCallStmt, PfScriptStatement } from "@puppetflow/pfscript-core";
-
 function collectPfScriptCallIds(statements: PfScriptStatement[], ids: string[]): void {
   for (const statement of statements) {
     if (statement.type === "CallStmt") {

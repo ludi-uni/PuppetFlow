@@ -1,11 +1,19 @@
 import { clamp01 } from "@puppetflow/core";
-import type { ExtensionContext, ExtensionPlugin, MotionRegistry } from "@puppetflow/extension-core";
+import type {
+  ExtensionContext,
+  ExtensionPlugin,
+  MotionRegistry,
+} from "@puppetflow/extension-core";
 import { runStatefulNumber } from "@puppetflow/stateful-core";
 
 function lookAroundMotion(ctx: ExtensionContext, intensity: number) {
   const wanderSpeed = 0.3 + intensity * 0.2;
-  const wanderX = runStatefulNumber(ctx, "wander", "lookAround:x", { speed: wanderSpeed });
-  const wanderY = runStatefulNumber(ctx, "wander", "lookAround:y", { speed: wanderSpeed * 0.85 });
+  const wanderX = runStatefulNumber(ctx, "wander", "lookAround:x", {
+    speed: wanderSpeed,
+  });
+  const wanderY = runStatefulNumber(ctx, "wander", "lookAround:y", {
+    speed: wanderSpeed * 0.85,
+  });
   const oscTilt = runStatefulNumber(ctx, "oscillator", "lookAround:tilt", {
     frequency: 0.3 + intensity * 0.2,
   });

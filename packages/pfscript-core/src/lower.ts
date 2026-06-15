@@ -163,7 +163,9 @@ function lowerCompareCondition(expression: PfScriptBinary): BehaviorCondition {
   throw new Error("compare conditions require identifier and literal operands");
 }
 
-function tryLowerStringCompare(expression: PfScriptBinary): StringCompareCondition | undefined {
+function tryLowerStringCompare(
+  expression: PfScriptBinary,
+): StringCompareCondition | undefined {
   if (expression.op !== "==" && expression.op !== "!=") {
     return undefined;
   }
@@ -193,7 +195,9 @@ function tryLowerStringCompare(expression: PfScriptBinary): StringCompareConditi
   return undefined;
 }
 
-function tryLowerNumericCompare(expression: PfScriptBinary): CompareCondition | undefined {
+function tryLowerNumericCompare(
+  expression: PfScriptBinary,
+): CompareCondition | undefined {
   const left = readIdentifier(expression.left);
   const right = readNumberLiteral(expression.right);
   if (left && right !== undefined && isCompareOp(expression.op)) {
@@ -233,7 +237,9 @@ function lowerExpression(expression: PfScriptExpression): BehaviorExpression {
         args: lowerNamedArgs(expression.args),
       };
     default:
-      throw new Error(`unsupported PFScript expression: ${(expression as { type?: string }).type}`);
+      throw new Error(
+        `unsupported PFScript expression: ${(expression as { type?: string }).type}`,
+      );
   }
 }
 

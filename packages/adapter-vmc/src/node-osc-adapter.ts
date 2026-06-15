@@ -1,7 +1,12 @@
 import { createSocket, type Socket } from "node:dgram";
 import type { Adapter } from "@puppetflow/adapter-core";
 import type { MotionState } from "@puppetflow/core";
-import { mapCustomMotion, mapMotion, type MotionMapperProfile, type ValueTransform } from "@puppetflow/motion-mapper";
+import {
+  mapCustomMotion,
+  mapMotion,
+  type MotionMapperProfile,
+  type ValueTransform,
+} from "@puppetflow/motion-mapper";
 import { encodeBlendShapeMessage } from "./osc-encoder.js";
 import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT } from "./types.js";
 

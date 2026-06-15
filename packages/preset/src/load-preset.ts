@@ -94,11 +94,7 @@ function rejectDeprecatedPresetFields(preset: Record<string, unknown>): void {
 
 // --- Legacy motion key migration (raw preset JSON) ---
 
-function migrateBehaviorJson(
-  value: unknown,
-  warnings: string[],
-  path: string,
-): void {
+function migrateBehaviorJson(value: unknown, warnings: string[], path: string): void {
   if (typeof value !== "object" || value === null) {
     return;
   }
@@ -201,7 +197,11 @@ function collectPresetWarnings(
 ): string[] {
   const warnings = [...migrationWarnings];
 
-  for (const overlap of detectPresetMotionOverlaps({ behavior, graph, behaviorPlugins })) {
+  for (const overlap of detectPresetMotionOverlaps({
+    behavior,
+    graph,
+    behaviorPlugins,
+  })) {
     warnings.push(
       `motion key "${overlap.motionKey}" is produced by multiple stages: ${overlap.sources.join(", ")}`,
     );

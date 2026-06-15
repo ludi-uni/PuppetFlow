@@ -257,6 +257,9 @@ describe("detectPresetMotionOverlaps", () => {
     });
 
     expect(warnings).toHaveLength(2);
-    expect(warnings.map((warning) => warning.motionKey).sort()).toEqual(["lookX", "lookY"]);
+    expect(warnings.map((warning) => warning.motionKey).sort()).toEqual([
+      "lookX",
+      "lookY",
+    ]);
   });
 });

@@ -259,7 +259,9 @@ function SpringNode({
           max={80}
           step={1}
           value={data.damping}
-          onChange={(event) => onChange(id, { damping: Number(event.target.value) || 18 })}
+          onChange={(event) =>
+            onChange(id, { damping: Number(event.target.value) || 18 })
+          }
         />
       </label>
       <Handle type="source" position={Position.Right} />
@@ -374,7 +376,9 @@ function BreathNode({
           max={1}
           step={0.05}
           value={data.rate}
-          onChange={(event) => onChange(id, { rate: Number(event.target.value) || 0.25 })}
+          onChange={(event) =>
+            onChange(id, { rate: Number(event.target.value) || 0.25 })
+          }
         />
       </label>
       <Handle type="source" position={Position.Right} />
@@ -403,7 +407,9 @@ function WanderNode({
           max={2}
           step={0.05}
           value={data.speed}
-          onChange={(event) => onChange(id, { speed: Number(event.target.value) || 0.2 })}
+          onChange={(event) =>
+            onChange(id, { speed: Number(event.target.value) || 0.2 })
+          }
         />
       </label>
       <Handle type="source" position={Position.Right} />
@@ -696,7 +702,9 @@ function GraphEditorContent({
       randomHold: (props) => (
         <RandomHoldNode
           id={props.id}
-          data={props.data as { label: string; interval: number; min: number; max: number }}
+          data={
+            props.data as { label: string; interval: number; min: number; max: number }
+          }
           onChange={(nodeId, patch) => updateNodeData(nodeId, patch)}
         />
       ),

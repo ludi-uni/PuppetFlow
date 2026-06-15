@@ -7,7 +7,10 @@ export class PresetPfScriptError extends Error {
   readonly line?: number;
   readonly column?: number;
 
-  constructor(message: string, options?: { line?: number; column?: number; cause?: unknown }) {
+  constructor(
+    message: string,
+    options?: { line?: number; column?: number; cause?: unknown },
+  ) {
     const location =
       options?.line !== undefined && options.column !== undefined
         ? ` (${options.line}:${options.column})`
@@ -45,13 +48,18 @@ function compilePfScriptSource(source: string): BehaviorBlock {
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    throw new PresetPfScriptError(`PFScript compile failed: ${message}`, { cause: error });
+    throw new PresetPfScriptError(`PFScript compile failed: ${message}`, {
+      cause: error,
+    });
   }
 }
 
-export function compilePresetBehavior(source: PresetBehaviorSource): CompiledPresetBehavior {
+export function compilePresetBehavior(
+  source: PresetBehaviorSource,
+): CompiledPresetBehavior {
   const pfScript =
-    typeof source.behaviorPfScript === "string" && source.behaviorPfScript.trim().length > 0
+    typeof source.behaviorPfScript === "string" &&
+    source.behaviorPfScript.trim().length > 0
       ? source.behaviorPfScript
       : undefined;
 

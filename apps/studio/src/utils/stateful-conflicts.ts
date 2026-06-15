@@ -1,8 +1,5 @@
 import type { BehaviorBlock } from "@puppetflow/behavior";
-import {
-  detectPresetStageOverlaps,
-  formatOverlapWarning,
-} from "./preset-warnings.js";
+import { detectPresetStageOverlaps, formatOverlapWarning } from "./preset-warnings.js";
 
 export function findStatefulPluginConflicts(
   behaviorPluginsJson: string,

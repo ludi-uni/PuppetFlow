@@ -14,6 +14,7 @@ import {
   isCustomPresetActive,
 } from "./runtime";
 import { isPluginEnabled } from "./utils/plugin-config";
+import { exportStudioCliConfig } from "./utils/export-cli-config";
 
 export function App() {
   const {
@@ -25,13 +26,8 @@ export function App() {
     isSimpleMode,
     handleStudioModeChange,
   } = useStudioMode();
-  const {
-    status,
-    notify,
-    dismissStatus,
-    behaviorPreviewJson,
-    setBehaviorPreviewJson,
-  } = useStudioStatus();
+  const { status, notify, dismissStatus, behaviorPreviewJson, setBehaviorPreviewJson } =
+    useStudioStatus();
 
   const inputSources = useInputSources({ notify });
   const presetState = usePresetState({ notify });
@@ -167,6 +163,55 @@ export function App() {
     }
   }, [goToTab, handleLoadExportedPreset]);
 
+  const handleExportCliConfig = useCallback(async () => {
+    const result = await exportStudioCliConfig({
+      preset,
+      isCustomPreset: customPreset,
+      presetJson: customPreset ? presetJson : undefined,
+      sources: appliedSources,
+      mapperConfig: appliedMapperConfig,
+      initialState: inputs,
+    });
+
+    if (result.cancelled) {
+      return;
+    }
+
+    if (!result.saved) {
+      notify("CLI 設定の保存に失敗しました。", "error");
+      return;
+    }
+
+    if (result.downloadedPreset && result.usedDirectoryPicker) {
+      notify(
+        "選択したフォルダに puppetflow.yaml と Preset を保存しました。`pnpm pf run --config puppetflow.yaml` で起動できます。",
+        "success",
+      );
+      return;
+    }
+
+    if (result.downloadedPreset) {
+      notify(
+        "puppetflow.yaml と Preset ファイルを保存しました。同じフォルダに置いて `pnpm pf run --config puppetflow.yaml` で起動できます。",
+        "success",
+      );
+      return;
+    }
+
+    notify(
+      "puppetflow.yaml を保存しました。`pnpm pf run --config puppetflow.yaml` で起動できます。",
+      "success",
+    );
+  }, [
+    appliedMapperConfig,
+    appliedSources,
+    customPreset,
+    inputs,
+    notify,
+    preset,
+    presetJson,
+  ]);
+
   if (startupError) {
     return (
       <main className="studio">
@@ -204,6 +249,7 @@ export function App() {
         onDismissStatus={dismissStatus}
         onGoToNextStepTab={() => goToTab(nextStepGuide.tab)}
         onSelectTab={setTab}
+        onExportCliConfig={handleExportCliConfig}
       />
 
       <StudioTabPanel

@@ -4,11 +4,27 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Tauri
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test / logs
+coverage/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Tauri / Rust
 apps/playground/src-tauri/target/
 apps/studio/src-tauri/target/
 apps/*/src-tauri/gen/
 
-# IDE
+# IDE / editor
 .idea/
 .vscode/
+.cursor/
+
+# Vite / Vitest cache
+.vite/
+node_modules/.vite/

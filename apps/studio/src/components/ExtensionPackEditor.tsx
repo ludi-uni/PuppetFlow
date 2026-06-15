@@ -21,9 +21,9 @@ interface ExtensionPackEditorProps {
   onChange: (extensionsJson: string, presetJson: string) => void;
 }
 
-function parseExtensionsObject(extensionsJson: string): Parameters<
-  typeof parseExtensionPackRows
->[0] {
+function parseExtensionsObject(
+  extensionsJson: string,
+): Parameters<typeof parseExtensionPackRows>[0] {
   try {
     return JSON.parse(extensionsJson) as Parameters<typeof parseExtensionPackRows>[0];
   } catch {
@@ -123,7 +123,8 @@ export function ExtensionPackEditor({
             {row.enabled ? (
               <div className="plugin-parameter-grid">
                 <p className="hint plugin-motion-output">
-                  動かす部分: {formatExtensionPackOutputs(row) || "（標準 MotionState）"}
+                  動かす部分:{" "}
+                  {formatExtensionPackOutputs(row) || "（標準 MotionState）"}
                 </p>
                 {row.configFields.length === 0 ? (
                   <p className="hint">（この Pack に調整スライダーはありません）</p>
@@ -168,7 +169,9 @@ export function ExtensionPackEditor({
 
       {activeCustomRows.length > 0 ? (
         <section className="extension-custom-params">
-          <h4>{simpleMode ? "拡張パラメータ（custom）" : "Extension custom parameters"}</h4>
+          <h4>
+            {simpleMode ? "拡張パラメータ（custom）" : "Extension custom parameters"}
+          </h4>
           <p className="hint">
             {simpleMode
               ? "Pack 無効時に手動で custom 値を設定できます。Pack 有効時は Pack の intensity 等で調整してください。"

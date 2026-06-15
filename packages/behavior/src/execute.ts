@@ -34,7 +34,10 @@ export interface BehaviorExecutionResult {
   packInvocations: BehaviorMotionPackInvocation[];
 }
 
-function evaluateCompare(ctx: BehaviorExecutionContext, condition: CompareCondition): boolean {
+function evaluateCompare(
+  ctx: BehaviorExecutionContext,
+  condition: CompareCondition,
+): boolean {
   const left = resolveNumericIdentifier(condition.left, ctx);
 
   switch (condition.op) {
@@ -80,17 +83,26 @@ function isStringCompareCondition(
   return "kind" in condition && condition.kind === "StringCompare";
 }
 
-function isCompareCondition(condition: BehaviorCondition): condition is CompareCondition {
-  return "left" in condition && typeof (condition as CompareCondition).right === "number";
+function isCompareCondition(
+  condition: BehaviorCondition,
+): condition is CompareCondition {
+  return (
+    "left" in condition && typeof (condition as CompareCondition).right === "number"
+  );
 }
 
 import type { BehaviorExprCondition } from "./ast.js";
 
-function isExprCondition(condition: BehaviorCondition): condition is BehaviorExprCondition {
+function isExprCondition(
+  condition: BehaviorCondition,
+): condition is BehaviorExprCondition {
   return "kind" in condition && condition.kind === "Expr";
 }
 
-function evaluateCondition(ctx: BehaviorExecutionContext, condition: BehaviorCondition): boolean {
+function evaluateCondition(
+  ctx: BehaviorExecutionContext,
+  condition: BehaviorCondition,
+): boolean {
   if (isExprCondition(condition)) {
     return Boolean(evaluateExpression(condition.expression, ctx));
   }
@@ -174,7 +186,9 @@ function executeStatement(
       const branch = evaluateCondition(ctx, statement.condition)
         ? statement.then
         : (statement.else ?? []);
-      return mergePartials(executeStatements(branch, ctx, instanceKey, packInvocations));
+      return mergePartials(
+        executeStatements(branch, ctx, instanceKey, packInvocations),
+      );
     }
     case "Assign":
       return applyAssign({}, statement.key, statement.op, statement.value);

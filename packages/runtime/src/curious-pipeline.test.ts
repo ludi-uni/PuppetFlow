@@ -7,7 +7,10 @@ import { describe, expect, it } from "vitest";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 const CURIOUS_PRESET = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "../../behavior-packs/presets/Curious.pfpreset"),
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../behavior-packs/presets/Curious.pfpreset",
+  ),
   "utf8",
 );
 

@@ -114,7 +114,11 @@ function evaluateCall(
       inputValue = typeof value === "number" ? value : Number(value) || 0;
       continue;
     }
-    if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
+    if (
+      typeof value === "number" ||
+      typeof value === "string" ||
+      typeof value === "boolean"
+    ) {
       namedRecord[arg.name] = value;
     }
   }
@@ -133,7 +137,9 @@ function evaluateCall(
     }
   }
 
-  const positional = args.filter((arg) => !arg.name).map((arg) => evaluateExpression(arg.value, ctx));
+  const positional = args
+    .filter((arg) => !arg.name)
+    .map((arg) => evaluateExpression(arg.value, ctx));
   const named = args.filter((arg) => arg.name);
   const evaluatedArgs =
     named.length === 0

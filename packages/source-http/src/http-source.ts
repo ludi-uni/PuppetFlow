@@ -16,6 +16,7 @@ export class HttpSource implements StateSource {
   private readonly timeoutMs: number;
   private readonly fieldMapping: Record<string, string>;
   private lastFetchedAt = 0;
+  private inFlightAbort: AbortController | null = null;
 
   constructor(config: HttpSourceConfig) {
     this.url = config.url;
@@ -34,16 +35,39 @@ export class HttpSource implements StateSource {
 
     this.lastFetchedAt = now;
 
-    const response = await fetch(this.url, {
-      signal: AbortSignal.timeout(this.timeoutMs),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP source failed: ${response.status} ${response.statusText}`);
-    }
+    this.inFlightAbort?.abort();
+    const abortController = new AbortController();
+    this.inFlightAbort = abortController;
+    const timeoutId = setTimeout(() => abortController.abort(), this.timeoutMs);
 
-    const payload: unknown = await response.json();
-    applyInputPayload(target, payload, this.fieldMapping);
+    try {
+      const response = await fetch(this.url, {
+        signal: abortController.signal,
+      });
+      if (!response.ok) {
+        throw new Error(
+          `HTTP source failed: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const payload: unknown = await response.json();
+      applyInputPayload(target, payload, this.fieldMapping);
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      if (this.inFlightAbort === abortController) {
+        this.inFlightAbort = null;
+      }
+    }
   }
 
-  async dispose(): Promise<void> {}
+  async dispose(): Promise<void> {
+    this.inFlightAbort?.abort();
+    this.inFlightAbort = null;
+  }
 }
