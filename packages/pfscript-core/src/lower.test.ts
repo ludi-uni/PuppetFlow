@@ -182,7 +182,8 @@ end`);
   });
 
   it("lowers numeric compare with call expression on the left", () => {
-    const program = parsePfScript(`if randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) >= 0.5 then
+    const program =
+      parsePfScript(`if randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) >= 0.5 then
     mouthX = 1
 else
     mouthX = 0
@@ -231,7 +232,8 @@ end`);
   });
 
   it("lowers numeric compare with a literal on the left", () => {
-    const program = parsePfScript(`if 0.5 <= randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) then
+    const program =
+      parsePfScript(`if 0.5 <= randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) then
     mouthX = 1
 end`);
     const behavior = lowerPfScriptToBehavior(program);

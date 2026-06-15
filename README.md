@@ -101,11 +101,11 @@ Copy `.env.example` to `.env` when using optional integrations (e.g. Discord sou
 
 Pre-built portable ZIPs are published automatically when changes are pushed to `main`.
 
-| Asset                              | Platform            | Notes                                       |
-| ---------------------------------- | ------------------- | ------------------------------------------- |
-| `puppetflow-studio-*-portable.zip` | Windows x64         | Extract and run `puppetflow-studio.exe`     |
-| `puppetflow-studio-*-portable.zip` | Linux x64           | Extract and run `./puppetflow-studio`       |
-| `puppetflow-studio-*-portable.zip` | macOS               | Extract `PuppetFlow Studio.app` (Universal) |
+| Asset                              | Platform            | Notes                                                   |
+| ---------------------------------- | ------------------- | ------------------------------------------------------- |
+| `puppetflow-studio-*-portable.zip` | Windows x64         | Extract and run `puppetflow-studio.exe`                 |
+| `puppetflow-studio-*-portable.zip` | Linux x64           | Extract and run `./puppetflow-studio`                   |
+| `puppetflow-studio-*-portable.zip` | macOS               | Extract `PuppetFlow Studio.app` (Universal)             |
 | `pf-cli-*-portable.zip`            | Win / Linux / macOS | Headless CLI — single `pf` / `pf.exe` (no Node install) |
 
 ### Automatic release (default)

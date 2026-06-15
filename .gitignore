@@ -32,3 +32,4 @@ node_modules/.vite/
 # pnpm deploy output (release packaging)
 deploy/
 apps/cli/deploy/
+dist-artifacts/

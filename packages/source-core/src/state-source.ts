@@ -1,8 +1,4 @@
-import type {
-  ChannelStore,
-  StateStore,
-  TimelineStore,
-} from "@puppetflow/core";
+import type { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
 import type { MotionOverrideStore } from "./motion-override-store.js";
 
 export interface SourceUpdateTarget {
