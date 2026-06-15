@@ -18,7 +18,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm build
       - run: pnpm test
       - run: pnpm build:presets
       - run: git diff --exit-code -- packages/behavior-packs/presets presets
-      - run: pnpm build
