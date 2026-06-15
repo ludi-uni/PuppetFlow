@@ -20,16 +20,16 @@ jobs:
         include:
           - os: windows-latest
             label: windows-x64
+            platform: windows
             args: ""
-            bundle: apps/studio/src-tauri/target/release/bundle/**/*
           - os: ubuntu-22.04
             label: linux-x64
+            platform: linux
             args: ""
-            bundle: apps/studio/src-tauri/target/release/bundle/**/*
           - os: macos-latest
             label: macos-universal
+            platform: macos
             args: "--target universal-apple-darwin"
-            bundle: apps/studio/src-tauri/target/universal-apple-darwin/release/bundle/**/*
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -76,14 +76,20 @@ jobs:
       - run: pnpm build
 
       - name: Build PuppetFlow Studio
-        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.args }}
+        run: pnpm --filter @puppetflow/studio exec tauri build ${{ matrix.args }} -- --bundles app
         env:
           CI: true
+
+      - name: Package portable Studio
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          node scripts/package-portable-studio.mjs "${{ matrix.platform }}" "${{ matrix.label }}" "$VERSION" dist-artifacts/studio
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: studio-${{ matrix.label }}
-          path: ${{ matrix.bundle }}
+          path: dist-artifacts/studio/*
           if-no-files-found: error
 
   build-cli:
@@ -151,8 +157,11 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Prepare release assets
+        run: node scripts/prepare-release-assets.mjs artifacts release
+
       - name: List release files
-        run: find artifacts -type f | sort
+        run: find release -type f | sort
 
       - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
@@ -164,11 +173,11 @@ jobs:
           body: |
             ## PuppetFlow Studio
 
-            Desktop authoring app (Tauri). Pick the installer for your OS:
+            Portable desktop app (Tauri). Download the ZIP for your OS, extract it, and run the app:
 
-            - **Windows** — `.msi` or `.exe` (NSIS)
-            - **Linux** — `.deb` or `.AppImage` (built on Ubuntu 22.04)
-            - **macOS** — `.dmg` (Universal: Apple Silicon + Intel)
+            - **Windows** — extract and run `puppetflow-studio.exe` (WebView2 required)
+            - **Linux** — extract and run `./puppetflow-studio` (Ubuntu 22.04 build)
+            - **macOS** — extract `PuppetFlow Studio.app` and open it (Universal: Apple Silicon + Intel)
 
             Unsigned macOS builds may require right-click → Open the first time.
 
@@ -185,6 +194,6 @@ jobs:
             Or from a git checkout: `pnpm pf run --preset Curious`
 
             See [CLI guide](https://github.com/ludi-uni/PuppetFlow/blob/main/docs/guides/cli.md).
-          files: artifacts/**/*
+          files: release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

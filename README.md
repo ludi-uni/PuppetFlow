@@ -101,12 +101,12 @@ Copy `.env.example` to `.env` when using optional integrations (e.g. Discord sou
 
 Pre-built binaries are published on [GitHub Releases](https://github.com/ludi-uni/PuppetFlow/releases) when a `v*` tag is pushed (e.g. `v0.1.0`).
 
-| Asset                                  | Platform            | Notes                                   |
-| -------------------------------------- | ------------------- | --------------------------------------- |
-| PuppetFlow Studio `.msi` / `.exe`      | Windows x64         | Tauri desktop app                       |
-| PuppetFlow Studio `.deb` / `.AppImage` | Linux x64           | Built on Ubuntu 22.04                   |
-| PuppetFlow Studio `.dmg`               | macOS               | Universal (Apple Silicon + Intel)       |
-| `pf-cli-*.zip`                         | Win / Linux / macOS | Headless CLI — **requires Node.js 22+** |
+| Asset                              | Platform            | Notes                                       |
+| ---------------------------------- | ------------------- | ------------------------------------------- |
+| `puppetflow-studio-*-portable.zip` | Windows x64         | Extract and run `puppetflow-studio.exe`     |
+| `puppetflow-studio-*-portable.zip` | Linux x64           | Extract and run `./puppetflow-studio`       |
+| `puppetflow-studio-*-portable.zip` | macOS               | Extract `PuppetFlow Studio.app` (Universal) |
+| `pf-cli-*.zip`                     | Win / Linux / macOS | Headless CLI — **requires Node.js 22+**     |
 
 **Maintainers:** push a semver tag to trigger the [release workflow](.github/workflows/release.yml). The release is created as a **draft** for a final check before publishing.
 

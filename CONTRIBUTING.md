@@ -43,8 +43,8 @@ CI runs the same checks on every push and pull request.
 
 1. Update [CHANGELOG.md](CHANGELOG.md) for the version.
 2. Tag with semver: `git tag v0.1.0 && git push origin v0.1.0`
-3. GitHub Actions [release workflow](.github/workflows/release.yml) builds:
-   - **Studio** — Windows / Linux / macOS (Tauri)
+3. GitHub Actions [release workflow](.github/workflows/release.yml) builds portable ZIPs:
+   - **Studio** — Windows / Linux / macOS (Tauri app bundle, no installers)
    - **CLI** — portable `pnpm deploy` zip per OS (Node 22+ required at runtime)
 4. Open the draft release on GitHub, verify assets, then click **Publish release**.
 
