@@ -21,4 +21,9 @@ describe("official PFScript examples", () => {
     const behavior = compilePfScript(readExample("lipsync-thinking.pfscript"));
     expect(behavior.statements.length).toBeGreaterThanOrEqual(5);
   });
+
+  it("compiles random-toggle.pfscript", () => {
+    const behavior = compilePfScript(readExample("random-toggle.pfscript"));
+    expect(behavior.statements.length).toBeGreaterThanOrEqual(2);
+  });
 });

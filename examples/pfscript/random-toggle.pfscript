@@ -1,0 +1,11 @@
+-- 一定間隔で 0 または 1 に切り替わる（テスト・デモ用）
+-- randomHold: interval 秒ごとに min〜max の値を保持
+
+if randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) >= 0.5 then
+    mouthX = 1
+else
+    mouthX = 0
+end
+
+-- 別パラメータも同時にトグルしたい場合（id を変える）
+lookX = round(randomHold(id = "look-toggle", interval = 2.5, min = 0, max = 1))

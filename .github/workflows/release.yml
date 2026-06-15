@@ -146,6 +146,8 @@ jobs:
     if: needs.plan.outputs.should_release == 'true'
     permissions:
       contents: read
+    env:
+      RELEASE_TAG: ${{ needs.plan.outputs.release_tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -172,25 +174,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      - name: Package CLI (Unix)
-        if: runner.os != 'Windows'
+      - name: Package portable CLI
+        shell: bash
         run: |
-          pnpm --filter @puppetflow/cli deploy --prod deploy/pf-cli
-          mkdir -p dist-artifacts
-          cd deploy/pf-cli && zip -r "../../dist-artifacts/pf-cli-${{ matrix.label }}.zip" .
-
-      - name: Package CLI (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          pnpm --filter @puppetflow/cli deploy --prod deploy/pf-cli
-          New-Item -ItemType Directory -Force -Path dist-artifacts | Out-Null
-          Compress-Archive -Path deploy/pf-cli/* -DestinationPath "dist-artifacts/pf-cli-${{ matrix.label }}.zip" -Force
+          node scripts/package-portable-cli.mjs "${{ matrix.label }}" "$RELEASE_TAG" dist-artifacts
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: pf-cli-${{ matrix.label }}
-          path: dist-artifacts/pf-cli-${{ matrix.label }}.zip
+          path: dist-artifacts/pf-cli-${{ matrix.label }}-*.zip
           if-no-files-found: error
 
   publish:
@@ -237,12 +229,16 @@ jobs:
 
             ## CLI (`pf`)
 
-            Headless runtime bundle. **Requires Node.js 22+** on the target machine.
+            Portable single executable. Extract the ZIP and run:
+
+            - **Windows** — `pf.exe run --preset Curious`
+            - **Linux** — `./pf run --preset Curious`
+            - **macOS** — `./pf run --preset Curious` (arm64 build)
 
             ```bash
-            unzip pf-cli-<platform>.zip -d pf-cli
+            unzip pf-cli-<platform>-<version>-portable.zip -d pf-cli
             cd pf-cli
-            node dist/cli.js run --help
+            ./pf run --help
             ```
 
             Or from a git checkout: `pnpm pf run --preset Curious`

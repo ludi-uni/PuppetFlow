@@ -1,4 +1,5 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
+import { MotionOverrideStore } from "@puppetflow/source-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MqttSource } from "./mqtt-source.js";
 
@@ -66,6 +67,7 @@ describe("MqttSource", () => {
       state: new StateStore(),
       channels: new ChannelStore(),
       timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
     };
 
     await source.update(target);
@@ -88,6 +90,7 @@ describe("MqttSource", () => {
       state: new StateStore(),
       channels: new ChannelStore(),
       timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
     };
 
     await source.update(target);

@@ -5,6 +5,14 @@ export const INPUT_SOURCE_PAYLOAD_EXAMPLE = `{
     "phoneme": "A",
     "emotion": "joy"
   },
+  "motion": {
+    "mouthX": 0.7,
+    "lookX": 0.4,
+    "lookY": 0.5,
+    "custom": {
+      "heartbeat": 0.6
+    }
+  },
   "timeline": [
     {
       "startMs": 0,

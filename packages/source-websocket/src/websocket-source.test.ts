@@ -1,4 +1,5 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
+import { MotionOverrideStore } from "@puppetflow/source-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WebSocketSource } from "./websocket-source.js";
 
@@ -45,6 +46,7 @@ describe("WebSocketSource", () => {
       state: new StateStore(),
       channels: new ChannelStore(),
       timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
     };
 
     await source.update(target);
@@ -63,6 +65,7 @@ describe("WebSocketSource", () => {
       state: new StateStore(),
       channels: new ChannelStore(),
       timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
     };
 
     await source.update(target);

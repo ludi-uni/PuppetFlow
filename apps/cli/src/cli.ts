@@ -86,4 +86,12 @@ function parsePositiveInt(value: string): number {
   return parsed;
 }
 
-await program.parseAsync(process.argv);
+async function main(): Promise<void> {
+  await program.parseAsync(process.argv);
+}
+
+main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[pf] ${message}`);
+  process.exitCode = 1;
+});

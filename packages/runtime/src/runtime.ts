@@ -36,6 +36,7 @@ import {
 import type { BehaviorPluginContext } from "@puppetflow/core";
 import type { LoadedPreset } from "@puppetflow/preset";
 import type { StateSource } from "@puppetflow/source-core";
+import { MotionOverrideStore } from "@puppetflow/source-core";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
 import { RuntimeStateStore } from "./state-store.js";
 
@@ -97,6 +98,7 @@ export class PuppetFlowRuntime {
   private lastTickTime: number | null = null;
   private adaptersInitialized = false;
   private sourcesInitialized = false;
+  private readonly motionOverride = new MotionOverrideStore();
 
   use(plugin: BehaviorPlugin): this {
     this.plugins.push(plugin);
@@ -206,6 +208,7 @@ export class PuppetFlowRuntime {
 
     await this.disposeAdapters();
     await this.disposeSources();
+    this.motionOverride.clear();
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
@@ -369,6 +372,7 @@ export class PuppetFlowRuntime {
         state: this.state,
         channels: this.channels,
         timeline: this.timeline,
+        motion: this.motionOverride,
       };
 
       for (const source of this.sources) {
@@ -546,6 +550,8 @@ export class PuppetFlowRuntime {
       if (!this.running) {
         return;
       }
+
+      this.renderedMotion = this.motionOverride.applyTo(this.renderedMotion);
 
       for (const adapter of this.adapters) {
         if (!this.running) {

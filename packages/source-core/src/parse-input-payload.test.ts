@@ -1,14 +1,20 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
 import { describe, expect, it } from "vitest";
+import { MotionOverrideStore } from "./motion-override-store.js";
 import { applyInputPayload } from "./parse-input-payload.js";
+
+function createTarget() {
+  return {
+    state: new StateStore(),
+    channels: new ChannelStore(),
+    timeline: new TimelineStore(),
+    motion: new MotionOverrideStore(),
+  };
+}
 
 describe("applyInputPayload", () => {
   it("applies state, channels, and timeline from structured payload", () => {
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     applyInputPayload(target, {
       state: { interest: 0.9 },
@@ -22,23 +28,47 @@ describe("applyInputPayload", () => {
     expect(target.timeline.getActiveEvents(50)).toHaveLength(1);
   });
 
+  it("applies motion overrides from structured payload", () => {
+    const target = createTarget();
+
+    applyInputPayload(target, {
+      motion: {
+        mouthX: 0.75,
+        lookY: 0.4,
+        custom: { heartbeat: 0.6 },
+      },
+    });
+
+    const rendered = target.motion.applyTo({
+      faceYaw: 0.5,
+      facePitch: 0.5,
+      bodyYaw: 0.5,
+      bodyRoll: 0.5,
+      eyeYaw: 1,
+      eyePitch: 0,
+      mouthX: 0,
+      mouthY: 0,
+      headTilt: 0.5,
+      bodyLean: 0.5,
+      lookX: 0.5,
+      lookY: 0.5,
+      custom: {},
+    });
+
+    expect(rendered.mouthX).toBe(0.75);
+    expect(rendered.lookY).toBe(0.4);
+    expect(rendered.custom.heartbeat).toBe(0.6);
+  });
+
   it("keeps backward-compatible flat state payload", () => {
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     applyInputPayload(target, { energy: 0.4 });
     expect(target.state.get("energy")).toBe(0.4);
   });
 
   it("rejects oversized timeline arrays", () => {
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     const timeline = Array.from({ length: 65 }, (_, index) => ({
       startMs: index,
@@ -53,11 +83,7 @@ describe("applyInputPayload", () => {
   });
 
   it("rejects oversized channel maps", () => {
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     const channels = Object.fromEntries(
       Array.from({ length: 129 }, (_, index) => [`key${index}`, index]),
@@ -69,11 +95,7 @@ describe("applyInputPayload", () => {
   });
 
   it("skips timeline events with invalid duration", () => {
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     applyInputPayload(target, {
       timeline: [

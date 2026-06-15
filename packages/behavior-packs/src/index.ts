@@ -1,6 +1,9 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import curiousPreset from "../presets/Curious.pfpreset";
+import focusedPreset from "../presets/Focused.pfpreset";
+import happyPreset from "../presets/Happy.pfpreset";
+import idlePreset from "../presets/Idle.pfpreset";
+import sleepyPreset from "../presets/Sleepy.pfpreset";
+import thinkingPreset from "../presets/Thinking.pfpreset";
 
 export const PRESET_NAMES = [
   "Curious",
@@ -13,10 +16,17 @@ export const PRESET_NAMES = [
 
 export type BehaviorPackName = (typeof PRESET_NAMES)[number];
 
-const PRESETS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../presets");
+const PRESETS: Record<BehaviorPackName, string> = {
+  Curious: curiousPreset,
+  Happy: happyPreset,
+  Idle: idlePreset,
+  Thinking: thinkingPreset,
+  Sleepy: sleepyPreset,
+  Focused: focusedPreset,
+};
 
 export function getPresetJson(name: BehaviorPackName): string {
-  return readFileSync(resolve(PRESETS_DIR, `${name}.pfpreset`), "utf8");
+  return PRESETS[name];
 }
 
 export function listPresetNames(): readonly BehaviorPackName[] {

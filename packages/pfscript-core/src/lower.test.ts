@@ -180,6 +180,76 @@ end`);
       },
     });
   });
+
+  it("lowers numeric compare with call expression on the left", () => {
+    const program = parsePfScript(`if randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) >= 0.5 then
+    mouthX = 1
+else
+    mouthX = 0
+end`);
+    const behavior = lowerPfScriptToBehavior(program);
+    const rootIf = behavior.statements[0];
+
+    expect(rootIf).toMatchObject({
+      type: "If",
+      condition: {
+        kind: "Expr",
+        expression: {
+          type: "Binary",
+          op: ">=",
+          left: { type: "Call", callee: "randomHold" },
+          right: { type: "Number", value: 0.5 },
+        },
+      },
+    });
+  });
+
+  it("lowers numeric compare with expressions on both sides", () => {
+    const program = parsePfScript(`if interest * 0.5 > volume then
+    mouthX = 1
+end`);
+    const behavior = lowerPfScriptToBehavior(program);
+    const rootIf = behavior.statements[0];
+
+    expect(rootIf).toMatchObject({
+      type: "If",
+      condition: {
+        kind: "Expr",
+        expression: {
+          type: "Binary",
+          op: ">",
+          left: {
+            type: "Binary",
+            op: "*",
+            left: { type: "Identifier", name: "interest" },
+            right: { type: "Number", value: 0.5 },
+          },
+          right: { type: "Identifier", name: "volume" },
+        },
+      },
+    });
+  });
+
+  it("lowers numeric compare with a literal on the left", () => {
+    const program = parsePfScript(`if 0.5 <= randomHold(id = "mouth-toggle", interval = 1.5, min = 0, max = 1) then
+    mouthX = 1
+end`);
+    const behavior = lowerPfScriptToBehavior(program);
+    const rootIf = behavior.statements[0];
+
+    expect(rootIf).toMatchObject({
+      type: "If",
+      condition: {
+        kind: "Expr",
+        expression: {
+          type: "Binary",
+          op: "<=",
+          left: { type: "Number", value: 0.5 },
+          right: { type: "Call", callee: "randomHold" },
+        },
+      },
+    });
+  });
 });
 
 describe("motion aliases", () => {

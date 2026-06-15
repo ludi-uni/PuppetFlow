@@ -11,7 +11,7 @@ describe("isReleaseAsset", () => {
     expect(isReleaseAsset("puppetflow-studio-windows-x64-0.1.3-portable.zip")).toBe(
       true,
     );
-    expect(isReleaseAsset("pf-cli-windows-x64.zip")).toBe(true);
+    expect(isReleaseAsset("pf-cli-windows-x64-0.1.3-portable.zip")).toBe(true);
   });
 
   it("rejects installer formats", () => {

@@ -17,7 +17,7 @@
     "presets"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean"
+    "build": "tsup"
   },
   "devDependencies": {
     "tsup": "^8.5.0"

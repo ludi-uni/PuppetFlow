@@ -244,6 +244,32 @@ describe("PuppetFlowRuntime", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("applies motion overrides from sources after the pipeline", async () => {
+    const update = vi.fn(async () => {});
+    const adapter = createTestAdapter(update);
+
+    const runtime = new PuppetFlowRuntime()
+      .use(new TestPlugin({ mouthX: 0.1 }))
+      .attachAdapter(adapter)
+      .attachSource({
+        id: "motion-source",
+        initialize: vi.fn(async () => {}),
+        update: vi.fn(async (target) => {
+          target.motion.applyPayload({ mouthX: 0.9, lookX: 0.2 });
+        }),
+        dispose: vi.fn(async () => {}),
+      });
+
+    await runtime.start();
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+
+    const lastMotion = update.mock.calls.at(-1)?.[0] as MotionState | undefined;
+    expect(lastMotion?.mouthX).toBe(0.9);
+    expect(lastMotion?.lookX).toBe(0.2);
+
+    await runtime.stop();
+  });
+
   it("applies extension packs from preset extensions", async () => {
     const runtime = new PuppetFlowRuntime().loadPreset(
       loadPreset(

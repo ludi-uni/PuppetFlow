@@ -6,6 +6,7 @@ import type {
   TimelineEvent,
 } from "@puppetflow/core";
 import type { TimelineStore } from "@puppetflow/core";
+import type { MotionOverrideStore } from "./motion-override-store.js";
 import { applyStatePayload } from "./parse-state-payload.js";
 
 export const MAX_TIMELINE_EVENTS_PER_PAYLOAD = 64;
@@ -55,6 +56,7 @@ export interface InputPayloadTarget {
   state: StateStore;
   channels: ChannelStore;
   timeline: TimelineStore;
+  motion: MotionOverrideStore;
 }
 
 export function applyInputPayload(
@@ -70,7 +72,11 @@ export function applyInputPayload(
 
   if (record.state && typeof record.state === "object" && record.state !== null) {
     applyStatePayload(target.state, record.state, fieldMapping);
-  } else if (!("channels" in record) && !("timeline" in record)) {
+  } else if (
+    !("channels" in record) &&
+    !("timeline" in record) &&
+    !("motion" in record)
+  ) {
     applyStatePayload(target.state, record, fieldMapping);
   }
 
@@ -105,5 +111,9 @@ export function applyInputPayload(
       }
       target.timeline.push(item);
     }
+  }
+
+  if (record.motion && typeof record.motion === "object" && record.motion !== null) {
+    target.motion.applyPayload(record.motion, fieldMapping);
   }
 }

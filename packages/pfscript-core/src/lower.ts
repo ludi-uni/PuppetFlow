@@ -5,6 +5,7 @@ import type {
   BehaviorIf,
   BehaviorMotionPack,
   BehaviorStatement,
+  BehaviorExprCondition,
   CompareCondition,
   CompareOp,
   StringCompareCondition,
@@ -160,7 +161,12 @@ function lowerCompareCondition(expression: PfScriptBinary): BehaviorCondition {
     return numericCompare;
   }
 
-  throw new Error("compare conditions require identifier and literal operands");
+  const exprCompare = tryLowerExprCompare(expression);
+  if (exprCompare) {
+    return exprCompare;
+  }
+
+  throw new Error("unsupported compare condition");
 }
 
 function tryLowerStringCompare(
@@ -205,6 +211,24 @@ function tryLowerNumericCompare(
   }
 
   return undefined;
+}
+
+function tryLowerExprCompare(
+  expression: PfScriptBinary,
+): BehaviorExprCondition | undefined {
+  if (!isCompareOp(expression.op)) {
+    return undefined;
+  }
+
+  return {
+    kind: "Expr",
+    expression: {
+      type: "Binary",
+      op: expression.op,
+      left: lowerExpression(expression.left),
+      right: lowerExpression(expression.right),
+    },
+  };
 }
 
 function lowerExpression(expression: PfScriptExpression): BehaviorExpression {

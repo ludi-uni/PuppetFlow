@@ -1,6 +1,16 @@
 import { ChannelStore, StateStore, TimelineStore } from "@puppetflow/core";
+import { MotionOverrideStore } from "@puppetflow/source-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpSource } from "./http-source.js";
+
+function createTarget() {
+  return {
+    state: new StateStore(),
+    channels: new ChannelStore(),
+    timeline: new TimelineStore(),
+    motion: new MotionOverrideStore(),
+  };
+}
 
 describe("HttpSource", () => {
   beforeEach(() => {
@@ -20,11 +30,7 @@ describe("HttpSource", () => {
     const source = new HttpSource({ url: "http://example.com/state", intervalMs: 0 });
     await source.initialize();
 
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     await source.update(target);
 
@@ -47,11 +53,7 @@ describe("HttpSource", () => {
     });
     await source.initialize();
 
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     await source.update(target);
     await source.update(target);
@@ -71,11 +73,7 @@ describe("HttpSource", () => {
     );
 
     const source = new HttpSource({ url: "http://example.com/state", intervalMs: 0 });
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     const pending = source.update(target);
     await source.dispose();
@@ -92,11 +90,7 @@ describe("HttpSource", () => {
     const source = new HttpSource({ url: "http://example.com/state", intervalMs: 0 });
     await source.initialize();
 
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-    };
+    const target = createTarget();
 
     await expect(source.update(target)).rejects.toThrow(/503/i);
     await source.dispose();

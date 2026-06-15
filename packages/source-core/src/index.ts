@@ -3,6 +3,10 @@ export {
   MAX_STATE_KEYS_PER_PAYLOAD,
 } from "./parse-state-payload.js";
 export {
+  MotionOverrideStore,
+  MAX_MOTION_KEYS_PER_PAYLOAD,
+} from "./motion-override-store.js";
+export {
   applyInputPayload,
   MAX_CHANNEL_KEYS_PER_PAYLOAD,
   MAX_TIMELINE_EVENT_DURATION_MS,
