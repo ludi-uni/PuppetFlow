@@ -16,6 +16,7 @@
     "@puppetflow/behavior-packs": "workspace:*",
     "@puppetflow/cli-config": "workspace:*",
     "@puppetflow/preset": "workspace:*",
+    "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/runtime-launcher": "workspace:*",
     "commander": "^13.1.0",
     "yaml": "^2.8.0"

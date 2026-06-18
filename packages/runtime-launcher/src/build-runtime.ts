@@ -21,5 +21,9 @@ export function buildRuntime(config: RuntimeLaunchConfig): PuppetFlowRuntime {
     }
   }
 
+  if (config.customMicroBehaviors && config.customMicroBehaviors.length > 0) {
+    runtime.microBehavior.setCustomDefinitions(config.customMicroBehaviors);
+  }
+
   return runtime;
 }

@@ -1,3 +1,5 @@
+import type { MotionState } from "@puppetflow/core";
+import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriVmcAdapter } from "@puppetflow/adapter-vmc";
 import type { MotionState, StateValue } from "@puppetflow/core";
@@ -36,10 +38,18 @@ const motionListenerSet = new Set<(motion: MotionState) => void>();
 const motionListenerUnsubs = new Map<(motion: MotionState) => void, () => void>();
 
 const pipelineListenerSet = new Set<
-  (update: { target: MotionState; rendered: MotionState }) => void
+  (update: {
+    target: MotionState;
+    rendered: MotionState;
+    microBehavior: MicroBehaviorSnapshot;
+  }) => void
 >();
 const pipelineListenerUnsubs = new Map<
-  (update: { target: MotionState; rendered: MotionState }) => void,
+  (update: {
+    target: MotionState;
+    rendered: MotionState;
+    microBehavior: MicroBehaviorSnapshot;
+  }) => void,
   () => void
 >();
 
@@ -198,7 +208,11 @@ export function subscribeMotion(listener: (motion: MotionState) => void): () => 
 }
 
 export function subscribeMotionPipeline(
-  listener: (update: { target: MotionState; rendered: MotionState }) => void,
+  listener: (update: {
+    target: MotionState;
+    rendered: MotionState;
+    microBehavior: MicroBehaviorSnapshot;
+  }) => void,
 ): () => void {
   pipelineListenerSet.add(listener);
 

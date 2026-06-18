@@ -29,6 +29,7 @@
     "@puppetflow/adapter-vrm": "workspace:*",
     "@puppetflow/adapter-websocket": "workspace:*",
     "@puppetflow/core": "workspace:*",
+    "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/motion-mapper": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/runtime": "workspace:*",

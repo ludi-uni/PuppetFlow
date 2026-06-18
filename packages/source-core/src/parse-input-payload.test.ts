@@ -108,4 +108,48 @@ describe("applyInputPayload", () => {
     expect(target.timeline.getActiveEvents(50)).toHaveLength(1);
     expect(target.timeline.getActiveEvents(50)[0]?.value).toBe("C");
   });
+
+  it("routes behavior payloads to microBehavior handler", () => {
+    const target = createTarget();
+    const received: Record<string, unknown>[] = [];
+
+    applyInputPayload(
+      {
+        ...target,
+        microBehavior: {
+          applyFromInputRecord(record) {
+            received.push(record);
+          },
+        },
+      },
+      { behavior: "look_up" },
+    );
+
+    expect(received).toHaveLength(1);
+    expect(received[0]?.behavior).toBe("look_up");
+    expect(target.state.get("behavior")).toBeUndefined();
+  });
+
+  it("applies state and behavior from combined payload", () => {
+    const target = createTarget();
+    let behaviorSeen = false;
+
+    applyInputPayload(
+      {
+        ...target,
+        microBehavior: {
+          applyFromInputRecord(record) {
+            behaviorSeen = record.behavior === "look_up";
+          },
+        },
+      },
+      {
+        state: { interest: 0.7 },
+        behavior: "look_up",
+      },
+    );
+
+    expect(behaviorSeen).toBe(true);
+    expect(target.state.get("interest")).toBe(0.7);
+  });
 });

@@ -1,4 +1,5 @@
 import { buildCliYamlFromStudio, serializeCliYamlConfig } from "@puppetflow/cli-config";
+import { DEFAULT_MICRO_BEHAVIORS_FILE_NAME } from "@puppetflow/micro-behavior";
 import type { StateValue } from "@puppetflow/core";
 
 import type { MotionMapperEditorConfig } from "../mapper-config";
@@ -22,12 +23,14 @@ export interface ExportCliConfigInput {
   sources: SourceConfig;
   mapperConfig: MotionMapperEditorConfig;
   initialState?: Record<string, StateValue>;
+  customMicroBehaviorsJson?: string;
 }
 
 export interface ExportCliConfigResult {
   saved: boolean;
   cancelled: boolean;
   downloadedPreset: boolean;
+  downloadedMicroBehaviors: boolean;
   usedDirectoryPicker: boolean;
 }
 
@@ -40,24 +43,42 @@ export async function exportStudioCliConfig(
     sources: input.sources,
     mapperConfig: input.mapperConfig,
     initialState: input.initialState,
+    includeMicroBehaviorsFile: Boolean(input.customMicroBehaviorsJson),
   });
 
   const yaml = serializeCliYamlConfig(yamlConfig, {
     includeCustomPresetNote: input.isCustomPreset,
   });
 
-  if (input.isCustomPreset && input.presetJson && canPickSaveDirectory()) {
-    const presetFileName = `${sanitizePresetFileName(String(input.preset))}.pfpreset`;
-    const directoryResult = await saveFilesToDirectory([
-      { fileName: "puppetflow.yaml", contents: yaml },
-      { fileName: presetFileName, contents: input.presetJson },
-    ]);
+  const extraFiles: Array<{ fileName: string; contents: string }> = [];
+  if (input.customMicroBehaviorsJson) {
+    extraFiles.push({
+      fileName: DEFAULT_MICRO_BEHAVIORS_FILE_NAME,
+      contents: input.customMicroBehaviorsJson,
+    });
+  }
+
+  if (
+    (input.isCustomPreset && input.presetJson && canPickSaveDirectory()) ||
+    (extraFiles.length > 0 && canPickSaveDirectory())
+  ) {
+    const files = [{ fileName: "puppetflow.yaml", contents: yaml }];
+    if (input.isCustomPreset && input.presetJson) {
+      files.push({
+        fileName: `${sanitizePresetFileName(String(input.preset))}.pfpreset`,
+        contents: input.presetJson,
+      });
+    }
+    files.push(...extraFiles);
+
+    const directoryResult = await saveFilesToDirectory(files);
 
     if (!directoryResult.ok) {
       return {
         saved: false,
         cancelled: directoryResult.reason === "cancelled",
         downloadedPreset: false,
+        downloadedMicroBehaviors: false,
         usedDirectoryPicker: false,
       };
     }
@@ -65,7 +86,8 @@ export async function exportStudioCliConfig(
     return {
       saved: true,
       cancelled: false,
-      downloadedPreset: true,
+      downloadedPreset: Boolean(input.isCustomPreset && input.presetJson),
+      downloadedMicroBehaviors: extraFiles.length > 0,
       usedDirectoryPicker: directoryResult.method === "picker",
     };
   }
@@ -83,6 +105,7 @@ export async function exportStudioCliConfig(
       saved: false,
       cancelled: yamlResult.reason === "cancelled",
       downloadedPreset: false,
+      downloadedMicroBehaviors: false,
       usedDirectoryPicker: false,
     };
   }
@@ -103,6 +126,7 @@ export async function exportStudioCliConfig(
         saved: true,
         cancelled: presetResult.reason === "cancelled",
         downloadedPreset: false,
+        downloadedMicroBehaviors: false,
         usedDirectoryPicker: false,
       };
     }
@@ -110,10 +134,34 @@ export async function exportStudioCliConfig(
     downloadedPreset = true;
   }
 
+  let downloadedMicroBehaviors = false;
+  if (input.customMicroBehaviorsJson) {
+    const microResult = await saveTextFile({
+      suggestedName: DEFAULT_MICRO_BEHAVIORS_FILE_NAME,
+      contents: input.customMicroBehaviorsJson,
+      description: "PuppetFlow Micro Behaviors",
+      extensions: [".pfmicrobehaviors", ".json"],
+      mimeType: "application/json",
+    });
+
+    if (!microResult.ok) {
+      return {
+        saved: true,
+        cancelled: microResult.reason === "cancelled",
+        downloadedPreset,
+        downloadedMicroBehaviors: false,
+        usedDirectoryPicker: false,
+      };
+    }
+
+    downloadedMicroBehaviors = true;
+  }
+
   return {
     saved: true,
     cancelled: false,
     downloadedPreset,
+    downloadedMicroBehaviors,
     usedDirectoryPicker: false,
   };
 }

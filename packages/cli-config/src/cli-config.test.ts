@@ -83,6 +83,24 @@ describe("cli-config", () => {
     expect(merged.adapters?.logger?.enabled).toBe(false);
   });
 
+  it("includes micro behaviors file path when requested", () => {
+    const config = buildCliYamlFromStudio({
+      presetName: "Idle",
+      isCustomPreset: false,
+      sources: {},
+      mapperConfig: {
+        vmc: { enabled: true, host: "127.0.0.1", port: 39539 },
+        live2d: { enabled: false, host: "127.0.0.1", port: 39539 },
+        vrm: { enabled: false, host: "127.0.0.1", port: 39539 },
+        loggerEnabled: false,
+        loggerThrottleMs: 5000,
+      },
+      includeMicroBehaviorsFile: true,
+    });
+
+    expect(config.microBehaviors).toBe("./micro-behaviors.pfmicrobehaviors");
+  });
+
   it("rejects unsupported config versions", () => {
     expect(() =>
       parseYamlConfig({

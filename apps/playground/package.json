@@ -16,6 +16,7 @@
     "@puppetflow/adapter-vmc": "workspace:*",
     "@puppetflow/behavior-packs": "workspace:*",
     "@puppetflow/core": "workspace:*",
+    "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/runtime": "workspace:*",
     "@puppetflow/source-http": "workspace:*",

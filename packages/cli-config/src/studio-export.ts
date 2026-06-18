@@ -1,6 +1,7 @@
 import type { StateValue } from "@puppetflow/core";
 
 export const CLI_CONFIG_VERSION = 1;
+export const DEFAULT_CLI_MICRO_BEHAVIORS_FILE = "./micro-behaviors.pfmicrobehaviors";
 
 export const BUILTIN_CLI_PRESET_NAMES = [
   "Curious",
@@ -53,6 +54,8 @@ export interface CliYamlConfig {
       label?: string;
     };
   };
+  /** Relative path to .pfmicrobehaviors JSON from config file directory */
+  microBehaviors?: string;
 }
 
 export interface StudioMapperExportModel {
@@ -78,6 +81,7 @@ export interface StudioCliExportInput {
     loggerThrottleMs: number;
   };
   initialState?: Record<string, StateValue>;
+  includeMicroBehaviorsFile?: boolean;
 }
 
 function hasText(value: string | null | undefined): value is string {
@@ -152,6 +156,10 @@ export function buildCliYamlFromStudio(input: StudioCliExportInput): CliYamlConf
       label: "PuppetFlow CLI",
     },
   };
+
+  if (input.includeMicroBehaviorsFile) {
+    config.microBehaviors = DEFAULT_CLI_MICRO_BEHAVIORS_FILE;
+  }
 
   return config;
 }

@@ -1,6 +1,7 @@
 import type { StateValue } from "@puppetflow/core";
 import type {
   AdaptersLaunchConfig,
+  BehaviorApiLaunchConfig,
   SourceLaunchConfig,
 } from "@puppetflow/runtime-launcher";
 
@@ -25,6 +26,10 @@ export interface RunCliOptions {
   websocketDisabled?: boolean;
   loggerDisabled?: boolean;
   loggerThrottleMs?: number;
+  behaviorPort?: number;
+  behaviorHost?: string;
+  behaviorDisabled?: boolean;
+  microBehaviorsPath?: string;
 }
 
 function parseStateAssignments(
@@ -65,6 +70,9 @@ export function cliOptionsToOverrides(options: RunCliOptions): {
   initialState?: Record<string, StateValue>;
   sources: SourceLaunchConfig;
   adapters: AdaptersLaunchConfig;
+  behaviorApi?: BehaviorApiLaunchConfig;
+  customMicroBehaviors?: import("@puppetflow/micro-behavior").MicroBehaviorDefinition[];
+  microBehaviorsPath?: string;
 } {
   const adapters: AdaptersLaunchConfig = {};
 
@@ -112,6 +120,17 @@ export function cliOptionsToOverrides(options: RunCliOptions): {
     };
   }
 
+  let behaviorApi: BehaviorApiLaunchConfig | undefined;
+  if (options.behaviorDisabled) {
+    behaviorApi = { enabled: false };
+  } else if (options.behaviorPort !== undefined || options.behaviorHost !== undefined) {
+    behaviorApi = {
+      enabled: true,
+      host: options.behaviorHost,
+      port: options.behaviorPort ?? 8787,
+    };
+  }
+
   return {
     preset: options.preset,
     initialState: parseStateAssignments(options.state),
@@ -122,5 +141,7 @@ export function cliOptionsToOverrides(options: RunCliOptions): {
       mqttTopic: options.mqttTopic ?? null,
     },
     adapters,
+    behaviorApi,
+    microBehaviorsPath: options.microBehaviorsPath,
   };
 }

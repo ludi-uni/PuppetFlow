@@ -1,4 +1,5 @@
 import { buildRuntime } from "@puppetflow/runtime-launcher/node";
+import { startBehaviorHttpServer, type BehaviorHttpServer } from "@puppetflow/micro-behavior/node";
 
 import { resolveRunLaunchConfig } from "../config/resolve-run-config.js";
 import type { RunCliOptions } from "../config/run-config.js";
@@ -32,6 +33,22 @@ export async function runCommand(options: RunCliOptions): Promise<void> {
 
   await runtime.start();
 
+  let behaviorServer: BehaviorHttpServer | null = null;
+  const behaviorApi = launchConfig.behaviorApi;
+  if (behaviorApi?.enabled !== false && behaviorApi?.port !== undefined) {
+    behaviorServer = await startBehaviorHttpServer({
+      host: behaviorApi.host ?? "127.0.0.1",
+      port: behaviorApi.port,
+      engine: runtime.microBehavior,
+    });
+    console.log(`Behavior API -> ${behaviorServer.url}`);
+  }
+
+  const customCount = launchConfig.customMicroBehaviors?.length ?? 0;
+  if (customCount > 0) {
+    console.log(`Custom micro behaviors -> ${customCount} loaded`);
+  }
+
   const vmc = launchConfig.adapters?.vmc;
   const vmcEnabled = vmc?.enabled ?? true;
   if (vmcEnabled) {
@@ -64,6 +81,9 @@ export async function runCommand(options: RunCliOptions): Promise<void> {
     console.log(`\nStopping PuppetFlow runtime (${signal})...`);
 
     try {
+      if (behaviorServer) {
+        await behaviorServer.close();
+      }
       await runtime.stop();
       console.log("PuppetFlow runtime stopped.");
     } catch (error) {

@@ -11,6 +11,7 @@ import {
   parseYamlConfig,
   yamlConfigToLaunchConfig,
 } from "@puppetflow/cli-config";
+import { parseMicroBehaviorsFile } from "@puppetflow/micro-behavior";
 import { readPresetFileContents } from "@puppetflow/preset/node";
 import { parse as parseYaml } from "yaml";
 
@@ -57,23 +58,54 @@ export async function loadYamlConfigFile(configPath: string): Promise<{
   };
 }
 
+async function loadMicroBehaviorsFile(
+  filePath: string,
+  baseDir: string,
+): Promise<import("@puppetflow/micro-behavior").MicroBehaviorDefinition[]> {
+  const absolutePath = isAbsolute(filePath) ? filePath : resolve(baseDir, filePath);
+  const raw = await readFile(absolutePath, "utf8");
+  return parseMicroBehaviorsFile(JSON.parse(raw));
+}
+
+async function attachMicroBehaviors(
+  launchConfig: RuntimeLaunchConfig,
+  filePath: string | undefined,
+  baseDir: string,
+): Promise<RuntimeLaunchConfig> {
+  if (!filePath) {
+    return launchConfig;
+  }
+
+  return {
+    ...launchConfig,
+    customMicroBehaviors: await loadMicroBehaviorsFile(filePath, baseDir),
+  };
+}
+
 export async function resolveRunLaunchConfig(
   options: RunCliOptions,
 ): Promise<RuntimeLaunchConfig> {
   let launchConfig: RuntimeLaunchConfig | null = null;
+  let configBaseDir = getWorkspaceCwd();
 
   if (options.configPath) {
     const { config, baseDir } = await loadYamlConfigFile(options.configPath);
+    configBaseDir = baseDir;
     const presetInput = config.presetName ?? config.preset;
     if (!presetInput) {
       throw new Error("Config must include preset or presetName.");
     }
 
     const presetJson = await resolvePresetJson(presetInput, baseDir);
-    launchConfig = yamlConfigToLaunchConfig(config, presetJson);
+    launchConfig = await attachMicroBehaviors(
+      yamlConfigToLaunchConfig(config, presetJson),
+      config.microBehaviors,
+      baseDir,
+    );
   }
 
   const overrides = cliOptionsToOverrides(options);
+  const microBehaviorsPath = overrides.microBehaviorsPath;
 
   if (!launchConfig) {
     if (!overrides.preset) {
@@ -85,7 +117,13 @@ export async function resolveRunLaunchConfig(
       initialState: overrides.initialState,
       sources: overrides.sources,
       adapters: overrides.adapters,
+      behaviorApi: overrides.behaviorApi,
     };
+    launchConfig = await attachMicroBehaviors(
+      launchConfig,
+      microBehaviorsPath,
+      configBaseDir,
+    );
     return launchConfig;
   }
 
@@ -95,5 +133,16 @@ export async function resolveRunLaunchConfig(
     });
   }
 
-  return mergeLaunchConfig(launchConfig, overrides);
+  const merged = mergeLaunchConfig(launchConfig, {
+    initialState: overrides.initialState,
+    sources: overrides.sources,
+    adapters: overrides.adapters,
+    behaviorApi: overrides.behaviorApi,
+  });
+
+  if (microBehaviorsPath) {
+    return attachMicroBehaviors(merged, microBehaviorsPath, configBaseDir);
+  }
+
+  return merged;
 }

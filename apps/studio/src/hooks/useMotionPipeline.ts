@@ -6,6 +6,7 @@ import {
   INPUT_SLIDERS,
   TIMELINE_PHONEME_MS,
 } from "../constants/pipeline-sliders";
+import { useCustomMicroBehaviors } from "./useCustomMicroBehaviors";
 import { resolvePhonemeInputSource } from "../utils/phoneme-source";
 import {
   ensureRuntime,
@@ -86,6 +87,13 @@ export function useMotionPipeline({
   const [statefulSnapshot, setStatefulSnapshot] = useState<
     MotionPipelineUpdate["statefulSnapshot"]
   >([]);
+  const [microBehaviorSnapshot, setMicroBehaviorSnapshot] = useState<
+    MotionPipelineUpdate["microBehavior"]
+  >({
+    status: { activeBehavior: null, remaining: 0 },
+    queue: { queueLength: 0 },
+    cooldowns: [],
+  });
 
   const phonemeInputSource = useMemo(
     () => resolvePhonemeInputSource(activeTimelineEvents, channelSnapshot.phoneme),
@@ -105,6 +113,8 @@ export function useMotionPipeline({
   const onRuntimeReadyRef = useRef(onRuntimeReady);
   onRuntimeReadyRef.current = onRuntimeReady;
 
+  const customMicroBehaviors = useCustomMicroBehaviors({ ready, notify });
+
   useEffect(() => {
     let unsubscribe = () => {};
     void ensureRuntime()
@@ -112,6 +122,7 @@ export function useMotionPipeline({
         const instance = getRuntime();
         setTargetMotion(instance.getTargetMotion());
         setRenderedMotion(instance.getRenderedMotion());
+        setMicroBehaviorSnapshot(instance.getMicroBehaviorSnapshot());
         onRuntimeReadyRef.current?.();
 
         unsubscribe = subscribeMotionPipeline(
@@ -123,11 +134,13 @@ export function useMotionPipeline({
             activeTimelineEvents: events,
             timelineCurrentMs: currentMs,
             statefulSnapshot: statefulEntries,
+            microBehavior,
           }) => {
             setTargetMotion(target);
             setRenderedMotion(rendered);
             setPipelineOutputs(outputs);
             setStatefulSnapshot(statefulEntries);
+            setMicroBehaviorSnapshot(microBehavior);
             setChannelSnapshot(channels);
             setActiveTimelineEvents(events);
             setTimelineCurrentMs(currentMs);
@@ -245,10 +258,30 @@ export function useMotionPipeline({
     setActivePluginIds,
     pipelineOutputs,
     statefulSnapshot,
+    microBehaviorSnapshot,
     phonemeInputSource,
     channelTableRows,
     timelineTableRows,
     handleResetChannels,
     handlePushTimelinePhoneme,
+    handleTriggerMicroBehavior: customMicroBehaviors.handleTriggerBehavior,
+    customBehaviorIds: customMicroBehaviors.customBehaviorIds,
+    selectedCustomBehaviorId: customMicroBehaviors.selectedCustomId,
+    editorDraft: customMicroBehaviors.editorDraft,
+    customBehaviorEditorJson: customMicroBehaviors.editorJson,
+    customBehaviorEditorError: customMicroBehaviors.editorError,
+    setCustomBehaviorEditorJson: customMicroBehaviors.setEditorJson,
+    selectCustomBehavior: customMicroBehaviors.selectCustomBehavior,
+    handleDraftChange: customMicroBehaviors.handleDraftChange,
+    handleSyncJsonFromDraft: customMicroBehaviors.handleSyncJsonFromDraft,
+    handleSyncDraftFromJson: customMicroBehaviors.handleSyncDraftFromJson,
+    handleAddCustomBehavior: customMicroBehaviors.handleAddCustomBehavior,
+    handleAddFromTemplate: customMicroBehaviors.handleAddFromTemplate,
+    handleDeleteCustomBehavior: customMicroBehaviors.handleDeleteCustomBehavior,
+    handleApplyCustomBehavior: customMicroBehaviors.handleApplyCustomBehavior,
+    handleTestCustomBehavior: customMicroBehaviors.handleTestCustomBehavior,
+    handleExportCustomBehaviors: customMicroBehaviors.handleExportCustomBehaviors,
+    handleImportCustomBehaviors: customMicroBehaviors.handleImportCustomBehaviors,
+    customMicroBehaviorCount: customMicroBehaviors.customBehaviors.length,
   };
 }

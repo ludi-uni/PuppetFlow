@@ -15,6 +15,10 @@ import {
 } from "./runtime";
 import { isPluginEnabled } from "./utils/plugin-config";
 import { exportStudioCliConfig } from "./utils/export-cli-config";
+import {
+  loadCustomMicroBehaviors,
+  serializeCustomMicroBehaviorsForExport,
+} from "./utils/custom-micro-behaviors";
 
 export function App() {
   const {
@@ -142,11 +146,31 @@ export function App() {
     activePluginIds,
     pipelineOutputs,
     statefulSnapshot,
+    microBehaviorSnapshot,
     phonemeInputSource,
     channelTableRows,
     timelineTableRows,
     handleResetChannels,
     handlePushTimelinePhoneme,
+    handleTriggerMicroBehavior,
+    customBehaviorIds,
+    selectedCustomBehaviorId,
+    editorDraft,
+    customBehaviorEditorJson,
+    customBehaviorEditorError,
+    setCustomBehaviorEditorJson,
+    selectCustomBehavior,
+    handleDraftChange,
+    handleSyncJsonFromDraft,
+    handleSyncDraftFromJson,
+    handleAddCustomBehavior,
+    handleAddFromTemplate,
+    handleDeleteCustomBehavior,
+    handleApplyCustomBehavior,
+    handleTestCustomBehavior,
+    handleExportCustomBehaviors,
+    handleImportCustomBehaviors,
+    customMicroBehaviorCount,
   } = motionPipeline;
 
   const nextStepGuide = useStudioNextStep({
@@ -171,6 +195,12 @@ export function App() {
       sources: appliedSources,
       mapperConfig: appliedMapperConfig,
       initialState: inputs,
+      customMicroBehaviorsJson:
+        customMicroBehaviorCount > 0
+          ? serializeCustomMicroBehaviorsForExport(
+              loadCustomMicroBehaviors(),
+            )
+          : undefined,
     });
 
     if (result.cancelled) {
@@ -184,15 +214,17 @@ export function App() {
 
     if (result.downloadedPreset && result.usedDirectoryPicker) {
       notify(
-        "選択したフォルダに puppetflow.yaml と Preset を保存しました。`pnpm pf run --config puppetflow.yaml` で起動できます。",
+        result.downloadedMicroBehaviors
+          ? "選択したフォルダに puppetflow.yaml、Preset、micro-behaviors.pfmicrobehaviors を保存しました。`pnpm pf run --config puppetflow.yaml` で起動できます。"
+          : "選択したフォルダに puppetflow.yaml と Preset を保存しました。`pnpm pf run --config puppetflow.yaml` で起動できます。",
         "success",
       );
       return;
     }
 
-    if (result.downloadedPreset) {
+    if (result.downloadedPreset || result.downloadedMicroBehaviors) {
       notify(
-        "puppetflow.yaml と Preset ファイルを保存しました。同じフォルダに置いて `pnpm pf run --config puppetflow.yaml` で起動できます。",
+        "puppetflow.yaml と関連ファイルを保存しました。同じフォルダに置いて `pnpm pf run --config puppetflow.yaml` で起動できます。",
         "success",
       );
       return;
@@ -210,6 +242,7 @@ export function App() {
     notify,
     preset,
     presetJson,
+    customMicroBehaviorCount,
   ]);
 
   if (startupError) {
@@ -280,6 +313,25 @@ export function App() {
           behaviorPluginIds,
           pipelineOutputs,
           statefulSnapshot,
+          microBehaviorSnapshot,
+          handleTriggerMicroBehavior,
+          customBehaviorIds,
+          selectedCustomBehaviorId,
+          editorDraft,
+          customBehaviorEditorJson,
+          customBehaviorEditorError,
+          setCustomBehaviorEditorJson,
+          selectCustomBehavior,
+          handleDraftChange,
+          handleSyncJsonFromDraft,
+          handleSyncDraftFromJson,
+          handleAddCustomBehavior,
+          handleAddFromTemplate,
+          handleDeleteCustomBehavior,
+          handleApplyCustomBehavior,
+          handleTestCustomBehavior,
+          handleExportCustomBehaviors,
+          handleImportCustomBehaviors,
         }}
         preset={{
           preset,

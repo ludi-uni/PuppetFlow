@@ -1,4 +1,5 @@
 import type { MotionState } from "@puppetflow/core";
+import type { BehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import type { PluginOutputSnapshot, StatefulEntrySnapshot } from "@puppetflow/runtime";
 import {
   CHANNEL_SLIDERS,
@@ -10,6 +11,7 @@ import {
 import { KeyValueTable } from "./KeyValueTable";
 import { MotionTable } from "./MotionTable";
 import { MouthStatusBar } from "./MouthStatusBar";
+import { MicroBehaviorDebugPanel } from "./MicroBehaviorDebugPanel";
 import { PluginOutputsPanel } from "./PluginOutputsPanel";
 import { StatefulDebugPanel } from "./StatefulDebugPanel";
 
@@ -42,6 +44,9 @@ export interface PipelineTabProps {
   behaviorPluginIds: string[];
   pipelineOutputs: PluginOutputSnapshot[];
   statefulSnapshot: StatefulEntrySnapshot[];
+  microBehaviorSnapshot: MicroBehaviorSnapshot;
+  onTriggerMicroBehavior: (behavior: BehaviorId) => void;
+  customBehaviorIds: BehaviorId[];
 }
 
 export function PipelineTab({
@@ -69,6 +74,9 @@ export function PipelineTab({
   behaviorPluginIds,
   pipelineOutputs,
   statefulSnapshot,
+  microBehaviorSnapshot,
+  onTriggerMicroBehavior,
+  customBehaviorIds,
 }: PipelineTabProps) {
   return (
     <section className="preview-layout">
@@ -240,6 +248,20 @@ export function PipelineTab({
             </>
           )}
         </div>
+      </div>
+      <div className="pipeline-stages micro-behavior-section">
+        <h2>{isSimpleMode ? "ちょっとした仕草" : "Micro Behavior"}</h2>
+        <p className="hint">
+          {isSimpleMode
+            ? "ボタンで視線・うなずき・まばたきなどの短い動きを試せます。カスタム定義は「仕草づくり」タブで編集します。"
+            : "Micro Behavior Engine 連携用。編集は Micro Behaviors タブ、ここでは実行と状態確認です。"}
+        </p>
+        <MicroBehaviorDebugPanel
+          snapshot={microBehaviorSnapshot}
+          onTrigger={onTriggerMicroBehavior}
+          customBehaviorIds={customBehaviorIds}
+          isSimpleMode={isSimpleMode}
+        />
       </div>
       {!isSimpleMode ? (
         <>

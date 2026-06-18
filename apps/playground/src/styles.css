@@ -120,6 +120,51 @@ select {
   border: 1px solid #ef4444;
 }
 
+.behavior-buttons,
+.micro-behavior-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.micro-behavior-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.micro-behavior-status div {
+  background: #1a2230;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.micro-behavior-status dt {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7f8ea3;
+}
+
+.micro-behavior-status dd {
+  margin: 0.25rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.micro-behavior-cooldowns ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.micro-behavior-debug h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: #7f8ea3;
+}
+
 .apply-button.dirty {
   background: #2563eb;
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);

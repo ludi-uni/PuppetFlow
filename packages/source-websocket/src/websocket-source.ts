@@ -35,7 +35,12 @@ export class WebSocketSource implements StateSource {
               type?: string;
               state?: unknown;
               payload?: unknown;
+              behavior?: unknown;
             };
+            if (envelope.type === "behavior") {
+              this.pendingPayload = parsed;
+              return;
+            }
             if (envelope.type === "state" && envelope.state) {
               this.pendingPayload = envelope.state;
               return;

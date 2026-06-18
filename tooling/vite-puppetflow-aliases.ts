@@ -16,6 +16,7 @@ const workspacePackages = [
   "modifier-core",
   "motion-graph",
   "motion-mapper",
+  "micro-behavior",
   "plugin-attention",
   "plugin-blink",
   "plugin-emotion",

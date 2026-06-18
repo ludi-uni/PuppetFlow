@@ -22,6 +22,7 @@
     "@puppetflow/adapter-core": "workspace:*",
     "@puppetflow/behavior": "workspace:*",
     "@puppetflow/core": "workspace:*",
+    "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/modifier-core": "workspace:*",
     "@puppetflow/extension-bundled": "workspace:*",
     "@puppetflow/extension-core": "workspace:*",

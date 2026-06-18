@@ -1,10 +1,7 @@
 import {
-  mergeMotionState,
-  createEmptyMotionState,
   clamp01,
   MOTION_STATE_KEYS,
   type MotionState,
-  type MotionStateKey,
 } from "@puppetflow/core";
 import type {
   BehaviorBlock,
@@ -207,33 +204,20 @@ function mergePartials(partials: Partial<MotionState>[]): Partial<MotionState> {
     return {};
   }
 
-  const keysWithValues = new Set<MotionStateKey>();
-  const customKeys = new Set<string>();
+  const result: Partial<MotionState> = {};
 
   for (const partial of partials) {
     for (const key of MOTION_STATE_KEYS) {
       if (partial[key] !== undefined) {
-        keysWithValues.add(key);
+        result[key] = partial[key];
       }
     }
+
     if (partial.custom) {
-      for (const key of Object.keys(partial.custom)) {
-        customKeys.add(key);
+      result.custom = { ...result.custom };
+      for (const [key, value] of Object.entries(partial.custom)) {
+        result.custom[key] = value;
       }
-    }
-  }
-
-  const merged = mergeMotionState(createEmptyMotionState(), partials);
-  const result: Partial<MotionState> = {};
-
-  for (const key of keysWithValues) {
-    result[key] = merged[key];
-  }
-
-  if (customKeys.size > 0) {
-    result.custom = {};
-    for (const key of customKeys) {
-      result.custom[key] = merged.custom[key] ?? 0;
     }
   }
 

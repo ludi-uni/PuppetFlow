@@ -1,14 +1,16 @@
 import type { MotionState } from "@puppetflow/core";
+import type { BehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import type { PluginOutputSnapshot, StatefulEntrySnapshot } from "@puppetflow/runtime";
 import { PipelineTab } from "../../components/PipelineTab";
 import type { StatusKind } from "../../components/StatusBanner";
-import type { MotionMapperEditorConfig } from "../../mapper-config";
+import type { MicroBehaviorDraft } from "../../utils/micro-behavior-draft";
 import type { PresetName, SourceConfig } from "../../runtime";
 import type { StudioMode, TabId } from "../../constants/studio-mode";
 import { GraphTab } from "../expert/tabs/GraphTab";
 import { PfScriptTab } from "../expert/tabs/PfScriptTab";
 import { SourcesTab } from "../expert/tabs/SourcesTab";
 import { MappingTab } from "../simple/tabs/MappingTab";
+import { MicroBehaviorsTab } from "./tabs/MicroBehaviorsTab";
 import { MapperTab } from "./tabs/MapperTab";
 import { PluginsTab } from "./tabs/PluginsTab";
 import { PresetsTab } from "./tabs/PresetsTab";
@@ -42,6 +44,25 @@ export interface StudioTabPanelProps {
     behaviorPluginIds: string[];
     pipelineOutputs: PluginOutputSnapshot[];
     statefulSnapshot: StatefulEntrySnapshot[];
+    microBehaviorSnapshot: MicroBehaviorSnapshot;
+    handleTriggerMicroBehavior: (behavior: BehaviorId) => void;
+    customBehaviorIds: BehaviorId[];
+    selectedCustomBehaviorId: string | null;
+    editorDraft: MicroBehaviorDraft | null;
+    customBehaviorEditorJson: string;
+    customBehaviorEditorError: string | null;
+    setCustomBehaviorEditorJson: (value: string) => void;
+    selectCustomBehavior: (id: string | null) => void;
+    handleDraftChange: (draft: MicroBehaviorDraft) => void;
+    handleSyncJsonFromDraft: () => void;
+    handleSyncDraftFromJson: () => void;
+    handleAddCustomBehavior: () => void;
+    handleAddFromTemplate: (templateId: string) => void;
+    handleDeleteCustomBehavior: () => void;
+    handleApplyCustomBehavior: () => void;
+    handleTestCustomBehavior: () => void;
+    handleExportCustomBehaviors: () => void;
+    handleImportCustomBehaviors: (file: File | undefined, mode: "merge" | "replace") => void;
   };
   preset: {
     preset: PresetName;
@@ -142,6 +163,40 @@ export function StudioTabPanel({
         behaviorPluginIds={pipeline.behaviorPluginIds}
         pipelineOutputs={pipeline.pipelineOutputs}
         statefulSnapshot={pipeline.statefulSnapshot}
+        microBehaviorSnapshot={pipeline.microBehaviorSnapshot}
+        onTriggerMicroBehavior={pipeline.handleTriggerMicroBehavior}
+        customBehaviorIds={pipeline.customBehaviorIds}
+      />
+    );
+  }
+
+  if (tab === "micro-behaviors") {
+    return (
+      <MicroBehaviorsTab
+        isSimpleMode={isSimpleMode}
+        microBehaviorSnapshot={pipeline.microBehaviorSnapshot}
+        customBehaviorIds={pipeline.customBehaviorIds}
+        selectedCustomBehaviorId={pipeline.selectedCustomBehaviorId}
+        editorDraft={pipeline.editorDraft}
+        customBehaviorEditorJson={pipeline.customBehaviorEditorJson}
+        customBehaviorEditorError={pipeline.customBehaviorEditorError}
+        onCustomBehaviorEditorJsonChange={pipeline.setCustomBehaviorEditorJson}
+        onSelectCustomBehavior={pipeline.selectCustomBehavior}
+        onDraftChange={pipeline.handleDraftChange}
+        onSyncJsonFromDraft={pipeline.handleSyncJsonFromDraft}
+        onSyncDraftFromJson={pipeline.handleSyncDraftFromJson}
+        onAddCustomBehavior={pipeline.handleAddCustomBehavior}
+        onAddFromTemplate={pipeline.handleAddFromTemplate}
+        onDeleteCustomBehavior={pipeline.handleDeleteCustomBehavior}
+        onApplyCustomBehavior={pipeline.handleApplyCustomBehavior}
+        onTestCustomBehavior={pipeline.handleTestCustomBehavior}
+        onTriggerMicroBehavior={pipeline.handleTriggerMicroBehavior}
+        onExportCustomBehaviors={() => {
+          void pipeline.handleExportCustomBehaviors();
+        }}
+        onImportCustomBehaviors={(file, mode) => {
+          void pipeline.handleImportCustomBehaviors(file, mode);
+        }}
       />
     );
   }

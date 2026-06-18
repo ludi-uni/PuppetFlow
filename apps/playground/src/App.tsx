@@ -1,6 +1,8 @@
 import type { MotionState } from "@puppetflow/core";
+import type { MicroBehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { setTauriOscEnabled } from "@puppetflow/adapter-vmc";
 import { useEffect, useState } from "react";
+import { MicroBehaviorDebugPanel } from "./components/MicroBehaviorDebugPanel";
 import {
   ensureRuntime,
   getRuntime,
@@ -30,6 +32,8 @@ const OUTPUT_FIELDS: Array<{ key: keyof MotionState; label: string }> = [
   { key: "headTilt", label: "headTilt" },
   { key: "bodyLean", label: "bodyLean" },
   { key: "lookX", label: "lookX" },
+  { key: "lookY", label: "lookY" },
+  { key: "eyeYaw", label: "eyeYaw" },
 ];
 
 const PRESET_OPTIONS: PresetName[] = [
@@ -101,6 +105,8 @@ export function App() {
   const [targetMotion, setTargetMotion] = useState<MotionState | null>(null);
   const [renderedMotion, setRenderedMotion] = useState<MotionState | null>(null);
   const [stateSnapshot, setStateSnapshot] = useState<Record<string, number>>({});
+  const [microBehaviorSnapshot, setMicroBehaviorSnapshot] =
+    useState<MicroBehaviorSnapshot | null>(null);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -108,9 +114,11 @@ export function App() {
     void ensureRuntime().then(() => {
       setTargetMotion(getRuntime().getTargetMotion());
       setRenderedMotion(getRuntime().getRenderedMotion());
-      unsubscribe = subscribeMotionPipeline(({ target, rendered }) => {
+      setMicroBehaviorSnapshot(getRuntime().getMicroBehaviorSnapshot());
+      unsubscribe = subscribeMotionPipeline(({ target, rendered, microBehavior }) => {
         setTargetMotion(target);
         setRenderedMotion(rendered);
+        setMicroBehaviorSnapshot(microBehavior);
         setStateSnapshot(
           Object.fromEntries(
             INPUT_SLIDERS.map((slider) => [
@@ -254,6 +262,15 @@ export function App() {
           />
         ))}
       </section>
+
+      {microBehaviorSnapshot ? (
+        <MicroBehaviorDebugPanel
+          snapshot={microBehaviorSnapshot}
+          onTrigger={(behavior) => {
+            getRuntime().microBehavior.request({ behavior });
+          }}
+        />
+      ) : null}
 
       <section>
         <h2>Motion Outputs (rendered)</h2>

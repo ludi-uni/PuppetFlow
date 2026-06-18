@@ -35,6 +35,11 @@ import {
 } from "@puppetflow/stateful-core";
 import type { BehaviorPluginContext } from "@puppetflow/core";
 import type { LoadedPreset } from "@puppetflow/preset";
+import {
+  applyPartialMotionAbsolute,
+  MicroBehaviorEngine,
+  type MicroBehaviorSnapshot,
+} from "@puppetflow/micro-behavior";
 import type { StateSource } from "@puppetflow/source-core";
 import { MotionOverrideStore } from "@puppetflow/source-core";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
@@ -58,6 +63,7 @@ export type MotionUpdateListener = (update: {
   activeTimelineEvents: TimelineEvent[];
   timelineCurrentMs: number;
   statefulSnapshot: StatefulEntrySnapshot[];
+  microBehavior: MicroBehaviorSnapshot;
 }) => void;
 
 function now(): number {
@@ -68,6 +74,7 @@ export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
   readonly timeline: TimelineStore = new TimelineStore();
+  readonly microBehavior = new MicroBehaviorEngine();
 
   private readonly plugins: BehaviorPlugin[] = [];
   private readonly adapters: Adapter[] = [];
@@ -118,6 +125,10 @@ export class PuppetFlowRuntime {
   attachSource(source: StateSource): this {
     this.sources.push(source);
     return this;
+  }
+
+  getMicroBehaviorSnapshot(): MicroBehaviorSnapshot {
+    return this.microBehavior.getSnapshot();
   }
 
   getAdapters(): readonly Adapter[] {
@@ -209,6 +220,7 @@ export class PuppetFlowRuntime {
     await this.disposeAdapters();
     await this.disposeSources();
     this.motionOverride.clear();
+    this.microBehavior.reset();
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
@@ -247,6 +259,7 @@ export class PuppetFlowRuntime {
       activeTimelineEvents: this.activeTimelineEvents,
       timelineCurrentMs: this.timelineCurrentMs,
       statefulSnapshot: this.statefulStore.snapshot(),
+      microBehavior: this.microBehavior.getSnapshot(),
     };
   }
 
@@ -373,6 +386,11 @@ export class PuppetFlowRuntime {
         channels: this.channels,
         timeline: this.timeline,
         motion: this.motionOverride,
+        microBehavior: {
+          applyFromInputRecord: (record: Record<string, unknown>) => {
+            this.microBehavior.applyFromInputRecord(record);
+          },
+        },
       };
 
       for (const source of this.sources) {
@@ -420,6 +438,12 @@ export class PuppetFlowRuntime {
       for (const plugin of this.plugins) {
         if (!this.running) {
           return;
+        }
+
+        if (plugin.id === "blink" && this.microBehavior.isActive()) {
+          pipelineOutputs.push({ pluginId: plugin.id, output: {} });
+          partials.push({});
+          continue;
         }
 
         try {
@@ -549,6 +573,20 @@ export class PuppetFlowRuntime {
 
       if (!this.running) {
         return;
+      }
+
+      const microBehaviorResult = this.microBehavior.tick(deltaTime);
+      if (microBehaviorResult) {
+        this.renderedMotion = applyPartialMotionAbsolute(
+          this.renderedMotion,
+          microBehaviorResult.motion,
+          microBehaviorResult.activeKeys,
+          microBehaviorResult.customKeys,
+        );
+        pipelineOutputs.push({
+          pluginId: "micro-behavior",
+          output: microBehaviorResult.motion,
+        });
       }
 
       this.renderedMotion = this.motionOverride.applyTo(this.renderedMotion);

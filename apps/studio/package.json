@@ -29,6 +29,7 @@
     "@puppetflow/plugin-idle": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/pfscript-core": "workspace:*",
+    "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/runtime": "workspace:*",
     "@puppetflow/runtime-launcher": "workspace:*",
     "@puppetflow/source-http": "workspace:*",

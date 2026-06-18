@@ -35,6 +35,13 @@ program
   .option("--no-websocket", "Disable WebSocket adapter from config")
   .option("--no-logger", "Disable throttled motion logger")
   .option("--logger-throttle-ms <ms>", "Logger throttle interval", parsePositiveInt)
+  .option("--behavior-port <port>", "Enable Behavior HTTP API on port", parsePort)
+  .option("--behavior-host <host>", "Behavior HTTP API bind host")
+  .option("--no-behavior-api", "Disable Behavior HTTP API")
+  .option(
+    "--micro-behaviors <path>",
+    "Load custom micro behaviors from .pfmicrobehaviors JSON",
+  )
   .action(async (options) => {
     try {
       await runCommand({
@@ -58,6 +65,10 @@ program
         websocketDisabled: options.websocket === false,
         loggerDisabled: options.logger === false,
         loggerThrottleMs: options.loggerThrottleMs,
+        behaviorPort: options.behaviorPort,
+        behaviorHost: options.behaviorHost,
+        behaviorDisabled: options.behaviorApi === false,
+        microBehaviorsPath: options.microBehaviors,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -1,6 +1,7 @@
 import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriOscAdapter } from "@puppetflow/adapter-vmc";
 import type { MotionState, StateValue } from "@puppetflow/core";
+import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { loadPreset } from "@puppetflow/preset";
 import {
   PuppetFlowRuntime,
@@ -319,6 +320,7 @@ export type MotionPipelineUpdate = {
   }>;
   timelineCurrentMs: number;
   statefulSnapshot: StatefulEntrySnapshot[];
+  microBehavior: MicroBehaviorSnapshot;
 };
 
 export function subscribeMotionPipeline(

@@ -9,6 +9,15 @@ import type { TimelineStore } from "@puppetflow/core";
 import type { MotionOverrideStore } from "./motion-override-store.js";
 import { applyStatePayload } from "./parse-state-payload.js";
 
+export const BEHAVIOR_PAYLOAD_KEYS = new Set([
+  "behavior",
+  "definition",
+  "behaviorDefinition",
+  "strength",
+  "type",
+  "payload",
+]);
+
 export const MAX_TIMELINE_EVENTS_PER_PAYLOAD = 64;
 export const MAX_CHANNEL_KEYS_PER_PAYLOAD = 128;
 export const MAX_TIMELINE_EVENT_DURATION_MS = 300_000;
@@ -57,6 +66,7 @@ export interface InputPayloadTarget {
   channels: ChannelStore;
   timeline: TimelineStore;
   motion: MotionOverrideStore;
+  microBehavior?: import("./state-source.js").MicroBehaviorInputHandler;
 }
 
 export function applyInputPayload(
@@ -70,6 +80,10 @@ export function applyInputPayload(
 
   const record = payload as Record<string, unknown>;
 
+  if (target.microBehavior) {
+    target.microBehavior.applyFromInputRecord(record);
+  }
+
   if (record.state && typeof record.state === "object" && record.state !== null) {
     applyStatePayload(target.state, record.state, fieldMapping);
   } else if (
@@ -77,7 +91,12 @@ export function applyInputPayload(
     !("timeline" in record) &&
     !("motion" in record)
   ) {
-    applyStatePayload(target.state, record, fieldMapping);
+    const stateRecord = Object.fromEntries(
+      Object.entries(record).filter(([key]) => !BEHAVIOR_PAYLOAD_KEYS.has(key)),
+    );
+    if (Object.keys(stateRecord).length > 0) {
+      applyStatePayload(target.state, stateRecord, fieldMapping);
+    }
   }
 
   if (

@@ -773,6 +773,427 @@ button:disabled {
   overflow: auto;
 }
 
+.micro-behavior-section {
+  margin-top: 1.5rem;
+}
+
+.micro-behavior-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.micro-behavior-cooldowns ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.micro-behavior-status {
+  margin-top: 0.5rem;
+}
+
+.micro-behavior-custom-buttons {
+  margin-top: 0.75rem;
+}
+
+.micro-behavior-editor {
+  margin-top: 0.75rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.micro-behavior-editor-compact {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.micro-behavior-editor h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.micro-behavior-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin: 0.75rem 0;
+}
+
+.micro-behavior-editor-toolbar-compact {
+  margin: 0;
+  gap: 0.35rem;
+  align-items: end;
+}
+
+.micro-behavior-editor-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 12rem;
+}
+
+.micro-behavior-editor-select select {
+  min-width: 12rem;
+}
+
+.micro-behavior-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.micro-behavior-editor-actions {
+  gap: 0.25rem;
+}
+
+.micro-behavior-btn-compact {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.micro-behavior-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.micro-behavior-field > span {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.micro-behavior-field input,
+.micro-behavior-field select {
+  font-size: 0.82rem;
+  padding: 0.2rem 0.35rem;
+  min-height: 1.6rem;
+}
+
+.micro-behavior-field-narrow input,
+.micro-behavior-field-narrow select {
+  width: 4.5rem;
+}
+
+.micro-behavior-field-grow {
+  flex: 1 1 8rem;
+  min-width: 6rem;
+}
+
+.micro-behavior-field-grow select,
+.micro-behavior-field-grow input[type="text"] {
+  width: 100%;
+}
+
+.micro-behavior-inline-fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto auto;
+  gap: 0.35rem 0.5rem;
+  align-items: end;
+}
+
+.micro-behavior-edit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .micro-behavior-edit-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.micro-behavior-pane-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: baseline;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.micro-behavior-pane-title .hint {
+  font-size: 0.72rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.micro-behavior-inspector-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: end;
+  margin-bottom: 0.35rem;
+}
+
+.micro-behavior-param-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.micro-behavior-param-table th,
+.micro-behavior-param-table td {
+  padding: 0.15rem 0.25rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  vertical-align: middle;
+}
+
+.micro-behavior-param-table th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.75;
+  text-align: left;
+}
+
+.micro-behavior-param-table td:last-child {
+  width: 2rem;
+  text-align: right;
+}
+
+.micro-behavior-param-input {
+  width: 4.5rem;
+  font-size: 0.82rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.micro-behavior-empty-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+}
+
+.micro-behavior-starter-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0;
+}
+
+.micro-behavior-starter-label {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.micro-behavior-buttons-compact {
+  margin-top: 0;
+  gap: 0.25rem;
+}
+
+.micro-behavior-form-compact {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.micro-behavior-form-basic {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.micro-behavior-editor-json {
+  width: 100%;
+  min-height: 8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  padding: 0.45rem;
+  box-sizing: border-box;
+  margin: 0.35rem 0;
+}
+
+.micro-behavior-editor-error {
+  margin: 0.35rem 0 0;
+  color: var(--status-error, #e57373);
+  font-size: 0.8rem;
+}
+
+.micro-behavior-starter-templates {
+  margin: 0;
+}
+
+.micro-behavior-timeline {
+  margin: 0;
+}
+
+.micro-behavior-timeline-interactive {
+  cursor: crosshair;
+  padding: 0.15rem 0 0.1rem;
+  touch-action: none;
+}
+
+.micro-behavior-timeline-interactive .micro-behavior-timeline-track {
+  height: 1.35rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.micro-behavior-timeline-marker {
+  position: absolute;
+  top: 50%;
+  width: 0.65rem;
+  height: 0.65rem;
+  padding: 0;
+  border: 2px solid var(--accent, #7cb7ff);
+  border-radius: 50%;
+  background: #1a1f2e;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+}
+
+.micro-behavior-timeline-marker.is-selected {
+  background: var(--accent, #7cb7ff);
+  box-shadow: 0 0 0 2px rgba(124, 183, 255, 0.25);
+}
+
+.micro-behavior-timeline-marker:active {
+  cursor: grabbing;
+}
+
+.micro-behavior-keyframe-inspector {
+  margin-top: 0;
+  padding: 0.45rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 0.35rem;
+}
+
+.micro-behavior-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+
+.micro-behaviors-tab-compact {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.micro-behaviors-tab-compact > h2 {
+  margin: 0;
+}
+
+.micro-behavior-tab-io,
+.micro-behavior-tab-debug,
+.micro-behavior-advanced-json {
+  font-size: 0.85rem;
+}
+
+.micro-behavior-tab-io summary,
+.micro-behavior-tab-debug summary,
+.micro-behavior-advanced-json summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.micro-behavior-file-actions-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0;
+}
+
+.micro-behavior-tab-debug .micro-behavior-debug,
+.micro-behavior-tab-debug .micro-behavior-status {
+  margin-top: 0.35rem;
+}
+
+.micro-behavior-tab-debug .micro-behavior-buttons {
+  margin-top: 0.35rem;
+  gap: 0.25rem;
+}
+
+.micro-behavior-advanced-json {
+  margin-top: 0.25rem;
+}
+
+.micro-behavior-timeline-track {
+  position: relative;
+}
+
+.micro-behavior-keyframes-header h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+.micro-behavior-keyframe-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.micro-behavior-keyframe-card {
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 0.5rem;
+}
+
+.micro-behavior-keyframe-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.micro-behavior-keyframe-params {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.micro-behavior-param-block {
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.micro-behavior-param-hint {
+  margin: 0.15rem 0 0;
+}
+
+.micro-behavior-param-remove {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.micro-behavior-keyframe-actions {
+  margin: 0.75rem 0;
+}
+
+.micro-behavior-advanced-json {
+  margin-top: 1rem;
+}
+
+.micro-behavior-advanced-json summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.micro-behavior-tab-debug {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.micro-behaviors-tab {
+  max-width: 56rem;
+}
+
+.micro-behavior-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1rem;
+}
+
 .input-sources-panel {
   max-width: 52rem;
 }

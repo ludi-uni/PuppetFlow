@@ -41,6 +41,9 @@ importers:
       '@puppetflow/cli-config':
         specifier: workspace:*
         version: link:../../packages/cli-config
+      '@puppetflow/micro-behavior':
+        specifier: workspace:*
+        version: link:../../packages/micro-behavior
       '@puppetflow/preset':
         specifier: workspace:*
         version: link:../../packages/preset
@@ -109,6 +112,9 @@ importers:
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@puppetflow/micro-behavior':
+        specifier: workspace:*
+        version: link:../../packages/micro-behavior
       '@puppetflow/preset':
         specifier: workspace:*
         version: link:../../packages/preset
@@ -173,6 +179,9 @@ importers:
       '@puppetflow/extension-core':
         specifier: workspace:*
         version: link:../../packages/extension-core
+      '@puppetflow/micro-behavior':
+        specifier: workspace:*
+        version: link:../../packages/micro-behavior
       '@puppetflow/motion-graph':
         specifier: workspace:*
         version: link:../../packages/motion-graph
@@ -516,6 +525,16 @@ importers:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
 
+  packages/micro-behavior:
+    dependencies:
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
   packages/modifier:
     dependencies:
       '@puppetflow/core':
@@ -759,6 +778,9 @@ importers:
       '@puppetflow/extension-core':
         specifier: workspace:*
         version: link:../extension-core
+      '@puppetflow/micro-behavior':
+        specifier: workspace:*
+        version: link:../micro-behavior
       '@puppetflow/modifier-core':
         specifier: workspace:*
         version: link:../modifier-core
@@ -808,6 +830,9 @@ importers:
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core
+      '@puppetflow/micro-behavior':
+        specifier: workspace:*
+        version: link:../micro-behavior
       '@puppetflow/motion-mapper':
         specifier: workspace:*
         version: link:../motion-mapper

@@ -55,6 +55,38 @@ describe("WebSocketSource", () => {
     await source.dispose();
   });
 
+  it("forwards behavior envelopes to the source target", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({
+        type: "behavior",
+        behavior: "look_up",
+      }),
+    });
+
+    const target = {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
+    };
+    let behaviorPayload: Record<string, unknown> | null = null;
+
+    await source.update({
+      ...target,
+      microBehavior: {
+        applyFromInputRecord(record) {
+          behaviorPayload = record;
+        },
+      },
+    });
+
+    expect(behaviorPayload).toEqual({ type: "behavior", behavior: "look_up" });
+    await source.dispose();
+  });
+
   it("ignores malformed websocket payloads", async () => {
     const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
     await source.initialize();

@@ -106,6 +106,28 @@ describe("executeBehavior", () => {
     ]);
   });
 
+  it("uses the last assignment when the same key is assigned multiple times", () => {
+    const root: BehaviorBlock = {
+      type: "Block",
+      statements: [
+        {
+          type: "ExprAssign",
+          target: "mouthX",
+          value: { type: "Number", value: 0.2 },
+        },
+        {
+          type: "ExprAssign",
+          target: "mouthX",
+          value: { type: "Number", value: 0.8 },
+        },
+      ],
+    };
+
+    const output = executeBehavior(root, createCtx());
+
+    expect(output.mouthX).toBeCloseTo(0.8, 3);
+  });
+
   it("evaluates Expr conditions with stateful cooldown", () => {
     const store = new StatefulStore();
     const root: BehaviorBlock = {

@@ -1,4 +1,5 @@
 import type { StateValue } from "@puppetflow/core";
+import type { MicroBehaviorDefinition } from "@puppetflow/micro-behavior";
 
 export type SourceLaunchConfig = {
   httpUrl?: string | null;
@@ -33,4 +34,12 @@ export type RuntimeLaunchConfig = {
   initialState?: Record<string, StateValue>;
   sources?: SourceLaunchConfig;
   adapters?: AdaptersLaunchConfig;
+  behaviorApi?: BehaviorApiLaunchConfig;
+  customMicroBehaviors?: MicroBehaviorDefinition[];
+};
+
+export type BehaviorApiLaunchConfig = {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
 };

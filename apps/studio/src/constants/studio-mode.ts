@@ -9,6 +9,7 @@ export type StudioMode = "simple" | "expert";
 
 export type TabId =
   | "pipeline"
+  | "micro-behaviors"
   | "scratch"
   | "pfscript"
   | "mapping"
@@ -40,6 +41,7 @@ export function getTabsForMode(
   if (mode === "expert") {
     return [
       { id: "pipeline", label: "Pipeline" },
+      { id: "micro-behaviors", label: "Micro Behaviors" },
       { id: "scratch", label: "Scratch (Blockly)" },
       { id: "pfscript", label: "PFScript" },
       { id: "graph", label: "Graph Editor" },
@@ -52,6 +54,7 @@ export function getTabsForMode(
 
   return [
     { id: "pipeline", label: "動作確認", description: "スライダーで試す" },
+    { id: "micro-behaviors", label: "仕草づくり", description: "カスタム動き" },
     { id: "presets", label: "キャラの雰囲気", description: "プリセットを選ぶ" },
     { id: "mapping", label: "動きのつなぎ", description: "きっかけと動き" },
     { id: "plugins", label: "オプション動き", description: "まばたき・視線など" },

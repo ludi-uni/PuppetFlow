@@ -1,5 +1,6 @@
 import type {
   AdaptersLaunchConfig,
+  BehaviorApiLaunchConfig,
   RuntimeLaunchConfig,
   SourceLaunchConfig,
 } from "@puppetflow/runtime-launcher";
@@ -95,6 +96,8 @@ export function mergeLaunchConfig(
     initialState?: Record<string, import("@puppetflow/core").StateValue>;
     sources?: SourceLaunchConfig;
     adapters?: AdaptersLaunchConfig;
+    behaviorApi?: BehaviorApiLaunchConfig;
+    customMicroBehaviors?: RuntimeLaunchConfig["customMicroBehaviors"];
   },
 ): RuntimeLaunchConfig {
   return {
@@ -105,5 +108,7 @@ export function mergeLaunchConfig(
     },
     sources: mergeSources(base.sources, overrides.sources ?? {}),
     adapters: mergeAdapters(base.adapters, overrides.adapters ?? {}),
+    behaviorApi: overrides.behaviorApi ?? base.behaviorApi,
+    customMicroBehaviors: overrides.customMicroBehaviors ?? base.customMicroBehaviors,
   };
 }
