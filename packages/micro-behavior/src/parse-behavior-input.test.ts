@@ -9,7 +9,9 @@ import {
 
 describe("parseBehaviorRequest", () => {
   it("parses built-in behavior names", () => {
-    expect(parseBehaviorRequest({ behavior: "look_up" })).toEqual({ behavior: "look_up" });
+    expect(parseBehaviorRequest({ behavior: "look_up" })).toEqual({
+      behavior: "look_up",
+    });
   });
 
   it("parses custom behavior with inline definition", () => {
@@ -109,8 +111,8 @@ describe("MicroBehaviorEngine custom behaviors", () => {
     });
 
     expect(accepted).toBe(true);
-    expect(parseBehaviorInputPayload({ type: "behavior", behavior: "small_nod" })?.behavior).toBe(
-      "small_nod",
-    );
+    expect(
+      parseBehaviorInputPayload({ type: "behavior", behavior: "small_nod" })?.behavior,
+    ).toBe("small_nod");
   });
 });

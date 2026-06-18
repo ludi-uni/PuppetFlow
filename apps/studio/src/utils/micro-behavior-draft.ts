@@ -1,4 +1,7 @@
-import type { MicroBehaviorDefinition, MicroBehaviorKeyframe } from "@puppetflow/micro-behavior";
+import type {
+  MicroBehaviorDefinition,
+  MicroBehaviorKeyframe,
+} from "@puppetflow/micro-behavior";
 import { parseBehaviorDefinitionInput } from "@puppetflow/micro-behavior";
 
 import {
@@ -28,7 +31,9 @@ export function createEmptyDraft(id = "my_custom"): MicroBehaviorDraft {
   };
 }
 
-export function definitionToDraft(definition: MicroBehaviorDefinition): MicroBehaviorDraft {
+export function definitionToDraft(
+  definition: MicroBehaviorDefinition,
+): MicroBehaviorDraft {
   return {
     id: definition.id,
     duration: definition.duration,
@@ -94,7 +99,9 @@ export function draftToDefinition(draft: MicroBehaviorDraft): MicroBehaviorDefin
   });
 }
 
-export function parseJsonToDraft(json: string): { ok: true; draft: MicroBehaviorDraft } | { ok: false; error: string } {
+export function parseJsonToDraft(
+  json: string,
+): { ok: true; draft: MicroBehaviorDraft } | { ok: false; error: string } {
   const parsed = parseCustomMicroBehaviorEditorJson(json);
   if (!parsed.ok) {
     return parsed;
@@ -135,7 +142,10 @@ export function addKeyframe(draft: MicroBehaviorDraft): MicroBehaviorDraft {
   });
 }
 
-export function removeKeyframe(draft: MicroBehaviorDraft, index: number): MicroBehaviorDraft {
+export function removeKeyframe(
+  draft: MicroBehaviorDraft,
+  index: number,
+): MicroBehaviorDraft {
   if (draft.keyframes.length <= 1) {
     return draft;
   }
@@ -145,9 +155,14 @@ export function removeKeyframe(draft: MicroBehaviorDraft, index: number): MicroB
   };
 }
 
-export function addKeyframeAtTime(draft: MicroBehaviorDraft, t: number): MicroBehaviorDraft {
+export function addKeyframeAtTime(
+  draft: MicroBehaviorDraft,
+  t: number,
+): MicroBehaviorDraft {
   const clampedT = Math.max(0, Math.min(draft.duration, Number(t.toFixed(2))));
-  const existingIndex = draft.keyframes.findIndex((frame) => Math.abs(frame.t - clampedT) < 0.02);
+  const existingIndex = draft.keyframes.findIndex(
+    (frame) => Math.abs(frame.t - clampedT) < 0.02,
+  );
   if (existingIndex >= 0) {
     return draft;
   }
@@ -173,10 +188,7 @@ export function addKeyframeAtTime(draft: MicroBehaviorDraft, t: number): MicroBe
   });
 }
 
-export function findKeyframeIndexAtTime(
-  draft: MicroBehaviorDraft,
-  t: number,
-): number {
+export function findKeyframeIndexAtTime(draft: MicroBehaviorDraft, t: number): number {
   return draft.keyframes.findIndex((frame) => Math.abs(frame.t - t) < 0.02);
 }
 
@@ -263,7 +275,10 @@ export function collectKeyframeParamKeys(
   });
 }
 
-export function addParamToDraft(draft: MicroBehaviorDraft, paramKey: string): MicroBehaviorDraft {
+export function addParamToDraft(
+  draft: MicroBehaviorDraft,
+  paramKey: string,
+): MicroBehaviorDraft {
   if (collectDraftParamKeys(draft).includes(paramKey)) {
     return draft;
   }
@@ -277,7 +292,10 @@ export function addParamToDraft(draft: MicroBehaviorDraft, paramKey: string): Mi
   };
 }
 
-export function removeParamFromDraft(draft: MicroBehaviorDraft, paramKey: string): MicroBehaviorDraft {
+export function removeParamFromDraft(
+  draft: MicroBehaviorDraft,
+  paramKey: string,
+): MicroBehaviorDraft {
   return {
     ...draft,
     keyframes: draft.keyframes.map((frame) => {

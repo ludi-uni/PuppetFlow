@@ -151,7 +151,11 @@ export function MicroBehaviorEditorPanel({
               value={editorJson}
               onChange={(event) => onEditorJsonChange(event.target.value)}
             />
-            <button type="button" className="micro-behavior-btn-compact" onClick={onSyncDraftFromJson}>
+            <button
+              type="button"
+              className="micro-behavior-btn-compact"
+              onClick={onSyncDraftFromJson}
+            >
               フォームへ反映
             </button>
           </details>
@@ -164,7 +168,9 @@ export function MicroBehaviorEditorPanel({
         </p>
       )}
 
-      {editorError ? <p className="micro-behavior-editor-error">{editorError}</p> : null}
+      {editorError ? (
+        <p className="micro-behavior-editor-error">{editorError}</p>
+      ) : null}
     </div>
   );
 }

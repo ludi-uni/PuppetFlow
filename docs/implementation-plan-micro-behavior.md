@@ -10,16 +10,16 @@
 
 ## 確定した設計決定
 
-| #   | 論点                     | 決定                                                                                      |
-| --- | ------------------------ | ----------------------------------------------------------------------------------------- |
-| D1  | Behavior API の配置      | **PuppetFlow 内蔵 HTTP サーバー**（`POST /behavior` 等）。CLI `--behavior-port` で起動   |
-| D2  | Pipeline 合成方式        | Micro Behavior が**触ったキーのみ絶対値上書き**（`addMotionState` 加算は使わない）         |
-| D3  | blink プラグイン共存     | Micro Behavior **実行中は blink を一時停止**（完了後に再開）                               |
-| D4  | デバッグ UI の配置       | **Playground + Studio Pipeline タブ**（かんたん / エキスパート両方）                       |
-| D5  | パラメータマップ         | 仕様の `eyeY` → `lookY`、`eyeOpen` → `eyeYaw`（[motion-state.md](reference/motion-state.md)） |
-| D6  | motionOverride 優先順位  | **motionOverride > micro-behavior > pipeline**（HTTP motion 上書きが最優先）               |
-| D7  | パッケージ名             | **`@puppetflow/micro-behavior`**（既存 `@puppetflow/behavior` = PFScript と区別）        |
-| D8  | strength 拡張            | Phase 1 では JSON パースのみ（未指定 = 1.0）。振幅スケールは Phase 1 末 or Phase 2       |
+| #   | 論点                    | 決定                                                                                          |
+| --- | ----------------------- | --------------------------------------------------------------------------------------------- |
+| D1  | Behavior API の配置     | **PuppetFlow 内蔵 HTTP サーバー**（`POST /behavior` 等）。CLI `--behavior-port` で起動        |
+| D2  | Pipeline 合成方式       | Micro Behavior が**触ったキーのみ絶対値上書き**（`addMotionState` 加算は使わない）            |
+| D3  | blink プラグイン共存    | Micro Behavior **実行中は blink を一時停止**（完了後に再開）                                  |
+| D4  | デバッグ UI の配置      | **Playground + Studio Pipeline タブ**（かんたん / エキスパート両方）                          |
+| D5  | パラメータマップ        | 仕様の `eyeY` → `lookY`、`eyeOpen` → `eyeYaw`（[motion-state.md](reference/motion-state.md)） |
+| D6  | motionOverride 優先順位 | **motionOverride > micro-behavior > pipeline**（HTTP motion 上書きが最優先）                  |
+| D7  | パッケージ名            | **`@puppetflow/micro-behavior`**（既存 `@puppetflow/behavior` = PFScript と区別）             |
+| D8  | strength 拡張           | Phase 1 では JSON パースのみ（未指定 = 1.0）。振幅スケールは Phase 1 末 or Phase 2            |
 
 ---
 
@@ -58,13 +58,13 @@ Adapters → VMC
 
 ## 3) Milestones
 
-| #   | 名称                         | 目標                                                         | 期間目安  |
-| --- | ---------------------------- | ------------------------------------------------------------ | --------- |
-| M1  | **Micro Behavior Core**      | Registry・Easing・Executor（6 Behavior）                       | 1〜1.5 週 |
-| M2  | **Queue & Policy**           | FIFO・maxConcurrent:1・Cooldown・ランダム化                  | 0.5〜1 週 |
-| M3  | **Runtime & HTTP API**       | tick 統合（絶対値上書き・blink 停止）、内蔵 HTTP、CLI       | 1〜1.5 週 |
-| M4  | **Playground Debug**         | Behavior Debug パネル、手動実行                              | 0.5 週    |
-| M5  | **E2E 検証**                 | 完了条件 6 項目の達成確認                                    | 0.5 週    |
+| #   | 名称                    | 目標                                                  | 期間目安  |
+| --- | ----------------------- | ----------------------------------------------------- | --------- |
+| M1  | **Micro Behavior Core** | Registry・Easing・Executor（6 Behavior）              | 1〜1.5 週 |
+| M2  | **Queue & Policy**      | FIFO・maxConcurrent:1・Cooldown・ランダム化           | 0.5〜1 週 |
+| M3  | **Runtime & HTTP API**  | tick 統合（絶対値上書き・blink 停止）、内蔵 HTTP、CLI | 1〜1.5 週 |
+| M4  | **Playground Debug**    | Behavior Debug パネル、手動実行                       | 0.5 週    |
+| M5  | **E2E 検証**            | 完了条件 6 項目の達成確認                             | 0.5 週    |
 
 ---
 
@@ -283,11 +283,11 @@ for (const plugin of this.plugins) {
 
 ## 7) HTTP API 仕様（D1）
 
-| Method | Path               | Body / Response                                      |
-| ------ | ------------------ | ---------------------------------------------------- |
-| POST   | `/behavior`        | Request: `{"behavior":"look_up"}` → `204` or `200`   |
-| GET    | `/behavior/status` | `{"activeBehavior":"look_up","remaining":0.4}`       |
-| GET    | `/behavior/queue`  | `{"queueLength":2}`                                  |
+| Method | Path               | Body / Response                                    |
+| ------ | ------------------ | -------------------------------------------------- |
+| POST   | `/behavior`        | Request: `{"behavior":"look_up"}` → `204` or `200` |
+| GET    | `/behavior/status` | `{"activeBehavior":"look_up","remaining":0.4}`     |
+| GET    | `/behavior/queue`  | `{"queueLength":2}`                                |
 
 - 未知の behavior → `400`
 - Cooldown 中 → `204`（無視、エラーにしない）
@@ -297,12 +297,12 @@ for (const plugin of this.plugins) {
 
 ## 8) Risks & mitigations
 
-| リスク                         | 対策                                           |
-| ------------------------------ | ---------------------------------------------- |
-| `@puppetflow/behavior` との混同 | パッケージ名・UI ラベル「Micro Behavior」      |
-| eyeY / lookY 中心値差          | `param-map.ts` + Executor スナップショットテスト |
+| リスク                            | 対策                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `@puppetflow/behavior` との混同   | パッケージ名・UI ラベル「Micro Behavior」                                                                                  |
+| eyeY / lookY 中心値差             | `param-map.ts` + Executor スナップショットテスト                                                                           |
 | Tauri Playground で HTTP サーバー | Node 側のみ（CLI） vs Playground 内直接 `request()` — Playground ボタンは in-process、外部 Engine は CLI `--behavior-port` |
-| motionOverride との境界        | D6 をドキュメント化、integration test          |
+| motionOverride との境界           | D6 をドキュメント化、integration test                                                                                      |
 
 ---
 

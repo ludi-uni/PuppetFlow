@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 
 import {
   getMicroBehaviorParamDef,
@@ -36,7 +43,11 @@ function updateKeyframeParams(
   };
 }
 
-function timeFromPointer(track: HTMLDivElement, clientX: number, duration: number): number {
+function timeFromPointer(
+  track: HTMLDivElement,
+  clientX: number,
+  duration: number,
+): number {
   const rect = track.getBoundingClientRect();
   if (rect.width <= 0) {
     return 0;
@@ -65,9 +76,14 @@ export function MicroBehaviorFormEditor({
     }
   }, [sortedDraft, selectedTime]);
 
-  const selectedIndex = findKeyframeIndexAtTime(sortedDraft, draggingTime ?? selectedTime);
+  const selectedIndex = findKeyframeIndexAtTime(
+    sortedDraft,
+    draggingTime ?? selectedTime,
+  );
   const selectedFrame =
-    selectedIndex >= 0 ? sortedDraft.keyframes[selectedIndex] : sortedDraft.keyframes[0];
+    selectedIndex >= 0
+      ? sortedDraft.keyframes[selectedIndex]
+      : sortedDraft.keyframes[0];
   const selectedParamKeys = collectKeyframeParamKeys(selectedFrame);
   const availableParamsForSelected = MICRO_BEHAVIOR_PARAM_DEFS.filter(
     (def) => !selectedParamKeys.includes(def.key),
@@ -89,7 +105,11 @@ export function MicroBehaviorFormEditor({
         return;
       }
 
-      const t = Number(timeFromPointer(trackRef.current, event.clientX, sortedDraft.duration).toFixed(2));
+      const t = Number(
+        timeFromPointer(trackRef.current, event.clientX, sortedDraft.duration).toFixed(
+          2,
+        ),
+      );
       const existingIndex = findKeyframeIndexAtTime(sortedDraft, t);
       if (existingIndex >= 0) {
         selectTime(sortedDraft.keyframes[existingIndex]!.t);
@@ -125,7 +145,9 @@ export function MicroBehaviorFormEditor({
         return;
       }
 
-      const t = Number(timeFromPointer(trackRef.current, event.clientX, draft.duration).toFixed(2));
+      const t = Number(
+        timeFromPointer(trackRef.current, event.clientX, draft.duration).toFixed(2),
+      );
       const nextDraft = updateKeyframeTime(sortedDraft, currentIndex, t);
       onDraftChange(nextDraft);
       setDraggingTime(t);
@@ -134,12 +156,15 @@ export function MicroBehaviorFormEditor({
     [draft.duration, draggingTime, onDraftChange, sortedDraft],
   );
 
-  const handleMarkerPointerUp = useCallback((event: PointerEvent<HTMLButtonElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingTime(null);
-  }, []);
+  const handleMarkerPointerUp = useCallback(
+    (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      setDraggingTime(null);
+    },
+    [],
+  );
 
   const deleteSelectedKeyframe = useCallback(() => {
     if (selectedIndex < 0) {
@@ -147,7 +172,9 @@ export function MicroBehaviorFormEditor({
     }
     const nextDraft = {
       ...sortedDraft,
-      keyframes: sortedDraft.keyframes.filter((_, frameIndex) => frameIndex !== selectedIndex),
+      keyframes: sortedDraft.keyframes.filter(
+        (_, frameIndex) => frameIndex !== selectedIndex,
+      ),
     };
     onDraftChange(nextDraft);
     setSelectedTime(nextDraft.keyframes[0]?.t ?? 0);
@@ -208,7 +235,8 @@ export function MicroBehaviorFormEditor({
           >
             <div className="micro-behavior-timeline-track">
               {sortedDraft.keyframes.map((frame, index) => {
-                const isSelected = Math.abs(frame.t - (draggingTime ?? selectedTime)) < 0.02;
+                const isSelected =
+                  Math.abs(frame.t - (draggingTime ?? selectedTime)) < 0.02;
                 return (
                   <button
                     key={`${index}-${frame.t}`}
@@ -253,7 +281,10 @@ export function MicroBehaviorFormEditor({
                       Number(event.target.value),
                     );
                     onDraftChange(nextDraft);
-                    const movedIndex = findKeyframeIndexAtTime(nextDraft, Number(event.target.value));
+                    const movedIndex = findKeyframeIndexAtTime(
+                      nextDraft,
+                      Number(event.target.value),
+                    );
                     if (movedIndex >= 0) {
                       setSelectedTime(nextDraft.keyframes[movedIndex]!.t);
                     }
@@ -271,7 +302,9 @@ export function MicroBehaviorFormEditor({
                       if (!value) {
                         return;
                       }
-                      onDraftChange(addParamToKeyframe(sortedDraft, selectedIndex, value));
+                      onDraftChange(
+                        addParamToKeyframe(sortedDraft, selectedIndex, value),
+                      );
                       event.target.value = "";
                     }}
                   >
@@ -309,9 +342,14 @@ export function MicroBehaviorFormEditor({
                 <tbody>
                   {selectedParamKeys.map((paramKey) => {
                     const def = getMicroBehaviorParamDef(paramKey);
-                    const value = selectedFrame.params[paramKey] ?? def?.defaultValue ?? 0;
-                    const label = isSimpleMode ? def?.simpleLabel ?? paramKey : def?.key ?? paramKey;
-                    const hint = isSimpleMode ? def?.simpleHint ?? def?.hint : def?.hint;
+                    const value =
+                      selectedFrame.params[paramKey] ?? def?.defaultValue ?? 0;
+                    const label = isSimpleMode
+                      ? (def?.simpleLabel ?? paramKey)
+                      : (def?.key ?? paramKey);
+                    const hint = isSimpleMode
+                      ? (def?.simpleHint ?? def?.hint)
+                      : def?.hint;
                     return (
                       <tr key={paramKey}>
                         <td title={hint}>{label}</td>
@@ -324,7 +362,10 @@ export function MicroBehaviorFormEditor({
                             max={def?.max}
                             value={value}
                             onChange={(event) => {
-                              const nextValue = clampParamValue(paramKey, Number(event.target.value));
+                              const nextValue = clampParamValue(
+                                paramKey,
+                                Number(event.target.value),
+                              );
                               onDraftChange(
                                 updateKeyframeParams(sortedDraft, selectedIndex, {
                                   ...selectedFrame.params,
@@ -341,7 +382,11 @@ export function MicroBehaviorFormEditor({
                             title="このポイントから外す"
                             onClick={() => {
                               onDraftChange(
-                                removeParamFromKeyframe(sortedDraft, selectedIndex, paramKey),
+                                removeParamFromKeyframe(
+                                  sortedDraft,
+                                  selectedIndex,
+                                  paramKey,
+                                ),
                               );
                             }}
                           >

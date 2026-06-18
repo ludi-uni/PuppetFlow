@@ -55,7 +55,11 @@ export function MicroBehaviorsTab({
       <details className="micro-behavior-tab-io">
         <summary>{isSimpleMode ? "ファイル" : "Import / Export"}</summary>
         <div className="micro-behavior-file-actions micro-behavior-file-actions-compact">
-          <button type="button" className="micro-behavior-btn-compact" onClick={onExportCustomBehaviors}>
+          <button
+            type="button"
+            className="micro-behavior-btn-compact"
+            onClick={onExportCustomBehaviors}
+          >
             エクスポート
           </button>
           <label className="file-button micro-behavior-btn-compact">

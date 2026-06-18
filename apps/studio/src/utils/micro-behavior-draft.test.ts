@@ -45,7 +45,9 @@ describe("micro-behavior-draft", () => {
   it("adds keyframes at timeline positions and per-keyframe params", () => {
     const base = definitionToDraft(createCustomMicroBehaviorTemplate());
     const withPoint = addKeyframeAtTime(base, 0.5);
-    expect(withPoint.keyframes.some((frame) => Math.abs(frame.t - 0.5) < 0.001)).toBe(true);
+    expect(withPoint.keyframes.some((frame) => Math.abs(frame.t - 0.5) < 0.001)).toBe(
+      true,
+    );
 
     const index = findKeyframeIndexAtTime(withPoint, 0.5);
     expect(index).toBeGreaterThanOrEqual(0);

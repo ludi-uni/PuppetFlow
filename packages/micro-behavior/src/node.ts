@@ -1,1 +1,5 @@
-export { startBehaviorHttpServer, type BehaviorHttpServer, type BehaviorHttpServerConfig } from "./http-server.js";
+export {
+  startBehaviorHttpServer,
+  type BehaviorHttpServer,
+  type BehaviorHttpServerConfig,
+} from "./http-server.js";

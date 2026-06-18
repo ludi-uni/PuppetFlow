@@ -62,7 +62,10 @@ export interface StudioTabPanelProps {
     handleApplyCustomBehavior: () => void;
     handleTestCustomBehavior: () => void;
     handleExportCustomBehaviors: () => void;
-    handleImportCustomBehaviors: (file: File | undefined, mode: "merge" | "replace") => void;
+    handleImportCustomBehaviors: (
+      file: File | undefined,
+      mode: "merge" | "replace",
+    ) => void;
   };
   preset: {
     preset: PresetName;

@@ -1,10 +1,6 @@
 import type { MicroBehaviorDefinition, MicroBehaviorKeyframe } from "./types.js";
 
-export function randomInRange(
-  random: () => number,
-  min: number,
-  max: number,
-): number {
+export function randomInRange(random: () => number, min: number, max: number): number {
   return min + random() * (max - min);
 }
 
@@ -25,7 +21,10 @@ export function applyKeyframeRandomization(
 ): MicroBehaviorKeyframe[] {
   const paramRandom = definition.paramRandom;
   if (!paramRandom) {
-    return definition.keyframes.map((frame) => ({ ...frame, params: { ...frame.params } }));
+    return definition.keyframes.map((frame) => ({
+      ...frame,
+      params: { ...frame.params },
+    }));
   }
 
   const scaleByParam = new Map<string, number>();

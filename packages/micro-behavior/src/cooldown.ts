@@ -27,7 +27,10 @@ export class CooldownTracker {
     return Math.max(0, cooldownSeconds - (now - last));
   }
 
-  snapshot(now: number, cooldowns: Record<string, number>): Array<{
+  snapshot(
+    now: number,
+    cooldowns: Record<string, number>,
+  ): Array<{
     behavior: BehaviorId;
     remainingSeconds: number;
   }> {

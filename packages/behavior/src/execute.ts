@@ -1,8 +1,4 @@
-import {
-  clamp01,
-  MOTION_STATE_KEYS,
-  type MotionState,
-} from "@puppetflow/core";
+import { clamp01, MOTION_STATE_KEYS, type MotionState } from "@puppetflow/core";
 import type {
   BehaviorBlock,
   BehaviorCondition,

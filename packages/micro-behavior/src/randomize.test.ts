@@ -6,15 +6,24 @@ import { sampleBehaviorAtTime } from "./executor.js";
 
 describe("applyKeyframeRandomization", () => {
   it("keeps look_right below neutral when randomizing toward minimum magnitude", () => {
-    const keyframes = applyKeyframeRandomization(getBehaviorDefinition("look_right"), () => 0);
+    const keyframes = applyKeyframeRandomization(
+      getBehaviorDefinition("look_right"),
+      () => 0,
+    );
 
     const hold = keyframes.find((frame) => frame.t === 0.25);
     expect(hold?.params.lookX).toBeLessThan(0.5);
   });
 
   it("keeps look_left and look_right on opposite sides after randomization", () => {
-    const leftFrames = applyKeyframeRandomization(getBehaviorDefinition("look_left"), () => 1);
-    const rightFrames = applyKeyframeRandomization(getBehaviorDefinition("look_right"), () => 1);
+    const leftFrames = applyKeyframeRandomization(
+      getBehaviorDefinition("look_left"),
+      () => 1,
+    );
+    const rightFrames = applyKeyframeRandomization(
+      getBehaviorDefinition("look_right"),
+      () => 1,
+    );
 
     const left = sampleBehaviorAtTime(leftFrames, 0.5, 1);
     const right = sampleBehaviorAtTime(rightFrames, 0.5, 1);

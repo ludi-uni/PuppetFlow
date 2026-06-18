@@ -65,10 +65,7 @@ export function sampleBehaviorAtTime(
   const localT = span > 0 ? (elapsed - left.t) / span : 0;
   const leftParams = resolveKeyframeParamsAtIndex(sorted, leftIndex);
   const rightParams = resolveKeyframeParamsAtIndex(sorted, rightIndex);
-  const paramNames = new Set([
-    ...Object.keys(leftParams),
-    ...Object.keys(rightParams),
-  ]);
+  const paramNames = new Set([...Object.keys(leftParams), ...Object.keys(rightParams)]);
   const blendedParams: Record<string, number> = {};
 
   for (const param of paramNames) {
@@ -102,7 +99,9 @@ function buildMotionFromParams(
   return { motion, activeKeys };
 }
 
-export function collectBehaviorActiveKeys(keyframes: MicroBehaviorKeyframe[]): MotionStateKey[] {
+export function collectBehaviorActiveKeys(
+  keyframes: MicroBehaviorKeyframe[],
+): MotionStateKey[] {
   const keys = new Set<MotionStateKey>();
 
   for (const frame of keyframes) {

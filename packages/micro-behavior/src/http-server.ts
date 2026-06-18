@@ -1,4 +1,9 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 
 import type { MicroBehaviorEngine } from "./engine.js";
 import { parseBehaviorRequest } from "./parse-behavior-input.js";
@@ -85,7 +90,9 @@ export function startBehaviorHttpServer(
 
         const accepted = engine.request(parsed);
         if (!accepted) {
-          sendJson(response, 404, { error: "Unknown behavior (provide definition for custom behaviors)" });
+          sendJson(response, 404, {
+            error: "Unknown behavior (provide definition for custom behaviors)",
+          });
           return;
         }
 

@@ -13,4 +13,8 @@ export {
   MAX_TIMELINE_EVENTS_PER_PAYLOAD,
   type InputPayloadTarget,
 } from "./parse-input-payload.js";
-export type { MicroBehaviorInputHandler, SourceUpdateTarget, StateSource } from "./state-source.js";
+export type {
+  MicroBehaviorInputHandler,
+  SourceUpdateTarget,
+  StateSource,
+} from "./state-source.js";

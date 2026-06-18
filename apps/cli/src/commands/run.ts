@@ -1,5 +1,8 @@
 import { buildRuntime } from "@puppetflow/runtime-launcher/node";
-import { startBehaviorHttpServer, type BehaviorHttpServer } from "@puppetflow/micro-behavior/node";
+import {
+  startBehaviorHttpServer,
+  type BehaviorHttpServer,
+} from "@puppetflow/micro-behavior/node";
 
 import { resolveRunLaunchConfig } from "../config/resolve-run-config.js";
 import type { RunCliOptions } from "../config/run-config.js";

@@ -60,12 +60,15 @@ export interface UseCustomMicroBehaviorsOptions {
   notify: (message: string, kind?: StatusKind) => void;
 }
 
-export function useCustomMicroBehaviors({ ready, notify }: UseCustomMicroBehaviorsOptions) {
-  const [customBehaviors, setCustomBehaviors] = useState<MicroBehaviorDefinition[]>(() =>
-    loadCustomMicroBehaviors(),
+export function useCustomMicroBehaviors({
+  ready,
+  notify,
+}: UseCustomMicroBehaviorsOptions) {
+  const [customBehaviors, setCustomBehaviors] = useState<MicroBehaviorDefinition[]>(
+    () => loadCustomMicroBehaviors(),
   );
-  const [selectedCustomId, setSelectedCustomId] = useState<string | null>(() =>
-    loadCustomMicroBehaviors()[0]?.id ?? null,
+  const [selectedCustomId, setSelectedCustomId] = useState<string | null>(
+    () => loadCustomMicroBehaviors()[0]?.id ?? null,
   );
   const [editorDraft, setEditorDraft] = useState<MicroBehaviorDraft | null>(() => {
     const initial = loadCustomMicroBehaviors()[0];
@@ -153,7 +156,9 @@ export function useCustomMicroBehaviors({ ready, notify }: UseCustomMicroBehavio
     const nextId = createUniqueId(createCustomMicroBehaviorTemplate().id);
     const draft = createEmptyDraft(nextId);
     const definition = draftToDefinition(draft);
-    const next = [...customBehaviors, definition].sort((a, b) => a.id.localeCompare(b.id));
+    const next = [...customBehaviors, definition].sort((a, b) =>
+      a.id.localeCompare(b.id),
+    );
     setCustomBehaviors(next);
     saveCustomMicroBehaviors(next);
     setSelectedCustomId(definition.id);
@@ -163,19 +168,26 @@ export function useCustomMicroBehaviors({ ready, notify }: UseCustomMicroBehavio
 
   const handleAddFromTemplate = useCallback(
     (templateId: string) => {
-      const template = MICRO_BEHAVIOR_STARTER_TEMPLATES.find((entry) => entry.id === templateId);
+      const template = MICRO_BEHAVIOR_STARTER_TEMPLATES.find(
+        (entry) => entry.id === templateId,
+      );
       if (!template) {
         return;
       }
       const nextId = createUniqueId(template.id);
       const draft = draftFromStarterTemplate(template, nextId);
       const definition = draftToDefinition(draft);
-      const next = [...customBehaviors, definition].sort((a, b) => a.id.localeCompare(b.id));
+      const next = [...customBehaviors, definition].sort((a, b) =>
+        a.id.localeCompare(b.id),
+      );
       setCustomBehaviors(next);
       saveCustomMicroBehaviors(next);
       setSelectedCustomId(definition.id);
       loadDraft(definition);
-      notify(`テンプレート「${template.simpleLabel}」から「${definition.id}」を追加しました。`, "success");
+      notify(
+        `テンプレート「${template.simpleLabel}」から「${definition.id}」を追加しました。`,
+        "success",
+      );
     },
     [createUniqueId, customBehaviors, loadDraft, notify],
   );
@@ -206,12 +218,21 @@ export function useCustomMicroBehaviors({ ready, notify }: UseCustomMicroBehavio
     const withoutCurrent = customBehaviors.filter(
       (entry) => entry.id !== selectedCustomId && entry.id !== definition.id,
     );
-    const next = [...withoutCurrent, definition].sort((a, b) => a.id.localeCompare(b.id));
+    const next = [...withoutCurrent, definition].sort((a, b) =>
+      a.id.localeCompare(b.id),
+    );
     setCustomBehaviors(next);
     saveCustomMicroBehaviors(next);
     selectCustomBehavior(definition.id);
     notify(`カスタム Behavior「${definition.id}」を適用しました。`, "success");
-  }, [customBehaviors, editorDraft, editorJson, notify, selectCustomBehavior, selectedCustomId]);
+  }, [
+    customBehaviors,
+    editorDraft,
+    editorJson,
+    notify,
+    selectCustomBehavior,
+    selectedCustomId,
+  ]);
 
   const handleTestCustomBehavior = useCallback(() => {
     const parsed = resolveDefinitionFromEditor(editorDraft, editorJson);

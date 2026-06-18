@@ -91,7 +91,9 @@ export const MICRO_BEHAVIOR_PARAM_DEF_MAP = new Map(
   MICRO_BEHAVIOR_PARAM_DEFS.map((def) => [def.key, def]),
 );
 
-export function getMicroBehaviorParamDef(key: string): MicroBehaviorParamDef | undefined {
+export function getMicroBehaviorParamDef(
+  key: string,
+): MicroBehaviorParamDef | undefined {
   return MICRO_BEHAVIOR_PARAM_DEF_MAP.get(key);
 }
 

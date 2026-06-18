@@ -78,7 +78,10 @@ export function parseCustomMicroBehaviorEditorJson(
   }
 
   try {
-    if (Array.isArray(parsed) || (typeof parsed === "object" && parsed !== null && "behaviors" in parsed)) {
+    if (
+      Array.isArray(parsed) ||
+      (typeof parsed === "object" && parsed !== null && "behaviors" in parsed)
+    ) {
       const definitions = parseMicroBehaviorsFile(parsed);
       if (definitions.length !== 1) {
         return {
@@ -98,8 +101,7 @@ export function parseCustomMicroBehaviorEditorJson(
     if (typeof record.id !== "string" || !isValidBehaviorId(record.id)) {
       return {
         ok: false,
-        error:
-          "id は英字で始まる 1〜64 文字（英数字・_・-）である必要があります。",
+        error: "id は英字で始まる 1〜64 文字（英数字・_・-）である必要があります。",
       };
     }
 

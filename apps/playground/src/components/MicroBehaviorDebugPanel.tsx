@@ -1,4 +1,7 @@
-import type { MicroBehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
+import type {
+  MicroBehaviorId,
+  MicroBehaviorSnapshot,
+} from "@puppetflow/micro-behavior";
 
 const BEHAVIOR_BUTTONS: Array<{ id: MicroBehaviorId; label: string }> = [
   { id: "look_up", label: "Look Up" },

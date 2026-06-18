@@ -21,7 +21,11 @@ export const BEHAVIOR_INPUT_KEYS = new Set([
 ]);
 
 export function isValidBehaviorId(value: string): boolean {
-  return value.length > 0 && value.length <= MAX_BEHAVIOR_ID_LENGTH && BEHAVIOR_ID_PATTERN.test(value);
+  return (
+    value.length > 0 &&
+    value.length <= MAX_BEHAVIOR_ID_LENGTH &&
+    BEHAVIOR_ID_PATTERN.test(value)
+  );
 }
 
 function parseKeyframe(value: unknown, index: number): MicroBehaviorKeyframe {
@@ -78,12 +82,20 @@ export function parseBehaviorDefinitionInput(
   }
 
   const input = value as Partial<MicroBehaviorDefinition>;
-  if (typeof input.duration !== "number" || input.duration <= 0 || input.duration > MAX_BEHAVIOR_DURATION) {
+  if (
+    typeof input.duration !== "number" ||
+    input.duration <= 0 ||
+    input.duration > MAX_BEHAVIOR_DURATION
+  ) {
     throw new Error(`behavior duration must be > 0 and <= ${MAX_BEHAVIOR_DURATION}`);
   }
 
   const cooldown = input.cooldown ?? 0;
-  if (typeof cooldown !== "number" || cooldown < 0 || cooldown > MAX_BEHAVIOR_COOLDOWN) {
+  if (
+    typeof cooldown !== "number" ||
+    cooldown < 0 ||
+    cooldown > MAX_BEHAVIOR_COOLDOWN
+  ) {
     throw new Error(`behavior cooldown must be >= 0 and <= ${MAX_BEHAVIOR_COOLDOWN}`);
   }
 
@@ -152,7 +164,9 @@ export function parseBehaviorRequest(value: unknown): MicroBehaviorRequest | nul
   return request;
 }
 
-export function parseBehaviorInputPayload(payload: unknown): MicroBehaviorRequest | null {
+export function parseBehaviorInputPayload(
+  payload: unknown,
+): MicroBehaviorRequest | null {
   if (typeof payload !== "object" || payload === null) {
     return null;
   }
@@ -185,8 +199,6 @@ export function canResolveBehaviorRequest(
   return hasBehavior(request.behavior);
 }
 
-export function isKnownBehaviorRequest(
-  request: MicroBehaviorRequest,
-): boolean {
+export function isKnownBehaviorRequest(request: MicroBehaviorRequest): boolean {
   return canResolveBehaviorRequest(request, isKnownBehaviorId);
 }

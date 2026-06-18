@@ -197,9 +197,7 @@ export function App() {
       initialState: inputs,
       customMicroBehaviorsJson:
         customMicroBehaviorCount > 0
-          ? serializeCustomMicroBehaviorsForExport(
-              loadCustomMicroBehaviors(),
-            )
+          ? serializeCustomMicroBehaviorsForExport(loadCustomMicroBehaviors())
           : undefined,
     });
 

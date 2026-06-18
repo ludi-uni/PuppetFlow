@@ -24,8 +24,16 @@ describe("sampleBehaviorAtTime", () => {
   });
 
   it("look_left and look_right move lookX to opposite sides", () => {
-    const left = sampleBehaviorAtTime(getBehaviorDefinition("look_left").keyframes, 0.5, 1);
-    const right = sampleBehaviorAtTime(getBehaviorDefinition("look_right").keyframes, 0.5, 1);
+    const left = sampleBehaviorAtTime(
+      getBehaviorDefinition("look_left").keyframes,
+      0.5,
+      1,
+    );
+    const right = sampleBehaviorAtTime(
+      getBehaviorDefinition("look_right").keyframes,
+      0.5,
+      1,
+    );
 
     expect(left.motion.lookX).toBeGreaterThan(0.5);
     expect(right.motion.lookX).toBeLessThan(0.5);
@@ -33,7 +41,11 @@ describe("sampleBehaviorAtTime", () => {
   });
 
   it("head_tilt tilts head and face together", () => {
-    const hold = sampleBehaviorAtTime(getBehaviorDefinition("head_tilt").keyframes, 0.6, 1);
+    const hold = sampleBehaviorAtTime(
+      getBehaviorDefinition("head_tilt").keyframes,
+      0.6,
+      1,
+    );
 
     expect(hold.motion.headTilt).toBeGreaterThan(0.5);
     expect(hold.motion.faceYaw).toBeGreaterThan(0.5);

@@ -1,4 +1,7 @@
-import { isValidBehaviorId, parseBehaviorDefinitionInput } from "./parse-behavior-input.js";
+import {
+  isValidBehaviorId,
+  parseBehaviorDefinitionInput,
+} from "./parse-behavior-input.js";
 import { isMicroBehaviorId } from "./registry.js";
 import type { MicroBehaviorDefinition } from "./types.js";
 
@@ -31,7 +34,9 @@ function parseDefinitionRecord(value: unknown, path: string): MicroBehaviorDefin
 
 export function parseMicroBehaviorsFile(raw: unknown): MicroBehaviorDefinition[] {
   if (Array.isArray(raw)) {
-    return raw.map((entry, index) => parseDefinitionRecord(entry, `behaviors[${index}]`));
+    return raw.map((entry, index) =>
+      parseDefinitionRecord(entry, `behaviors[${index}]`),
+    );
   }
 
   if (typeof raw !== "object" || raw === null) {
