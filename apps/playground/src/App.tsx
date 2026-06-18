@@ -1,5 +1,5 @@
 import type { MotionState } from "@puppetflow/core";
-import type { MicroBehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
+import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { setTauriOscEnabled } from "@puppetflow/adapter-vmc";
 import { useEffect, useState } from "react";
 import { MicroBehaviorDebugPanel } from "./components/MicroBehaviorDebugPanel";

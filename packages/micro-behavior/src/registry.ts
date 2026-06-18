@@ -1,10 +1,4 @@
-import type {
-  MicroBehaviorDefinition,
-  MicroBehaviorId,
-  MicroBehaviorKeyframe,
-  MicroBehaviorRequest,
-} from "./types.js";
-import { MICRO_BEHAVIOR_IDS } from "./types.js";
+import type { MicroBehaviorDefinition, MicroBehaviorId } from "./types.js";
 
 const BUILTIN_DEFINITIONS: Record<MicroBehaviorId, MicroBehaviorDefinition> = {
   look_up: {
