@@ -5,8 +5,12 @@ import type {
   SourceLaunchConfig,
 } from "@puppetflow/runtime-launcher";
 
+import {
+  oscAdapterYamlToLaunchConfig,
+  parseOscAdapterYamlConfig,
+} from "./mapper-yaml.js";
 import type { CliYamlConfig } from "./studio-export.js";
-import { CLI_CONFIG_VERSION } from "./studio-export.js";
+import { SUPPORTED_CLI_CONFIG_VERSIONS } from "./studio-export.js";
 
 function yamlSourcesToLaunch(sources: CliYamlConfig["sources"]): SourceLaunchConfig {
   return {
@@ -25,9 +29,15 @@ function yamlAdaptersToLaunch(
   }
 
   return {
-    vmc: adapters.vmc,
-    live2d: adapters.live2d,
-    vrm: adapters.vrm,
+    vmc: oscAdapterYamlToLaunchConfig(
+      parseOscAdapterYamlConfig("vmc", adapters.vmc, "adapters.vmc"),
+    ),
+    live2d: oscAdapterYamlToLaunchConfig(
+      parseOscAdapterYamlConfig("live2d", adapters.live2d, "adapters.live2d"),
+    ),
+    vrm: oscAdapterYamlToLaunchConfig(
+      parseOscAdapterYamlConfig("vrm", adapters.vrm, "adapters.vrm"),
+    ),
     websocket: adapters.websocket,
     logger: adapters.logger,
   };
@@ -45,14 +55,31 @@ function mergeSources(
   };
 }
 
+function mergeOscAdapterLaunchConfig(
+  base: AdaptersLaunchConfig["vmc"],
+  overrides: AdaptersLaunchConfig["vmc"],
+): AdaptersLaunchConfig["vmc"] {
+  if (!base && !overrides) {
+    return undefined;
+  }
+
+  return {
+    ...base,
+    ...overrides,
+    params: overrides?.params ?? base?.params,
+    transforms: overrides?.transforms ?? base?.transforms,
+    custom: overrides?.custom ?? base?.custom,
+  };
+}
+
 function mergeAdapters(
   base: AdaptersLaunchConfig | undefined,
   overrides: AdaptersLaunchConfig,
 ): AdaptersLaunchConfig {
   return {
-    vmc: { ...base?.vmc, ...overrides.vmc },
-    live2d: { ...base?.live2d, ...overrides.live2d },
-    vrm: { ...base?.vrm, ...overrides.vrm },
+    vmc: mergeOscAdapterLaunchConfig(base?.vmc, overrides.vmc),
+    live2d: mergeOscAdapterLaunchConfig(base?.live2d, overrides.live2d),
+    vrm: mergeOscAdapterLaunchConfig(base?.vrm, overrides.vrm),
     websocket: { ...base?.websocket, ...overrides.websocket },
     logger: { ...base?.logger, ...overrides.logger },
   };
@@ -64,14 +91,23 @@ export function parseYamlConfig(raw: unknown): CliYamlConfig {
   }
 
   const config = raw as CliYamlConfig;
-  if (config.version !== undefined && config.version !== CLI_CONFIG_VERSION) {
+  if (
+    config.version !== undefined &&
+    !(SUPPORTED_CLI_CONFIG_VERSIONS as readonly number[]).includes(config.version)
+  ) {
     throw new Error(
-      `Unsupported config version ${config.version}. Expected ${CLI_CONFIG_VERSION}.`,
+      `Unsupported config version ${config.version}. Expected one of ${SUPPORTED_CLI_CONFIG_VERSIONS.join(", ")}.`,
     );
   }
 
   if (!config.preset && !config.presetName) {
     throw new Error("Config must include preset or presetName.");
+  }
+
+  if (config.adapters) {
+    parseOscAdapterYamlConfig("vmc", config.adapters.vmc, "adapters.vmc");
+    parseOscAdapterYamlConfig("live2d", config.adapters.live2d, "adapters.live2d");
+    parseOscAdapterYamlConfig("vrm", config.adapters.vrm, "adapters.vrm");
   }
 
   return config;

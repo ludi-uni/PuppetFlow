@@ -5,7 +5,11 @@ import { createVrmAdapter } from "@puppetflow/adapter-vrm";
 import { WebSocketAdapter } from "@puppetflow/adapter-websocket";
 import type { PuppetFlowRuntime } from "@puppetflow/runtime";
 
-import type { AdaptersLaunchConfig } from "./types.js";
+import {
+  buildMotionMapperProfileFromLaunch,
+  customMappingsFromLaunch,
+} from "./mapper-launch.js";
+import type { AdaptersLaunchConfig, OscAdapterLaunchConfig } from "./types.js";
 
 const DEFAULT_ADAPTERS: AdaptersLaunchConfig = {
   vmc: { enabled: true },
@@ -19,36 +23,49 @@ function isEnabled(
   return config?.enabled ?? fallback;
 }
 
+function resolveOscAdapterOptions(
+  target: "vmc" | "live2d" | "vrm",
+  config: OscAdapterLaunchConfig,
+) {
+  const profile = buildMotionMapperProfileFromLaunch(target, config);
+  const { customParams, customTransforms } = customMappingsFromLaunch(config);
+
+  return {
+    host: config.host,
+    port: config.port,
+    profile,
+    customParams,
+    customTransforms,
+  };
+}
+
 export function attachNodeAdapters(
   runtime: PuppetFlowRuntime,
   adapters: AdaptersLaunchConfig = DEFAULT_ADAPTERS,
 ): void {
   const vmc = adapters.vmc ?? DEFAULT_ADAPTERS.vmc;
-  if (isEnabled(vmc, true)) {
+  if (isEnabled(vmc, true) && vmc) {
     runtime.attachAdapter(
       new NodeVmcAdapter({
-        host: vmc?.host,
-        port: vmc?.port,
+        ...resolveOscAdapterOptions("vmc", vmc),
       }),
     );
   }
 
   const live2d = adapters.live2d;
-  if (isEnabled(live2d, false)) {
+  if (isEnabled(live2d, false) && live2d) {
     runtime.attachAdapter(
       createLive2dAdapter({
-        host: live2d?.host,
-        port: live2d?.port,
+        ...resolveOscAdapterOptions("live2d", live2d),
       }),
     );
   }
 
   const vrm = adapters.vrm;
-  if (isEnabled(vrm, false)) {
+  if (isEnabled(vrm, false) && vrm) {
     runtime.attachAdapter(
       createVrmAdapter({
-        host: vrm?.host,
-        port: vrm?.port,
+        ...resolveOscAdapterOptions("vrm", vrm),
       }),
     );
   }

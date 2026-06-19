@@ -9,6 +9,7 @@ import {
   LIVE2D_PROFILE,
   profileFromParamNames,
   type MotionMapperProfile,
+  type ValueTransform,
 } from "@puppetflow/motion-mapper";
 
 export interface Live2dAdapterConfig {
@@ -16,6 +17,8 @@ export interface Live2dAdapterConfig {
   port?: number;
   mapping?: VmcMapping;
   profile?: MotionMapperProfile;
+  customParams?: Record<string, string>;
+  customTransforms?: Record<string, ValueTransform>;
 }
 
 export function createLive2dAdapter(config: Live2dAdapterConfig = {}): Adapter {
@@ -35,5 +38,7 @@ export function createLive2dAdapter(config: Live2dAdapterConfig = {}): Adapter {
     host: config.host ?? DEFAULT_VMC_HOST,
     port: config.port ?? DEFAULT_VMC_PORT,
     profile,
+    customParams: config.customParams,
+    customTransforms: config.customTransforms,
   });
 }

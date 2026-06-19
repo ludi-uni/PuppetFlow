@@ -1,4 +1,5 @@
-import type { StateValue } from "@puppetflow/core";
+import type { MotionStateKey, StateValue } from "@puppetflow/core";
+import type { ValueTransform } from "@puppetflow/motion-mapper";
 import type { MicroBehaviorDefinition } from "@puppetflow/micro-behavior";
 
 export type SourceLaunchConfig = {
@@ -8,10 +9,18 @@ export type SourceLaunchConfig = {
   mqttTopic?: string | null;
 };
 
+export type CustomMappingLaunchEntry = {
+  param: string;
+  transform?: ValueTransform;
+};
+
 export type OscAdapterLaunchConfig = {
   enabled?: boolean;
   host?: string;
   port?: number;
+  params?: Partial<Record<MotionStateKey, string>>;
+  transforms?: Partial<Record<MotionStateKey, ValueTransform>>;
+  custom?: Record<string, CustomMappingLaunchEntry>;
 };
 
 export type AdaptersLaunchConfig = {

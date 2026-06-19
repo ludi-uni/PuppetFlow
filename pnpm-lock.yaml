@@ -464,6 +464,9 @@ importers:
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core
+      '@puppetflow/motion-mapper':
+        specifier: workspace:*
+        version: link:../motion-mapper
       '@puppetflow/runtime-launcher':
         specifier: workspace:*
         version: link:../runtime-launcher

@@ -9,6 +9,7 @@ import {
   profileFromParamNames,
   VRM_PROFILE,
   type MotionMapperProfile,
+  type ValueTransform,
 } from "@puppetflow/motion-mapper";
 
 export interface VrmAdapterConfig {
@@ -16,6 +17,8 @@ export interface VrmAdapterConfig {
   port?: number;
   mapping?: VmcMapping;
   profile?: MotionMapperProfile;
+  customParams?: Record<string, string>;
+  customTransforms?: Record<string, ValueTransform>;
 }
 
 export function createVrmAdapter(config: VrmAdapterConfig = {}): Adapter {
@@ -30,5 +33,7 @@ export function createVrmAdapter(config: VrmAdapterConfig = {}): Adapter {
     host: config.host ?? DEFAULT_VMC_HOST,
     port: config.port ?? DEFAULT_VMC_PORT,
     profile,
+    customParams: config.customParams,
+    customTransforms: config.customTransforms,
   });
 }

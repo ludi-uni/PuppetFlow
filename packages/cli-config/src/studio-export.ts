@@ -1,6 +1,12 @@
 import type { StateValue } from "@puppetflow/core";
 
-export const CLI_CONFIG_VERSION = 1;
+import {
+  studioOscMapperToYamlForTarget,
+  type StudioOscMapperModel,
+} from "./mapper-yaml.js";
+
+export const CLI_CONFIG_VERSION = 2;
+export const SUPPORTED_CLI_CONFIG_VERSIONS = [1, 2] as const;
 export const DEFAULT_CLI_MICRO_BEHAVIORS_FILE = "./micro-behaviors.pfmicrobehaviors";
 
 export const BUILTIN_CLI_PRESET_NAMES = [
@@ -13,6 +19,12 @@ export const BUILTIN_CLI_PRESET_NAMES = [
 ] as const;
 
 export type BuiltinCliPresetName = (typeof BUILTIN_CLI_PRESET_NAMES)[number];
+
+export type {
+  CustomMappingEntryYaml,
+  OscAdapterYamlConfig,
+  StudioOscMapperModel,
+} from "./mapper-yaml.js";
 
 export interface CliYamlConfig {
   version?: number;
@@ -29,21 +41,9 @@ export interface CliYamlConfig {
     };
   };
   adapters?: {
-    vmc?: {
-      enabled?: boolean;
-      host?: string;
-      port?: number;
-    };
-    live2d?: {
-      enabled?: boolean;
-      host?: string;
-      port?: number;
-    };
-    vrm?: {
-      enabled?: boolean;
-      host?: string;
-      port?: number;
-    };
+    vmc?: import("./mapper-yaml.js").OscAdapterYamlConfig;
+    live2d?: import("./mapper-yaml.js").OscAdapterYamlConfig;
+    vrm?: import("./mapper-yaml.js").OscAdapterYamlConfig;
     websocket?: {
       enabled?: boolean;
       port?: number;
@@ -58,12 +58,6 @@ export interface CliYamlConfig {
   microBehaviors?: string;
 }
 
-export interface StudioMapperExportModel {
-  enabled: boolean;
-  host: string;
-  port: number;
-}
-
 export interface StudioCliExportInput {
   presetName: string;
   isCustomPreset: boolean;
@@ -74,9 +68,9 @@ export interface StudioCliExportInput {
     mqttTopic?: string | null;
   };
   mapperConfig: {
-    vmc: StudioMapperExportModel;
-    live2d: StudioMapperExportModel;
-    vrm: StudioMapperExportModel;
+    vmc: StudioOscMapperModel;
+    live2d: StudioOscMapperModel;
+    vrm: StudioOscMapperModel;
     loggerEnabled: boolean;
     loggerThrottleMs: number;
   };
@@ -135,21 +129,9 @@ export function buildCliYamlFromStudio(input: StudioCliExportInput): CliYamlConf
   }
 
   config.adapters = {
-    vmc: {
-      enabled: input.mapperConfig.vmc.enabled,
-      host: input.mapperConfig.vmc.host,
-      port: input.mapperConfig.vmc.port,
-    },
-    live2d: {
-      enabled: input.mapperConfig.live2d.enabled,
-      host: input.mapperConfig.live2d.host,
-      port: input.mapperConfig.live2d.port,
-    },
-    vrm: {
-      enabled: input.mapperConfig.vrm.enabled,
-      host: input.mapperConfig.vrm.host,
-      port: input.mapperConfig.vrm.port,
-    },
+    vmc: studioOscMapperToYamlForTarget("vmc", input.mapperConfig.vmc),
+    live2d: studioOscMapperToYamlForTarget("live2d", input.mapperConfig.live2d),
+    vrm: studioOscMapperToYamlForTarget("vrm", input.mapperConfig.vrm),
     logger: {
       enabled: input.mapperConfig.loggerEnabled,
       throttleMs: input.mapperConfig.loggerThrottleMs,

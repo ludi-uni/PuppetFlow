@@ -29,6 +29,8 @@ export class NodeVmcAdapter implements Adapter {
       host: config.host ?? DEFAULT_VMC_HOST,
       port: config.port ?? DEFAULT_VMC_PORT,
       profile: resolveProfile(config),
+      customParams: config.customParams,
+      customTransforms: config.customTransforms,
     });
   }
 
