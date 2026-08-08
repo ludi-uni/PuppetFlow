@@ -8,6 +8,7 @@ import type {
   MotionFramePipeline,
   MotionLayer,
   MotionMixer,
+  MotionMixerInspection,
   MotionRetargetProfile,
 } from "./types.js";
 
@@ -52,12 +53,72 @@ export function createMotionFramePipeline(
         : cloneMotionFrame(mixed);
       return outputFilterPipeline.apply(retargeted, deltaTime);
     },
+    inspect(inputs) {
+      if (!mixer.inspect) {
+        return undefined;
+      }
+
+      const filteredInputs = inputs.map((input) => ({
+        sourceId: input.sourceId,
+        frame: applyFilters(
+          input.frame,
+          sourceFilters[input.sourceId] ?? [],
+          0,
+        ),
+      }));
+      const inspection = mixer.inspect(filteredInputs);
+      return options.retarget
+        ? remapInspection(inspection, options.retarget)
+        : cloneInspection(inspection);
+    },
     reset() {
       for (const filter of allFilters) {
         filter.reset();
       }
     },
   };
+}
+
+function remapInspection(
+  inspection: MotionMixerInspection,
+  profile: MotionRetargetProfile,
+): MotionMixerInspection {
+  return {
+    bones: remapBoneOwnership(inspection.bones, profile.mapping),
+    blendShapes: cloneOwnership(inspection.blendShapes),
+    parameters: cloneOwnership(inspection.parameters),
+  };
+}
+
+function cloneInspection(inspection: MotionMixerInspection): MotionMixerInspection {
+  return {
+    bones: cloneOwnership(inspection.bones),
+    blendShapes: cloneOwnership(inspection.blendShapes),
+    parameters: cloneOwnership(inspection.parameters),
+  };
+}
+
+function remapBoneOwnership(
+  ownership: Record<string, MotionMixerInspection["bones"][string]>,
+  mapping: Readonly<Record<string, string>> | undefined,
+): MotionMixerInspection["bones"] {
+  const result: MotionMixerInspection["bones"] = {};
+  for (const [boneId, owners] of Object.entries(ownership)) {
+    const targetId = mapping?.[boneId] ?? boneId;
+    result[targetId] = [...(result[targetId] ?? []), ...owners.map((owner) => ({ ...owner }))];
+  }
+  return result;
+}
+
+function cloneOwnership(
+  ownership: Record<string, MotionMixerInspection["bones"][string]>,
+): MotionMixerInspection["bones"] {
+  return Object.fromEntries(
+    Object.entries(ownership).map(([key, owners]) => [
+      key,
+      owners.map((owner) => ({ ...owner })),
+    ]),
+  );
 }
 
 function applyFilters(

@@ -26,6 +26,38 @@ function markerFilter(
 }
 
 describe("createMotionFramePipeline", () => {
+  it("exposes mixer ownership after retarget mapping", () => {
+    const pipeline = createMotionFramePipeline({
+      layers: [{ source: "webcam", priority: 110, bones: ["Head"] }],
+      retarget: { mapping: { Head: "HeadTarget" } },
+    });
+
+    const inspection = pipeline.inspect?.([
+      {
+        sourceId: "webcam",
+        frame: {
+          timestamp: 1,
+          bones: { Head: { rotation: { x: 0, y: 0, z: 0, w: 1 } } },
+        },
+      },
+    ]);
+
+    expect(inspection?.bones.HeadTarget).toEqual([
+      { sourceId: "webcam", priority: 110, weight: 1 },
+    ]);
+    expect(inspection?.bones.Head).toBeUndefined();
+  });
+
+  it("leaves custom pipelines without mixer inspection optional", () => {
+    const pipeline = createMotionFramePipeline({
+      mixer: {
+        mix: () => ({ timestamp: 1 }),
+      },
+    });
+
+    expect(pipeline.inspect?.([])).toBeUndefined();
+  });
+
   it("applies source filters, mixer, retarget, and output filters in order", () => {
     const pipeline = createMotionFramePipeline({
       sourceFilters: {

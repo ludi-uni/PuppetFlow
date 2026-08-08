@@ -59,4 +59,5 @@ export interface MotionFramePipeline {
     deltaTime: number,
   ): MotionFrame | undefined;
   reset(): void;
+  inspect?(inputs: readonly MotionFrameInput[]): MotionMixerInspection | undefined;
 }
