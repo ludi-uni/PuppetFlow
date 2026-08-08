@@ -26,14 +26,7 @@ export interface ExtensionGraphCustomNodeOption {
   type: string;
   label: string;
   category?: string;
-  configFields: Array<{
-    key: string;
-    label: string;
-    default: number;
-    min: number;
-    max: number;
-    step: number;
-  }>;
+  configFields: PackConfigField[];
 }
 
 function configFieldsFromPack(

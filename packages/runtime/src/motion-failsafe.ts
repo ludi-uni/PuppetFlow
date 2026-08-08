@@ -96,9 +96,7 @@ function blendBoneToNeutral(transform: BoneTransform, factor: number): BoneTrans
           ),
         }
       : {}),
-    ...(transform.scale
-      ? { scale: blendScaleToNeutral(transform.scale, factor) }
-      : {}),
+    ...(transform.scale ? { scale: blendScaleToNeutral(transform.scale, factor) } : {}),
   };
 }
 

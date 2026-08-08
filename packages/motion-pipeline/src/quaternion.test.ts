@@ -19,10 +19,7 @@ describe("quaternion helpers", () => {
 
   it("multiplies rotations in quaternion order", () => {
     expect(
-      quaternionMultiply(
-        { x: 0, y: 0, z: 0, w: 1 },
-        { x: 0, y: 0.5, z: 0, w: 0.5 },
-      ),
+      quaternionMultiply({ x: 0, y: 0, z: 0, w: 1 }, { x: 0, y: 0.5, z: 0, w: 0.5 }),
     ).toEqual({ x: 0, y: 0.5, z: 0, w: 0.5 });
   });
 

@@ -14,6 +14,7 @@ import { MouthStatusBar } from "./MouthStatusBar";
 import { MicroBehaviorDebugPanel } from "./MicroBehaviorDebugPanel";
 import { PluginOutputsPanel } from "./PluginOutputsPanel";
 import { StatefulDebugPanel } from "./StatefulDebugPanel";
+import type { PhonemeInputSource } from "../utils/phoneme-source";
 
 function formatValue(value: number): string {
   return value.toFixed(3);
@@ -23,7 +24,7 @@ export interface PipelineTabProps {
   isSimpleMode: boolean;
   renderedMotion: MotionState | null;
   targetMotion: MotionState | null;
-  phonemeInputSource: string;
+  phonemeInputSource: PhonemeInputSource;
   graphMouthMapped: boolean;
   externalInputActive: boolean;
   inputs: Record<string, number>;
@@ -238,7 +239,7 @@ export function PipelineTab({
                   {
                     id: "rendered",
                     label: "キャラへの出力",
-                    values: renderedMotion,
+                    values: renderedMotion ?? {},
                   },
                 ]}
               />
@@ -272,8 +273,8 @@ export function PipelineTab({
             </p>
             <MotionTable
               columns={[
-                { id: "target", label: "Target", values: targetMotion },
-                { id: "rendered", label: "Rendered", values: renderedMotion },
+                { id: "target", label: "Target", values: targetMotion ?? {} },
+                { id: "rendered", label: "Rendered", values: renderedMotion ?? {} },
               ]}
             />
           </div>

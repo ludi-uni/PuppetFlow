@@ -107,6 +107,9 @@ export function formatLoadOverlapWarnings(warnings: string[]): string | null {
         return warning;
       }
       const [, motionKey, sources] = match;
+      if (!motionKey || !sources) {
+        return warning;
+      }
       const labels = sources.split(", ").map(formatOverlapSource);
       return `Motion キー「${motionKey}」が ${labels.join(" と ")} で重複しています`;
     })

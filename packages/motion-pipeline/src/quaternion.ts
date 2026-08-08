@@ -18,10 +18,7 @@ export function quaternionDot(a: Quaternion, b: Quaternion): number {
   return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
-export function quaternionMultiply(
-  a: Quaternion,
-  b: Quaternion,
-): Quaternion {
+export function quaternionMultiply(a: Quaternion, b: Quaternion): Quaternion {
   return {
     x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
     y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
@@ -37,9 +34,10 @@ export function quaternionNlerp(
 ): Quaternion {
   const start = normalizeQuaternion(from);
   const normalizedTo = normalizeQuaternion(to);
-  const end = quaternionDot(start, normalizedTo) < 0
-    ? negateQuaternion(normalizedTo)
-    : normalizedTo;
+  const end =
+    quaternionDot(start, normalizedTo) < 0
+      ? negateQuaternion(normalizedTo)
+      : normalizedTo;
   const t = Math.min(1, Math.max(0, weight));
 
   return normalizeQuaternion({

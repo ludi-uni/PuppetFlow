@@ -1,13 +1,13 @@
 import { MOTION_STATE_KEYS } from "@puppetflow/core";
 import * as Blockly from "blockly/core";
 
-const STATE_OPTIONS = [
+const STATE_OPTIONS: Blockly.MenuOption[] = [
   ["interest", "interest"],
   ["energy", "energy"],
   ["stress", "stress"],
 ];
 
-const OP_OPTIONS = [
+const OP_OPTIONS: Blockly.MenuOption[] = [
   [">", ">"],
   [">=", ">="],
   ["<", "<"],
@@ -18,7 +18,7 @@ const OP_OPTIONS = [
 
 const MOTION_OPTIONS = MOTION_STATE_KEYS.map((key) => [key, key] as [string, string]);
 
-const ASSIGN_OP_OPTIONS = [
+const ASSIGN_OP_OPTIONS: Blockly.MenuOption[] = [
   ["=", "set"],
   ["+=", "add"],
 ];

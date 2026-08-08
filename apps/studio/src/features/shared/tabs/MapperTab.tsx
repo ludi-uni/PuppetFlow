@@ -43,7 +43,6 @@ export function MapperTab({
 
   return (
     <MotionMapperEditor
-      key={mapperEditorKey}
       initialConfig={appliedMapperConfig}
       activePluginIds={activePluginIds}
       extensionCustomParamIds={extensionCustomParamIds}

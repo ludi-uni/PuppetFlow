@@ -46,7 +46,9 @@ export function SimpleGraphMappingEditor({
   };
 
   const setLipsync = (enabled: boolean) => {
-    const templateIds = new Set(LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) => node.id));
+    const templateIds: Set<string> = new Set(
+      LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) => node.id),
+    );
     let baseGraph = { nodes: [] as unknown[], edges: [] as unknown[] };
 
     try {

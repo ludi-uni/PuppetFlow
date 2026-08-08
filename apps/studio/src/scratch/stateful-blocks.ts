@@ -2,7 +2,7 @@ import type { BehaviorExpression, BehaviorStatement } from "@puppetflow/behavior
 import { MOTION_STATE_KEYS } from "@puppetflow/core";
 import * as Blockly from "blockly/core";
 
-const STATE_OPTIONS = [
+const STATE_OPTIONS: Blockly.MenuOption[] = [
   ["interest", "interest"],
   ["energy", "energy"],
   ["stress", "stress"],

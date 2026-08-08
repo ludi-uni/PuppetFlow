@@ -24,7 +24,6 @@ import {
 } from "../utils/preset-parts";
 import { validatePresetJson } from "../utils/preset-validation";
 import { saveTextFile } from "../utils/save-text-file";
-import { saveTextFile } from "../utils/save-text-file";
 import type { StatusKind } from "../components/StatusBanner";
 
 export const PRESET_OPTIONS: PresetName[] = [

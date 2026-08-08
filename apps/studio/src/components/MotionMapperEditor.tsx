@@ -1,6 +1,6 @@
 import { MOTION_STATE_KEYS } from "@puppetflow/core";
 import type { ValueTransform } from "@puppetflow/motion-mapper";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivePluginsPanel } from "./ActivePluginsPanel";
 import {
   cloneMapperConfig,
@@ -38,6 +38,10 @@ export function MotionMapperEditor({
   );
   const [activeTarget, setActiveTarget] = useState<MapperTarget>("vmc");
   const [exportJson, setExportJson] = useState("");
+
+  useEffect(() => {
+    setConfig(cloneMapperConfig(initialConfig));
+  }, [initialConfig]);
 
   const model = config[activeTarget];
 

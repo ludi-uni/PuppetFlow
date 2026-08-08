@@ -13,7 +13,7 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactElement } from "react";
 import { LIPSYNC_GRAPH_TEMPLATE } from "../constants/lipsync-template";
 import {
   defaultExtensionCustomNodeData,
@@ -603,7 +603,7 @@ const LIPSYNC_TEMPLATE_NODES: Node[] = LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) =
   id: node.id,
   type: node.type,
   position: LIPSYNC_POSITIONS[node.id] ?? { x: 0, y: 0 },
-  data: { label: String(node.data.label ?? node.type), ...node.data },
+  data: { ...node.data, label: String(node.data.label ?? node.type) },
 }));
 
 const LIPSYNC_TEMPLATE_EDGES: Edge[] = LIPSYNC_GRAPH_TEMPLATE.edges.map((edge) => ({
@@ -658,7 +658,7 @@ function GraphEditorContent({
   const nodeTypes = useMemo(() => {
     const types: Record<
       string,
-      (props: { id: string; data: Record<string, unknown> }) => JSX.Element
+      (props: { id: string; data: Record<string, unknown> }) => ReactElement
     > = {
       input: (props) => (
         <InputNode

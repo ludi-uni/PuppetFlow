@@ -44,7 +44,10 @@ interface MotionFrameFilter {
 }
 
 interface MotionFramePipeline {
-  process(inputs: readonly MotionFrameInput[], deltaTime: number): MotionFrame | undefined;
+  process(
+    inputs: readonly MotionFrameInput[],
+    deltaTime: number,
+  ): MotionFrame | undefined;
   reset(): void;
 }
 ```
@@ -66,11 +69,16 @@ The mixed frame uses the greatest input timestamp, carries a mixer metadata sour
 ```ts
 interface MotionRetargetProfile {
   mapping?: Readonly<Record<BoneId, BoneId>>;
-  bones?: Readonly<Record<BoneId, {
-    rotationOffset?: Quaternion;
-    positionOffset?: Vec3;
-    scale?: number;
-  }>>;
+  bones?: Readonly<
+    Record<
+      BoneId,
+      {
+        rotationOffset?: Quaternion;
+        positionOffset?: Vec3;
+        scale?: number;
+      }
+    >
+  >;
 }
 ```
 
@@ -97,10 +105,10 @@ Errors in pipeline processing are isolated at the Runtime boundary; the current 
 
 ## Risks and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| A new pipeline could change existing output timing | Keep attachment opt-in and preserve the existing raw branch byte-for-byte. |
-| Partial source data could be overwritten by a lower-quality layer | Resolve priority per transform component and never invent missing components. |
-| Quaternion blending can flip unexpectedly | Align candidate quaternions to the first candidate hemisphere before weighted nlerp. |
-| Stateful filters can leak between sessions | Give every filter a reset method and call it from pipeline/runtime stop. |
-| Configuration scope could expand Phase 2 too far | Keep YAML/CLI serialization out of this package and document the typed API boundary. |
+| Risk                                                              | Mitigation                                                                           |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| A new pipeline could change existing output timing                | Keep attachment opt-in and preserve the existing raw branch byte-for-byte.           |
+| Partial source data could be overwritten by a lower-quality layer | Resolve priority per transform component and never invent missing components.        |
+| Quaternion blending can flip unexpectedly                         | Align candidate quaternions to the first candidate hemisphere before weighted nlerp. |
+| Stateful filters can leak between sessions                        | Give every filter a reset method and call it from pipeline/runtime stop.             |
+| Configuration scope could expand Phase 2 too far                  | Keep YAML/CLI serialization out of this package and document the typed API boundary. |

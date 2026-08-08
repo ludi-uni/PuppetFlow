@@ -13,7 +13,7 @@ export interface StudioChromeProps {
   studioMode: StudioMode;
   isSimpleMode: boolean;
   tab: TabId;
-  tabs: Array<{ id: TabId; label: string; description: string }>;
+  tabs: Array<{ id: TabId; label: string; description?: string }>;
   status: { kind: StatusKind; message: string } | null;
   nextStepGuide: NextStepGuide;
   preset: PresetName;

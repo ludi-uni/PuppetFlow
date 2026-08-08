@@ -16,6 +16,25 @@ export interface SaveFilesToDirectoryEntry {
   contents: string;
 }
 
+interface StudioFilePickerGlobal {
+  showSaveFilePicker?: (options?: {
+    suggestedName?: string;
+    types?: Array<{
+      description: string;
+      accept: Record<string, string[]>;
+    }>;
+  }) => Promise<{
+    name: string;
+    createWritable: () => Promise<{
+      write: (contents: string) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
+  }>;
+  showDirectoryPicker?: (options?: {
+    mode?: "readwrite";
+  }) => Promise<FileSystemDirectoryHandle>;
+}
+
 function isAbortError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -51,8 +70,8 @@ function fallbackDownload(options: SaveTextFileOptions): SaveTextFileResult {
   return { ok: true, fileName: options.suggestedName, method: "download" };
 }
 
-function getGlobal(): typeof globalThis {
-  return globalThis;
+function getGlobal(): typeof globalThis & StudioFilePickerGlobal {
+  return globalThis as typeof globalThis & StudioFilePickerGlobal;
 }
 
 export function canPickSaveLocation(): boolean {
@@ -121,9 +140,10 @@ export async function saveFilesToDirectory(
     return { ok: false, reason: "error", message: "No files to save." };
   }
 
-  if (typeof getGlobal().showDirectoryPicker === "function") {
+  const global = getGlobal();
+  if (typeof global.showDirectoryPicker === "function") {
     try {
-      const directory = await getGlobal().showDirectoryPicker({ mode: "readwrite" });
+      const directory = await global.showDirectoryPicker({ mode: "readwrite" });
       const fileNames: string[] = [];
       for (const entry of entries) {
         await writeFileToDirectory(directory, entry.fileName, entry.contents);

@@ -1,7 +1,4 @@
-import type {
-  MicroBehaviorDefinition,
-  MicroBehaviorKeyframe,
-} from "@puppetflow/micro-behavior";
+import type { MicroBehaviorDefinition } from "@puppetflow/micro-behavior";
 import { parseBehaviorDefinitionInput } from "@puppetflow/micro-behavior";
 
 import {
@@ -10,6 +7,8 @@ import {
   type MicroBehaviorStarterTemplate,
 } from "../constants/micro-behavior-params";
 import { parseCustomMicroBehaviorEditorJson } from "./custom-micro-behaviors";
+
+type MicroBehaviorKeyframe = MicroBehaviorDefinition["keyframes"][number];
 
 export interface MicroBehaviorDraft {
   id: string;

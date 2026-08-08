@@ -225,3 +225,9 @@ await runtime.start();
 | Viewer     | WebSocket 経由のモーション値確認                                            |
 
 詳細は [Studio ガイド](guides/studio.md)。
+
+## Motion runtime Phase 1
+
+The additive motion path is `MotionSource -> MotionFrame -> MotionFrameAdapter`. `MotionFrame` is protocol-independent and uses millisecond timestamps; `@puppetflow/adapter-vmc` encodes complete Bone/Pos poses and Blend/Val messages into OSC Bundles. JSONL recording/replay is available through `@puppetflow/motion-recording` and `pf record` / `pf replay`.
+
+The existing `MotionState`, `StateSource`, `Adapter`, `pf run`, and YAML contracts remain compatible. Phase 1 deliberately has no Mixer, retargeting, filters, fail-safe, or VMC receive/validation path.

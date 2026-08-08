@@ -24,7 +24,9 @@ export const SIMPLE_OUTPUT_OPTIONS: Array<{ value: MotionStateKey; label: string
   { value: "lookY", label: "視線（縦）" },
 ];
 
-const LIPSYNC_NODE_IDS = new Set(LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) => node.id));
+const LIPSYNC_NODE_IDS: Set<string> = new Set(
+  LIPSYNC_GRAPH_TEMPLATE.nodes.map((node) => node.id),
+);
 const MOTION_STATE_KEY_SET = new Set<string>(MOTION_STATE_KEYS);
 
 interface GraphDocument {

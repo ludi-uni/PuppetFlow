@@ -86,6 +86,7 @@ export function ScratchEditor({
       sounds: false,
       renderer: "geras",
       theme: Blockly.Theme.defineTheme("puppetflow-dark", {
+        name: "puppetflow-dark",
         base: Blockly.Themes.Classic,
         componentStyles: {
           workspaceBackgroundColour: "#0f172a",

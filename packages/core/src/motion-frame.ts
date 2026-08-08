@@ -85,9 +85,7 @@ export function cloneMotionFrame(frame: MotionFrame): MotionFrame {
     ...(frame.blendShapes === undefined
       ? {}
       : { blendShapes: { ...frame.blendShapes } }),
-    ...(frame.parameters === undefined
-      ? {}
-      : { parameters: { ...frame.parameters } }),
+    ...(frame.parameters === undefined ? {} : { parameters: { ...frame.parameters } }),
     ...(frame.metadata === undefined ? {} : { metadata: { ...frame.metadata } }),
   };
 }

@@ -101,12 +101,7 @@ export function createLowPassFilter(
         "parameter",
         options.alpha,
       );
-      result.bones = smoothBones(
-        result.bones,
-        options.bones,
-        state,
-        options.alpha,
-      );
+      result.bones = smoothBones(result.bones, options.bones, state, options.alpha);
       return result;
     },
     reset() {

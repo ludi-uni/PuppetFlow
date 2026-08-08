@@ -3,9 +3,11 @@ import type { BehaviorId, MicroBehaviorSnapshot } from "@puppetflow/micro-behavi
 import type { PluginOutputSnapshot, StatefulEntrySnapshot } from "@puppetflow/runtime";
 import { PipelineTab } from "../../components/PipelineTab";
 import type { StatusKind } from "../../components/StatusBanner";
+import type { MotionMapperEditorConfig } from "../../mapper-config";
 import type { MicroBehaviorDraft } from "../../utils/micro-behavior-draft";
 import type { PresetName, SourceConfig } from "../../runtime";
 import type { StudioMode, TabId } from "../../constants/studio-mode";
+import type { PhonemeInputSource } from "../../utils/phoneme-source";
 import { GraphTab } from "../expert/tabs/GraphTab";
 import { PfScriptTab } from "../expert/tabs/PfScriptTab";
 import { SourcesTab } from "../expert/tabs/SourcesTab";
@@ -23,7 +25,7 @@ export interface StudioTabPanelProps {
   pipeline: {
     renderedMotion: MotionState;
     targetMotion: MotionState;
-    phonemeInputSource: string;
+    phonemeInputSource: PhonemeInputSource;
     graphMouthMapped: boolean;
     externalInputActive: boolean;
     inputs: Record<string, number>;

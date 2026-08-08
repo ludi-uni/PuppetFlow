@@ -239,11 +239,11 @@ The following are explicitly out of Phase 1: Mixer, filter pipeline, retargeting
 
 ## Risks and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Existing runtime has a legacy StateSource/Adapter loop | Keep new interfaces separate and add opt-in attach methods. |
-| Multiple frames target the same VMC output before Mixer exists | Preserve deterministic source registration order and document Phase 1 semantics. |
-| Partial bone data could cause unintended jumps | Omit incomplete VMC Bone Pose messages instead of synthesizing transforms. |
-| Relative timestamps could be mistaken for OSC wall-clock time | Require explicit `metadata.clock` for Unix frame timestamps and default Bundle timing to send-time. |
-| Large recordings could exhaust memory | Use JSONL and line-by-line read/write throughout. |
-| Tauri native code exists in two apps | Share the wire contract and add matching small commands without changing existing BlendShape command behavior. |
+| Risk                                                           | Mitigation                                                                                                     |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Existing runtime has a legacy StateSource/Adapter loop         | Keep new interfaces separate and add opt-in attach methods.                                                    |
+| Multiple frames target the same VMC output before Mixer exists | Preserve deterministic source registration order and document Phase 1 semantics.                               |
+| Partial bone data could cause unintended jumps                 | Omit incomplete VMC Bone Pose messages instead of synthesizing transforms.                                     |
+| Relative timestamps could be mistaken for OSC wall-clock time  | Require explicit `metadata.clock` for Unix frame timestamps and default Bundle timing to send-time.            |
+| Large recordings could exhaust memory                          | Use JSONL and line-by-line read/write throughout.                                                              |
+| Tauri native code exists in two apps                           | Share the wire contract and add matching small commands without changing existing BlendShape command behavior. |

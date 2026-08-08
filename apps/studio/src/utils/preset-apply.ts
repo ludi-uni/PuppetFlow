@@ -1,4 +1,5 @@
 import type { PresetName } from "../runtime";
+import type { StatusKind } from "../components/StatusBanner";
 import {
   collectLoadPresetWarnings,
   formatLoadOverlapWarnings,
@@ -27,7 +28,7 @@ export interface ApplyPresetOptions {
   extractExtensionsJson: (json: string) => string;
   sync: PresetApplySyncState;
   setApplying: (applying: boolean) => void;
-  notify: (message: string, kind: "success" | "error") => void;
+  notify: (message: string, kind: StatusKind) => void;
   presetName?: PresetName;
 }
 
