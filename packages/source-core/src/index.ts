@@ -18,3 +18,8 @@ export type {
   SourceUpdateTarget,
   StateSource,
 } from "./state-source.js";
+export type { MotionFrameEmitter, MotionSource } from "./motion-source.js";
+export {
+  MotionStateFrameSource,
+  type MotionStateFrameSourceOptions,
+} from "./motion-state-frame-source.js";
