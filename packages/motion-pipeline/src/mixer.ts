@@ -1,15 +1,6 @@
-import type {
-  BoneTransform,
-  MotionFrame,
-  Quaternion,
-  Vec3,
-} from "@puppetflow/core";
+import type { BoneTransform, MotionFrame, Quaternion, Vec3 } from "@puppetflow/core";
 
-import {
-  negateQuaternion,
-  normalizeQuaternion,
-  quaternionDot,
-} from "./quaternion.js";
+import { negateQuaternion, normalizeQuaternion, quaternionDot } from "./quaternion.js";
 import type {
   MotionChannelOwner,
   MotionFrameInput,
@@ -74,14 +65,18 @@ function inspectBones(
         transform: frame.bones?.[boneId],
       }))
       .filter(
-        (candidate): candidate is {
+        (
+          candidate,
+        ): candidate is {
           sourceId: string;
           layer: MotionLayer;
           transform: NonNullable<typeof candidate.transform>;
         } => candidate.transform !== undefined,
       )
       .filter(({ layer }) => isAllowed(layer.bones, boneId));
-    const owners = inspectCandidates(candidates.map(({ sourceId, layer }) => ({ sourceId, layer })));
+    const owners = inspectCandidates(
+      candidates.map(({ sourceId, layer }) => ({ sourceId, layer })),
+    );
     if (owners.length > 0) {
       result[boneId] = owners;
     }
@@ -111,7 +106,9 @@ function inspectNumericDomain(
       }))
       .filter(({ value }) => value !== undefined)
       .filter(({ layer }) => isAllowed(layer[domain], key));
-    const owners = inspectCandidates(candidates.map(({ sourceId, layer }) => ({ sourceId, layer })));
+    const owners = inspectCandidates(
+      candidates.map(({ sourceId, layer }) => ({ sourceId, layer })),
+    );
     if (owners.length > 0) {
       result[key] = owners;
     }
@@ -191,8 +188,9 @@ function mixBones(
           transform,
         };
       })
-      .filter((entry): entry is { layer: MotionLayer; transform: BoneTransform } =>
-        entry !== undefined,
+      .filter(
+        (entry): entry is { layer: MotionLayer; transform: BoneTransform } =>
+          entry !== undefined,
       );
 
     const transform: BoneTransform = {};
@@ -301,15 +299,31 @@ function weightedNumber(candidates: readonly Candidate<number>[]): number {
 
 function weightedVec3(candidates: readonly Candidate<Vec3>[]): Vec3 {
   return {
-    x: weightedAverage(candidates.map(({ value, priority, weight }) => ({ value: value.x, priority, weight }))),
-    y: weightedAverage(candidates.map(({ value, priority, weight }) => ({ value: value.y, priority, weight }))),
-    z: weightedAverage(candidates.map(({ value, priority, weight }) => ({ value: value.z, priority, weight }))),
+    x: weightedAverage(
+      candidates.map(({ value, priority, weight }) => ({
+        value: value.x,
+        priority,
+        weight,
+      })),
+    ),
+    y: weightedAverage(
+      candidates.map(({ value, priority, weight }) => ({
+        value: value.y,
+        priority,
+        weight,
+      })),
+    ),
+    z: weightedAverage(
+      candidates.map(({ value, priority, weight }) => ({
+        value: value.z,
+        priority,
+        weight,
+      })),
+    ),
   };
 }
 
-function weightedQuaternion(
-  candidates: readonly Candidate<Quaternion>[],
-): Quaternion {
+function weightedQuaternion(candidates: readonly Candidate<Quaternion>[]): Quaternion {
   const first = normalizeQuaternion(candidates[0]!.value);
   let x = 0;
   let y = 0;
@@ -317,9 +331,8 @@ function weightedQuaternion(
   let w = 0;
   for (const { value, weight } of candidates) {
     const quaternion = normalizeQuaternion(value);
-    const aligned = quaternionDot(first, quaternion) < 0
-      ? negateQuaternion(quaternion)
-      : quaternion;
+    const aligned =
+      quaternionDot(first, quaternion) < 0 ? negateQuaternion(quaternion) : quaternion;
     x += aligned.x * weight;
     y += aligned.y * weight;
     z += aligned.z * weight;
@@ -329,14 +342,19 @@ function weightedQuaternion(
 }
 
 function weightedAverage(candidates: readonly Candidate<number>[]): number {
-  const totalWeight = candidates.reduce((total, candidate) => total + candidate.weight, 0);
+  const totalWeight = candidates.reduce(
+    (total, candidate) => total + candidate.weight,
+    0,
+  );
   if (totalWeight === 0) {
     return 0;
   }
-  return candidates.reduce(
-    (total, candidate) => total + candidate.value * candidate.weight,
-    0,
-  ) / totalWeight;
+  return (
+    candidates.reduce(
+      (total, candidate) => total + candidate.value * candidate.weight,
+      0,
+    ) / totalWeight
+  );
 }
 
 function resolveLayer(

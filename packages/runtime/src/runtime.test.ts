@@ -204,6 +204,120 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
   });
 
+  it("exposes source, mixer, and output inspector telemetry", async () => {
+    const frameUpdate = vi.fn(async () => {});
+    const legacyUpdate = vi.fn(async () => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "tracking",
+        start: vi.fn(async (emit) =>
+          emit({ timestamp: 42, parameters: { lean: 0.5 } }),
+        ),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionPipeline({
+        process: vi.fn(() => ({ timestamp: 42, parameters: { lean: 0.5 } })),
+        inspect: vi.fn(() => ({
+          bones: {
+            Head: [{ sourceId: "tracking", priority: 100, weight: 1 }],
+          },
+          blendShapes: {},
+          parameters: {},
+        })),
+        reset: vi.fn(),
+      })
+      .attachMotionAdapter({
+        id: "frame-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame: frameUpdate,
+        dispose: vi.fn(async () => {}),
+      })
+      .attachAdapter(createTestAdapter(legacyUpdate));
+
+    await runtime.start();
+
+    const snapshot = runtime.getMotionInspectorSnapshot();
+    expect(snapshot.running).toBe(true);
+    expect(snapshot.sources).toEqual([
+      expect.objectContaining({
+        id: "tracking",
+        connected: true,
+        stale: false,
+        lastFrameTimestamp: 42,
+      }),
+    ]);
+    expect(snapshot.sources[0]?.inputRateHz).toBeGreaterThan(0);
+    expect(snapshot.mixer?.bones.Head).toEqual([
+      { sourceId: "tracking", priority: 100, weight: 1 },
+    ]);
+    expect(snapshot.outputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "frame-output", connected: true }),
+        expect.objectContaining({ id: "test-adapter", connected: true }),
+      ]),
+    );
+    expect(
+      snapshot.outputs.find((output) => output.id === "frame-output")?.outputRateHz,
+    ).toBeGreaterThan(0);
+    expect(
+      snapshot.outputs.find((output) => output.id === "test-adapter")?.outputRateHz,
+    ).toBeGreaterThan(0);
+
+    await runtime.stop();
+
+    const stopped = runtime.getMotionInspectorSnapshot();
+    expect(stopped.running).toBe(false);
+    expect(stopped.sources[0]).toMatchObject({
+      id: "tracking",
+      connected: false,
+      stale: false,
+      inputRateHz: 0,
+    });
+    expect(stopped.sources[0]?.lastFrameAt).toBeUndefined();
+    expect(stopped.outputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "frame-output",
+          connected: false,
+          outputRateHz: 0,
+        }),
+        expect.objectContaining({
+          id: "test-adapter",
+          connected: false,
+          outputRateHz: 0,
+        }),
+      ]),
+    );
+  });
+
+  it("records output adapter failures in the inspector", async () => {
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "tracking",
+        start: vi.fn(async (emit) => emit({ timestamp: 1, parameters: { value: 1 } })),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionAdapter({
+        id: "broken-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame: vi.fn(async () => {
+          throw new Error("output unavailable");
+        }),
+        dispose: vi.fn(async () => {}),
+      });
+
+    await runtime.start();
+
+    expect(runtime.getMotionInspectorSnapshot().outputs).toEqual([
+      expect.objectContaining({
+        id: "broken-output",
+        connected: false,
+        error: "output unavailable",
+      }),
+    ]);
+    await runtime.stop();
+  });
+
   it("starts motion sources and delivers latest frames in source attachment order", async () => {
     const frameA: MotionFrame = { timestamp: 1, blendShapes: { A: 0.1 } };
     const frameB: MotionFrame = { timestamp: 2, bones: { Head: {} } };

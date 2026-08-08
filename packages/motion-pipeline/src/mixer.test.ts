@@ -189,8 +189,9 @@ describe("MotionMixer", () => {
 
     expect(mixer.mix([])).toBeUndefined();
     expect(
-      mixer.mix([{ sourceId: "unconfigured", frame: { timestamp: 1, parameters: { x: 0.4 } } }])
-        ?.parameters?.x,
+      mixer.mix([
+        { sourceId: "unconfigured", frame: { timestamp: 1, parameters: { x: 0.4 } } },
+      ])?.parameters?.x,
     ).toBe(0.4);
   });
 });

@@ -32,6 +32,7 @@ import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
 import type {
   MotionFrameInput,
   MotionFramePipeline,
+  MotionMixerInspection,
 } from "@puppetflow/motion-pipeline";
 import {
   createRuntimeStatefulRegistry,
@@ -49,10 +50,12 @@ import {
 } from "@puppetflow/micro-behavior";
 import type { MotionSource, StateSource } from "@puppetflow/source-core";
 import { MotionOverrideStore } from "@puppetflow/source-core";
+import { applyMotionFailSafe, type MotionFailSafeOptions } from "./motion-failsafe.js";
 import {
-  applyMotionFailSafe,
-  type MotionFailSafeOptions,
-} from "./motion-failsafe.js";
+  calculateRateHz,
+  cloneMotionMixerInspection,
+  type MotionInspectorSnapshot,
+} from "./motion-inspector.js";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
 import { RuntimeStateStore } from "./state-store.js";
 
@@ -96,6 +99,13 @@ interface MotionSourceHealth {
   receiptTimes: number[];
 }
 
+interface MotionOutputHealth {
+  connected: boolean;
+  lastOutputAt?: number;
+  outputTimes: number[];
+  error?: string;
+}
+
 export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
@@ -110,7 +120,9 @@ export class PuppetFlowRuntime {
   private readonly motionSources: MotionSource[] = [];
   private readonly latestMotionFrames = new Map<string, MotionFrame>();
   private readonly motionSourceHealth = new Map<string, MotionSourceHealth>();
+  private readonly motionOutputHealth = new Map<string, MotionOutputHealth>();
   private motionPipeline: MotionFramePipeline | undefined;
+  private motionMixerInspection: MotionMixerInspection | undefined;
   private motionFailSafeOptions: MotionFailSafeOptions | undefined;
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
@@ -148,11 +160,13 @@ export class PuppetFlowRuntime {
 
   attachAdapter(adapter: Adapter): this {
     this.adapters.push(adapter);
+    this.ensureMotionOutputHealth(adapter.id);
     return this;
   }
 
   attachMotionAdapter(adapter: MotionFrameAdapter): this {
     this.motionFrameAdapters.push(adapter);
+    this.ensureMotionOutputHealth(adapter.id);
     return this;
   }
 
@@ -208,9 +222,98 @@ export class PuppetFlowRuntime {
   }
 
   getMotionFailSafe(): MotionFailSafeOptions | undefined {
-    return this.motionFailSafeOptions
-      ? { ...this.motionFailSafeOptions }
-      : undefined;
+    return this.motionFailSafeOptions ? { ...this.motionFailSafeOptions } : undefined;
+  }
+
+  getMotionInspectorSnapshot(): MotionInspectorSnapshot {
+    const timestamp = now();
+    const sources = this.motionSources.map((source) => {
+      const health = this.motionSourceHealth.get(source.id) ?? {
+        connected: false,
+        stale: false,
+        receiptTimes: [],
+      };
+      const ageMs =
+        health.lastFrameAt === undefined
+          ? undefined
+          : Math.max(0, timestamp - health.lastFrameAt);
+      const stale =
+        health.stale ||
+        (ageMs !== undefined &&
+          this.motionFailSafeOptions !== undefined &&
+          ageMs >= this.motionFailSafeOptions.timeoutMs);
+      return {
+        id: source.id,
+        connected: health.connected,
+        stale,
+        inputRateHz: calculateRateHz(health.receiptTimes, timestamp),
+        ...(health.lastFrameAt === undefined
+          ? {}
+          : { lastFrameAt: health.lastFrameAt }),
+        ...(health.lastFrameTimestamp === undefined
+          ? {}
+          : { lastFrameTimestamp: health.lastFrameTimestamp }),
+        ...(ageMs === undefined ? {} : { ageMs }),
+      };
+    });
+    const outputs = [...this.adapters, ...this.motionFrameAdapters].map((adapter) => {
+      const health = this.ensureMotionOutputHealth(adapter.id);
+      return {
+        id: adapter.id,
+        connected: health.connected,
+        outputRateHz: calculateRateHz(health.outputTimes, timestamp),
+        ...(health.lastOutputAt === undefined
+          ? {}
+          : { lastOutputAt: health.lastOutputAt }),
+        ...(health.error === undefined ? {} : { error: health.error }),
+      };
+    });
+
+    return {
+      timestamp,
+      running: this.running,
+      sources,
+      mixer: cloneMotionMixerInspection(this.motionMixerInspection),
+      outputs,
+    };
+  }
+
+  private ensureMotionOutputHealth(id: string): MotionOutputHealth {
+    const existing = this.motionOutputHealth.get(id);
+    if (existing) {
+      return existing;
+    }
+    const health: MotionOutputHealth = {
+      connected: false,
+      outputTimes: [],
+    };
+    this.motionOutputHealth.set(id, health);
+    return health;
+  }
+
+  private recordMotionOutputSuccess(id: string): void {
+    const health = this.ensureMotionOutputHealth(id);
+    const outputAt = now();
+    health.connected = true;
+    health.lastOutputAt = outputAt;
+    health.error = undefined;
+    health.outputTimes.push(outputAt);
+    pruneEventTimes(health.outputTimes, outputAt);
+  }
+
+  private recordMotionOutputFailure(id: string, error: unknown): void {
+    const health = this.ensureMotionOutputHealth(id);
+    health.connected = false;
+    health.error = error instanceof Error ? error.message : String(error);
+  }
+
+  private resetMotionOutputHealth(): void {
+    for (const health of this.motionOutputHealth.values()) {
+      health.connected = false;
+      health.lastOutputAt = undefined;
+      health.outputTimes.length = 0;
+      health.error = undefined;
+    }
   }
 
   getModifiers(): readonly MotionModifier[] {
@@ -300,6 +403,8 @@ export class PuppetFlowRuntime {
     await this.disposeSources();
     await this.stopMotionSources();
     this.resetMotionPipeline();
+    this.motionMixerInspection = undefined;
+    this.resetMotionOutputHealth();
     this.motionOverride.clear();
     this.microBehavior.reset();
     this.statefulStore.reset();
@@ -385,13 +490,18 @@ export class PuppetFlowRuntime {
       ...this.motionFrameAdapters,
     ];
     for (const adapter of adapters) {
+      this.ensureMotionOutputHealth(adapter.id);
       if (this.initializedAdapterObjects.has(adapter)) {
         continue;
       }
       this.initializedAdapterObjects.add(adapter);
       try {
         await adapter.initialize();
+        const health = this.ensureMotionOutputHealth(adapter.id);
+        health.connected = true;
+        health.error = undefined;
       } catch (error) {
+        this.recordMotionOutputFailure(adapter.id, error);
         console.error(
           `[PuppetFlowRuntime] adapter "${adapter.id}" initialize failed`,
           error,
@@ -416,6 +526,7 @@ export class PuppetFlowRuntime {
 
     this.adaptersInitialized = false;
     this.initializedAdapterObjects.clear();
+    this.resetMotionOutputHealth();
   }
 
   private async initializeSources(): Promise<void> {
@@ -768,7 +879,9 @@ export class PuppetFlowRuntime {
 
         try {
           await adapter.update(this.renderedMotion, deltaTime);
+          this.recordMotionOutputSuccess(adapter.id);
         } catch (error) {
+          this.recordMotionOutputFailure(adapter.id, error);
           console.error(
             `[PuppetFlowRuntime] adapter "${adapter.id}" update failed`,
             error,
@@ -818,6 +931,15 @@ export class PuppetFlowRuntime {
       }
     }
 
+    this.motionMixerInspection = undefined;
+    if (this.motionPipeline?.inspect) {
+      try {
+        this.motionMixerInspection = this.motionPipeline.inspect(inputs);
+      } catch (error) {
+        console.error("[PuppetFlowRuntime] motion pipeline inspection failed", error);
+      }
+    }
+
     if (inputs.length === 0) {
       return;
     }
@@ -850,7 +972,9 @@ export class PuppetFlowRuntime {
 
       try {
         await adapter.updateFrame(cloneMotionFrame(frame), deltaTime);
+        this.recordMotionOutputSuccess(adapter.id);
       } catch (error) {
+        this.recordMotionOutputFailure(adapter.id, error);
         console.error(
           `[PuppetFlowRuntime] motion frame adapter "${adapter.id}" update failed`,
           error,

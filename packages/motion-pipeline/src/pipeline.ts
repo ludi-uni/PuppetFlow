@@ -60,11 +60,7 @@ export function createMotionFramePipeline(
 
       const filteredInputs = inputs.map((input) => ({
         sourceId: input.sourceId,
-        frame: applyFilters(
-          input.frame,
-          sourceFilters[input.sourceId] ?? [],
-          0,
-        ),
+        frame: applyFilters(input.frame, sourceFilters[input.sourceId] ?? [], 0),
       }));
       const inspection = mixer.inspect(filteredInputs);
       return options.retarget
@@ -105,7 +101,10 @@ function remapBoneOwnership(
   const result: MotionMixerInspection["bones"] = {};
   for (const [boneId, owners] of Object.entries(ownership)) {
     const targetId = mapping?.[boneId] ?? boneId;
-    result[targetId] = [...(result[targetId] ?? []), ...owners.map((owner) => ({ ...owner }))];
+    result[targetId] = [
+      ...(result[targetId] ?? []),
+      ...owners.map((owner) => ({ ...owner })),
+    ];
   }
   return result;
 }

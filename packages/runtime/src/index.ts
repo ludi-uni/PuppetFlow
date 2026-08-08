@@ -21,3 +21,10 @@ export {
   type PluginOutputSnapshot,
 } from "./runtime.js";
 export type { StatefulEntrySnapshot } from "@puppetflow/stateful-core";
+export {
+  calculateRateHz,
+  cloneMotionMixerInspection,
+  type MotionInspectorSnapshot,
+  type MotionOutputInspectorSnapshot,
+  type MotionSourceInspectorSnapshot,
+} from "./motion-inspector.js";

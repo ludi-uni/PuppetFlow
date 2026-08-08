@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createMotionFramePipeline } from "./pipeline.js";
 import type { MotionFrameFilter } from "./types.js";
 
-function markerFilter(
-  id: string,
-  marker: string,
-  reset = vi.fn(),
-): MotionFrameFilter {
+function markerFilter(id: string, marker: string, reset = vi.fn()): MotionFrameFilter {
   return {
     id,
     apply(frame) {
@@ -15,9 +11,10 @@ function markerFilter(
         ...frame,
         parameters: {
           ...frame.parameters,
-          order: marker === "S"
-            ? (frame.parameters?.order ?? 0) + 1
-            : (frame.parameters?.order ?? 0) * 10,
+          order:
+            marker === "S"
+              ? (frame.parameters?.order ?? 0) + 1
+              : (frame.parameters?.order ?? 0) * 10,
         },
       };
     },

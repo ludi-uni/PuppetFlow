@@ -1,9 +1,4 @@
-import type {
-  BoneId,
-  MotionFrame,
-  Quaternion,
-  Vec3,
-} from "@puppetflow/core";
+import type { BoneId, MotionFrame, Quaternion, Vec3 } from "@puppetflow/core";
 
 export interface MotionFrameInput {
   sourceId: string;
