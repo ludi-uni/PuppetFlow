@@ -13,11 +13,16 @@
     "test": "vitest run --dir ."
   },
   "dependencies": {
+    "@puppetflow/adapter-vmc": "workspace:*",
     "@puppetflow/behavior-packs": "workspace:*",
     "@puppetflow/cli-config": "workspace:*",
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/motion-recording": "workspace:*",
+    "@puppetflow/runtime": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/micro-behavior": "workspace:*",
     "@puppetflow/runtime-launcher": "workspace:*",
+    "@puppetflow/source-core": "workspace:*",
     "commander": "^13.1.0",
     "yaml": "^2.8.0"
   },

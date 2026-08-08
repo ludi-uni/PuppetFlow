@@ -11,6 +11,7 @@ import {
 } from "@puppetflow/motion-mapper";
 
 import type { OscAdapterLaunchConfig } from "@puppetflow/runtime-launcher";
+import type { VmcTimestampMode } from "@puppetflow/adapter-vmc";
 
 export type OscAdapterTarget = Exclude<ModelTarget, "custom">;
 
@@ -26,9 +27,16 @@ export interface OscAdapterYamlConfig {
   params?: Partial<Record<MotionStateKey, string>>;
   transforms?: Partial<Record<MotionStateKey, ValueTransform>>;
   custom?: Record<string, CustomMappingEntryYaml>;
+  outputRateHz?: number;
+  timestampMode?: VmcTimestampMode;
 }
 
 const VALUE_TRANSFORMS = new Set<ValueTransform>(["identity", "centered", "invert"]);
+const VMC_TIMESTAMP_MODES = new Set<VmcTimestampMode>([
+  "immediate",
+  "send-time",
+  "frame-unix",
+]);
 
 export interface StudioOscMapperModel {
   enabled: boolean;
@@ -176,6 +184,27 @@ export function parseOscAdapterYamlConfig(
     config.port = value.port;
   }
 
+  if (value.outputRateHz !== undefined) {
+    if (
+      typeof value.outputRateHz !== "number" ||
+      !Number.isFinite(value.outputRateHz) ||
+      value.outputRateHz <= 0
+    ) {
+      throw new Error(`${path}.outputRateHz must be a positive number.`);
+    }
+    config.outputRateHz = value.outputRateHz;
+  }
+
+  if (value.timestampMode !== undefined) {
+    if (
+      typeof value.timestampMode !== "string" ||
+      !VMC_TIMESTAMP_MODES.has(value.timestampMode as VmcTimestampMode)
+    ) {
+      throw new Error(`${path}.timestampMode must be immediate, send-time, or frame-unix.`);
+    }
+    config.timestampMode = value.timestampMode as VmcTimestampMode;
+  }
+
   if (value.params !== undefined) {
     if (!value.params || typeof value.params !== "object") {
       throw new Error(`${path}.params must be an object.`);
@@ -276,5 +305,7 @@ export function oscAdapterYamlToLaunchConfig(
     params: yaml.params,
     transforms: yaml.transforms,
     custom: yaml.custom,
+    outputRateHz: yaml.outputRateHz,
+    timestampMode: yaml.timestampMode,
   };
 }

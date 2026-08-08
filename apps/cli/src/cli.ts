@@ -1,81 +1,135 @@
 #!/usr/bin/env node
 
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { Command } from "commander";
 
+import { recordCommand, type RecordCliOptions } from "./commands/record.js";
+import { replayCommand, type ReplayCliOptions } from "./commands/replay.js";
 import { runCommand } from "./commands/run.js";
+import type { RunCliOptions } from "./config/run-config.js";
 
-const program = new Command();
+export interface CliActions {
+  run(options: RunCliOptions): Promise<void>;
+  record(options: RecordCliOptions): Promise<void>;
+  replay(options: ReplayCliOptions): Promise<void>;
+}
 
-program.name("pf").description("PuppetFlow headless CLI").version("0.1.0");
+const defaultActions: CliActions = {
+  run: runCommand,
+  record: recordCommand,
+  replay: replayCommand,
+};
 
-program
-  .command("run")
-  .description("Run PuppetFlow with a preset and optional input sources")
-  .option("-c, --config <path>", "YAML config file")
-  .option("-p, --preset <name-or-path>", "Built-in preset name or .pfpreset path")
-  .option("--state <key=value>", "Initial state assignment (repeatable)", collect, [])
-  .option("--http-url <url>", "HTTP polling source URL")
-  .option("--ws-url <url>", "WebSocket input source URL")
-  .option("--mqtt-broker <url>", "MQTT broker URL")
-  .option("--mqtt-topic <topic>", "MQTT topic")
-  .option("--vmc-host <host>", "VMC OSC host")
-  .option("--vmc-port <port>", "VMC OSC port", parsePort)
-  .option("--no-vmc", "Disable VMC OSC output")
-  .option("--live2d", "Enable Live2D OSC adapter")
-  .option("--live2d-host <host>", "Live2D OSC host")
-  .option("--live2d-port <port>", "Live2D OSC port", parsePort)
-  .option("--vrm", "Enable VRM OSC adapter")
-  .option("--vrm-host <host>", "VRM OSC host")
-  .option("--vrm-port <port>", "VRM OSC port", parsePort)
-  .option(
-    "--websocket-port <port>",
-    "Enable WebSocket motion broadcast on port",
-    parsePort,
-  )
-  .option("--no-websocket", "Disable WebSocket adapter from config")
-  .option("--no-logger", "Disable throttled motion logger")
-  .option("--logger-throttle-ms <ms>", "Logger throttle interval", parsePositiveInt)
-  .option("--behavior-port <port>", "Enable Behavior HTTP API on port", parsePort)
-  .option("--behavior-host <host>", "Behavior HTTP API bind host")
-  .option("--no-behavior-api", "Disable Behavior HTTP API")
-  .option(
-    "--micro-behaviors <path>",
-    "Load custom micro behaviors from .pfmicrobehaviors JSON",
-  )
-  .action(async (options) => {
-    try {
-      await runCommand({
-        configPath: options.config,
-        preset: options.preset,
-        state: options.state,
-        httpUrl: options.httpUrl,
-        wsUrl: options.wsUrl,
-        mqttBroker: options.mqttBroker,
-        mqttTopic: options.mqttTopic,
+export function createProgram(actions: CliActions = defaultActions): Command {
+  const program = new Command();
+  program.name("pf").description("PuppetFlow headless CLI").version("0.1.0");
+
+  const run = program
+    .command("run")
+    .description("Run PuppetFlow with a preset and optional input sources");
+  addRunOptions(run).action(async (options) => {
+    await actions.run(toRunOptions(options));
+  });
+
+  const record = program
+    .command("record <output>")
+    .description("Record canonical motion frames to a streaming JSONL file");
+  addRunOptions(record)
+    .option("--duration <ms>", "Stop after this duration", parseNonNegativeInt)
+    .action(async (output, options) => {
+      await actions.record({
+        ...toRunOptions(options),
+        output,
+        durationMs: options.duration,
+      });
+    });
+
+  program
+    .command("replay <input>")
+    .description("Replay canonical motion frames").option(
+      "--speed <factor>",
+      "Playback speed factor",
+      parsePositiveNumber,
+    )
+    .option("--loop", "Loop at end of recording")
+    .option(
+      "--start-offset <ms>",
+      "Skip frames before this timestamp",
+      parseNonNegativeNumber,
+    )
+    .option("--vmc-host <host>", "VMC OSC host")
+    .option("--vmc-port <port>", "VMC OSC port", parsePort)
+    .action(async (input, options) => {
+      await actions.replay({
+        input,
+        speed: options.speed,
+        loop: options.loop,
+        startOffsetMs: options.startOffset,
         vmcHost: options.vmcHost,
         vmcPort: options.vmcPort,
-        vmcDisabled: options.vmc === false,
-        live2d: options.live2d,
-        live2dHost: options.live2dHost,
-        live2dPort: options.live2dPort,
-        vrm: options.vrm,
-        vrmHost: options.vrmHost,
-        vrmPort: options.vrmPort,
-        websocketPort: options.websocketPort,
-        websocketDisabled: options.websocket === false,
-        loggerDisabled: options.logger === false,
-        loggerThrottleMs: options.loggerThrottleMs,
-        behaviorPort: options.behaviorPort,
-        behaviorHost: options.behaviorHost,
-        behaviorDisabled: options.behaviorApi === false,
-        microBehaviorsPath: options.microBehaviors,
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`[pf] ${message}`);
-      process.exitCode = 1;
-    }
-  });
+    });
+
+  return program;
+}
+
+function addRunOptions(command: Command): Command {
+  return command
+    .option("-c, --config <path>", "YAML config file")
+    .option("-p, --preset <name-or-path>", "Built-in preset name or .pfpreset path")
+    .option("--state <key=value>", "Initial state assignment (repeatable)", collect, [])
+    .option("--http-url <url>", "HTTP polling source URL")
+    .option("--ws-url <url>", "WebSocket input source URL")
+    .option("--mqtt-broker <url>", "MQTT broker URL")
+    .option("--mqtt-topic <topic>", "MQTT topic")
+    .option("--vmc-host <host>", "VMC OSC host")
+    .option("--vmc-port <port>", "VMC OSC port", parsePort)
+    .option("--no-vmc", "Disable VMC OSC output")
+    .option("--live2d", "Enable Live2D OSC adapter")
+    .option("--live2d-host <host>", "Live2D OSC host")
+    .option("--live2d-port <port>", "Live2D OSC port", parsePort)
+    .option("--vrm", "Enable VRM OSC adapter")
+    .option("--vrm-host <host>", "VRM OSC host")
+    .option("--vrm-port <port>", "VRM OSC port", parsePort)
+    .option("--websocket-port <port>", "Enable WebSocket motion broadcast on port", parsePort)
+    .option("--no-websocket", "Disable WebSocket adapter from config")
+    .option("--no-logger", "Disable throttled motion logger")
+    .option("--logger-throttle-ms <ms>", "Logger throttle interval", parseNonNegativeInt)
+    .option("--behavior-port <port>", "Enable Behavior HTTP API on port", parsePort)
+    .option("--behavior-host <host>", "Behavior HTTP API bind host")
+    .option("--no-behavior-api", "Disable Behavior HTTP API")
+    .option("--micro-behaviors <path>", "Load custom micro behaviors from .pfmicrobehaviors JSON");
+}
+
+function toRunOptions(options: Record<string, unknown>): RunCliOptions {
+  return {
+    configPath: options.config as string | undefined,
+    preset: options.preset as string | undefined,
+    state: options.state as string[] | undefined,
+    httpUrl: options.httpUrl as string | undefined,
+    wsUrl: options.wsUrl as string | undefined,
+    mqttBroker: options.mqttBroker as string | undefined,
+    mqttTopic: options.mqttTopic as string | undefined,
+    vmcHost: options.vmcHost as string | undefined,
+    vmcPort: options.vmcPort as number | undefined,
+    vmcDisabled: options.vmc === false,
+    live2d: options.live2d as boolean | undefined,
+    live2dHost: options.live2dHost as string | undefined,
+    live2dPort: options.live2dPort as number | undefined,
+    vrm: options.vrm as boolean | undefined,
+    vrmHost: options.vrmHost as string | undefined,
+    vrmPort: options.vrmPort as number | undefined,
+    websocketPort: options.websocketPort as number | undefined,
+    websocketDisabled: options.websocket === false,
+    loggerDisabled: options.logger === false,
+    loggerThrottleMs: options.loggerThrottleMs as number | undefined,
+    behaviorPort: options.behaviorPort as number | undefined,
+    behaviorHost: options.behaviorHost as string | undefined,
+    behaviorDisabled: options.behaviorApi === false,
+    microBehaviorsPath: options.microBehaviors as string | undefined,
+  };
+}
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat(value);
@@ -89,20 +143,42 @@ function parsePort(value: string): number {
   return port;
 }
 
-function parsePositiveInt(value: string): number {
+function parseNonNegativeInt(value: string): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`Invalid integer: ${value}`);
+    throw new Error(`Invalid non-negative integer: ${value}`);
   }
   return parsed;
 }
 
-async function main(): Promise<void> {
-  await program.parseAsync(process.argv);
+function parseNonNegativeNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`Invalid non-negative number: ${value}`);
+  }
+  return parsed;
 }
 
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[pf] ${message}`);
-  process.exitCode = 1;
-});
+function parsePositiveNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid positive number: ${value}`);
+  }
+  return parsed;
+}
+
+export async function main(argv = process.argv): Promise<void> {
+  await createProgram().parseAsync(argv);
+}
+
+const isMainModule =
+  process.argv[1] !== undefined &&
+  pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+
+if (isMainModule) {
+  main().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[pf] ${message}`);
+    process.exitCode = 1;
+  });
+}

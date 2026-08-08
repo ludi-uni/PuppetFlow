@@ -1,4 +1,5 @@
 import type { MotionStateKey, StateValue } from "@puppetflow/core";
+import type { VmcTimestampMode } from "@puppetflow/adapter-vmc";
 import type { ValueTransform } from "@puppetflow/motion-mapper";
 import type { MicroBehaviorDefinition } from "@puppetflow/micro-behavior";
 
@@ -21,6 +22,8 @@ export type OscAdapterLaunchConfig = {
   params?: Partial<Record<MotionStateKey, string>>;
   transforms?: Partial<Record<MotionStateKey, ValueTransform>>;
   custom?: Record<string, CustomMappingLaunchEntry>;
+  outputRateHz?: number;
+  timestampMode?: VmcTimestampMode;
 };
 
 export type AdaptersLaunchConfig = {

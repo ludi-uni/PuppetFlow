@@ -36,6 +36,8 @@ function resolveOscAdapterOptions(
     profile,
     customParams,
     customTransforms,
+    outputRateHz: config.outputRateHz,
+    timestampMode: config.timestampMode,
   };
 }
 
@@ -45,11 +47,10 @@ export function attachNodeAdapters(
 ): void {
   const vmc = adapters.vmc ?? DEFAULT_ADAPTERS.vmc;
   if (isEnabled(vmc, true) && vmc) {
-    runtime.attachAdapter(
-      new NodeVmcAdapter({
-        ...resolveOscAdapterOptions("vmc", vmc),
-      }),
-    );
+    const adapter = new NodeVmcAdapter({
+      ...resolveOscAdapterOptions("vmc", vmc),
+    });
+    runtime.attachAdapter(adapter).attachMotionAdapter(adapter);
   }
 
   const live2d = adapters.live2d;

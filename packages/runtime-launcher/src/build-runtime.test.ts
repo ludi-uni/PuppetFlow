@@ -11,6 +11,7 @@ describe("buildRuntime", () => {
 
     expect(runtime.getPlugins().length).toBeGreaterThan(0);
     expect(runtime.getAdapters().length).toBeGreaterThan(0);
+    expect(runtime.getMotionFrameAdapters().length).toBeGreaterThan(0);
   });
 
   it("attaches configured sources", () => {

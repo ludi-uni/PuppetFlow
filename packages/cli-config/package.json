@@ -19,6 +19,7 @@
     "test": "vitest run --dir ."
   },
   "dependencies": {
+    "@puppetflow/adapter-vmc": "workspace:*",
     "@puppetflow/core": "workspace:*",
     "@puppetflow/motion-mapper": "workspace:*",
     "@puppetflow/runtime-launcher": "workspace:*",

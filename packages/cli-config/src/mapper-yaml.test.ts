@@ -79,6 +79,8 @@ describe("mapper-yaml", () => {
         custom: {
           MouthA: { param: "ParamMouthA" },
         },
+        outputRateHz: 30,
+        timestampMode: "send-time",
       },
       "adapters.vmc",
     );
@@ -95,6 +97,8 @@ describe("mapper-yaml", () => {
     expect(launch.adapters?.vmc?.params?.mouthX).toBe("Jaw");
     expect(launch.adapters?.vmc?.transforms?.lookX).toBe("centered");
     expect(launch.adapters?.vmc?.custom?.MouthA).toEqual({ param: "ParamMouthA" });
+    expect(launch.adapters?.vmc?.outputRateHz).toBe(30);
+    expect(launch.adapters?.vmc?.timestampMode).toBe("send-time");
   });
 
   it("ignores transforms for unmapped standard keys", () => {

@@ -35,21 +35,36 @@ importers:
 
   apps/cli:
     dependencies:
+      '@puppetflow/adapter-vmc':
+        specifier: workspace:*
+        version: link:../../packages/adapter-vmc
       '@puppetflow/behavior-packs':
         specifier: workspace:*
         version: link:../../packages/behavior-packs
       '@puppetflow/cli-config':
         specifier: workspace:*
         version: link:../../packages/cli-config
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@puppetflow/micro-behavior':
         specifier: workspace:*
         version: link:../../packages/micro-behavior
+      '@puppetflow/motion-recording':
+        specifier: workspace:*
+        version: link:../../packages/motion-recording
       '@puppetflow/preset':
         specifier: workspace:*
         version: link:../../packages/preset
+      '@puppetflow/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@puppetflow/runtime-launcher':
         specifier: workspace:*
         version: link:../../packages/runtime-launcher
+      '@puppetflow/source-core':
+        specifier: workspace:*
+        version: link:../../packages/source-core
       commander:
         specifier: ^13.1.0
         version: 13.1.0
@@ -461,6 +476,9 @@ importers:
 
   packages/cli-config:
     dependencies:
+      '@puppetflow/adapter-vmc':
+        specifier: workspace:*
+        version: link:../adapter-vmc
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core
