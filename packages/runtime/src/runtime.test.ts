@@ -33,6 +33,66 @@ function createTestAdapter(update: Adapter["update"]): Adapter {
 }
 
 describe("PuppetFlowRuntime", () => {
+  it("processes latest source frames through an attached motion pipeline", async () => {
+    const sourceA: MotionSource = {
+      id: "source-a",
+      start: vi.fn(async (emit) => emit({ timestamp: 1, parameters: { a: 1 } })),
+      stop: vi.fn(async () => {}),
+    };
+    const sourceB: MotionSource = {
+      id: "source-b",
+      start: vi.fn(async (emit) => emit({ timestamp: 2, parameters: { b: 1 } })),
+      stop: vi.fn(async () => {}),
+    };
+    const processed = { timestamp: 3, parameters: { mixed: 1 } };
+    const pipeline = {
+      process: vi.fn(() => processed),
+      reset: vi.fn(),
+    };
+    const updateFrame = vi.fn(async () => {});
+    const adapter: MotionFrameAdapter = {
+      id: "frame-adapter",
+      initialize: vi.fn(async () => {}),
+      updateFrame,
+      dispose: vi.fn(async () => {}),
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(sourceA)
+      .attachMotionSource(sourceB)
+      .attachMotionPipeline(pipeline)
+      .attachMotionAdapter(adapter);
+
+    await runtime.start();
+
+    expect(pipeline.process).toHaveBeenCalledWith(
+      [
+        { sourceId: "source-a", frame: expect.objectContaining({ timestamp: 1 }) },
+        { sourceId: "source-b", frame: expect.objectContaining({ timestamp: 2 }) },
+      ],
+      expect.any(Number),
+    );
+    expect(updateFrame).toHaveBeenCalledWith(processed, expect.any(Number));
+
+    await runtime.stop();
+    expect(pipeline.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("isolates pipeline failures from legacy adapters", async () => {
+    const legacyUpdate = vi.fn(async () => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionPipeline({
+        process: vi.fn(() => {
+          throw new Error("pipeline failed");
+        }),
+        reset: vi.fn(),
+      })
+      .attachAdapter(createTestAdapter(legacyUpdate));
+
+    await runtime.start();
+    expect(legacyUpdate).toHaveBeenCalled();
+    await runtime.stop();
+  });
+
   it("starts motion sources and delivers latest frames in source attachment order", async () => {
     const frameA: MotionFrame = { timestamp: 1, blendShapes: { A: 0.1 } };
     const frameB: MotionFrame = { timestamp: 2, bones: { Head: {} } };

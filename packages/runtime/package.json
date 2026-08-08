@@ -27,6 +27,7 @@
     "@puppetflow/extension-bundled": "workspace:*",
     "@puppetflow/extension-core": "workspace:*",
     "@puppetflow/motion-graph": "workspace:*",
+    "@puppetflow/motion-pipeline": "workspace:*",
     "@puppetflow/preset": "workspace:*",
     "@puppetflow/source-core": "workspace:*",
     "@puppetflow/stateful-core": "workspace:*"

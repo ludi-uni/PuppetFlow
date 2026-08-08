@@ -29,6 +29,10 @@ import {
   type PresetExtensions,
 } from "@puppetflow/extension-core";
 import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
+import type {
+  MotionFrameInput,
+  MotionFramePipeline,
+} from "@puppetflow/motion-pipeline";
 import {
   createRuntimeStatefulRegistry,
   runStatefulNumber,
@@ -86,6 +90,7 @@ export class PuppetFlowRuntime {
   private readonly sources: StateSource[] = [];
   private readonly motionSources: MotionSource[] = [];
   private readonly latestMotionFrames = new Map<string, MotionFrame>();
+  private motionPipeline: MotionFramePipeline | undefined;
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
 
@@ -145,6 +150,11 @@ export class PuppetFlowRuntime {
     return this;
   }
 
+  attachMotionPipeline(pipeline: MotionFramePipeline): this {
+    this.motionPipeline = pipeline;
+    return this;
+  }
+
   getMicroBehaviorSnapshot(): MicroBehaviorSnapshot {
     return this.microBehavior.getSnapshot();
   }
@@ -159,6 +169,10 @@ export class PuppetFlowRuntime {
 
   getMotionSources(): readonly MotionSource[] {
     return this.motionSources;
+  }
+
+  getMotionPipeline(): MotionFramePipeline | undefined {
+    return this.motionPipeline;
   }
 
   getModifiers(): readonly MotionModifier[] {
@@ -247,6 +261,7 @@ export class PuppetFlowRuntime {
     await this.disposeAdapters();
     await this.disposeSources();
     await this.stopMotionSources();
+    this.resetMotionPipeline();
     this.motionOverride.clear();
     this.microBehavior.reset();
     this.statefulStore.reset();
@@ -693,27 +708,7 @@ export class PuppetFlowRuntime {
         }
       }
 
-      for (const source of this.motionSources) {
-        const latestFrame = this.latestMotionFrames.get(source.id);
-        if (!latestFrame) {
-          continue;
-        }
-
-        for (const adapter of this.motionFrameAdapters) {
-          if (!this.running) {
-            return;
-          }
-
-          try {
-            await adapter.updateFrame(cloneMotionFrame(latestFrame), deltaTime);
-          } catch (error) {
-            console.error(
-              `[PuppetFlowRuntime] motion frame adapter "${adapter.id}" update failed`,
-              error,
-            );
-          }
-        }
-      }
+      await this.dispatchMotionFrames(deltaTime);
 
       for (const listener of this.motionListeners) {
         listener(this.renderedMotion);
@@ -729,6 +724,68 @@ export class PuppetFlowRuntime {
       }
     } finally {
       this.tickInProgress = false;
+    }
+  }
+
+  private async dispatchMotionFrames(deltaTime: number): Promise<void> {
+    const inputs: MotionFrameInput[] = [];
+    for (const source of this.motionSources) {
+      const latestFrame = this.latestMotionFrames.get(source.id);
+      if (latestFrame) {
+        inputs.push({ sourceId: source.id, frame: cloneMotionFrame(latestFrame) });
+      }
+    }
+
+    if (inputs.length === 0) {
+      return;
+    }
+
+    if (this.motionPipeline) {
+      try {
+        const processed = this.motionPipeline.process(inputs, deltaTime);
+        if (processed) {
+          await this.updateMotionFrameAdapters(processed, deltaTime);
+        }
+      } catch (error) {
+        console.error("[PuppetFlowRuntime] motion pipeline failed", error);
+      }
+      return;
+    }
+
+    for (const input of inputs) {
+      await this.updateMotionFrameAdapters(input.frame, deltaTime);
+    }
+  }
+
+  private async updateMotionFrameAdapters(
+    frame: MotionFrame,
+    deltaTime: number,
+  ): Promise<void> {
+    for (const adapter of this.motionFrameAdapters) {
+      if (!this.running) {
+        return;
+      }
+
+      try {
+        await adapter.updateFrame(cloneMotionFrame(frame), deltaTime);
+      } catch (error) {
+        console.error(
+          `[PuppetFlowRuntime] motion frame adapter "${adapter.id}" update failed`,
+          error,
+        );
+      }
+    }
+  }
+
+  private resetMotionPipeline(): void {
+    if (!this.motionPipeline) {
+      return;
+    }
+
+    try {
+      this.motionPipeline.reset();
+    } catch (error) {
+      console.error("[PuppetFlowRuntime] motion pipeline reset failed", error);
     }
   }
 }

@@ -355,6 +355,19 @@ importers:
         specifier: ^4.19.4
         version: 4.22.4
 
+  examples/motion-mixer:
+    dependencies:
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../../packages/motion-pipeline
+    devDependencies:
+      tsx:
+        specifier: ^4.19.4
+        version: 4.22.4
+
   packages/adapter-core:
     dependencies:
       '@puppetflow/core':
@@ -538,6 +551,9 @@ importers:
       '@puppetflow/motion-graph':
         specifier: workspace:*
         version: link:../motion-graph
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../motion-pipeline
       '@puppetflow/stateful-core':
         specifier: workspace:*
         version: link:../stateful-core
