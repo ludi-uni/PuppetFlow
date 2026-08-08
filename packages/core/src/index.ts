@@ -31,6 +31,16 @@ export {
   addMotionState,
   mergeMotionState,
 } from "./merge-motion-state.js";
+export {
+  cloneMotionFrame,
+  normalizeMotionFrame,
+  type BoneId,
+  type BoneTransform,
+  type MotionFrame,
+  type MotionMetadata,
+  type Quaternion,
+  type Vec3,
+} from "./motion-frame.js";
 export { StateStore, type StateValue } from "./state-store.js";
 export {
   DEFAULT_PHONEME_SHAPES,
