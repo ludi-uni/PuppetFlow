@@ -10,7 +10,13 @@ import {
   normalizeQuaternion,
   quaternionDot,
 } from "./quaternion.js";
-import type { MotionFrameInput, MotionLayer, MotionMixer } from "./types.js";
+import type {
+  MotionChannelOwner,
+  MotionFrameInput,
+  MotionLayer,
+  MotionMixer,
+  MotionMixerInspection,
+} from "./types.js";
 
 interface Candidate<T> {
   value: T;
@@ -31,7 +37,104 @@ export function createMotionMixer(layers: readonly MotionLayer[] = []): MotionMi
     mix(inputs) {
       return mixFrames(inputs, layerMap);
     },
+    inspect(inputs) {
+      return inspectFrames(inputs, layerMap);
+    },
   };
+}
+
+function inspectFrames(
+  inputs: readonly MotionFrameInput[],
+  layerMap: ReadonlyMap<string, MotionLayer>,
+): MotionMixerInspection {
+  return {
+    bones: inspectBones(inputs, layerMap),
+    blendShapes: inspectNumericDomain(inputs, layerMap, "blendShapes"),
+    parameters: inspectNumericDomain(inputs, layerMap, "parameters"),
+  };
+}
+
+function inspectBones(
+  inputs: readonly MotionFrameInput[],
+  layerMap: ReadonlyMap<string, MotionLayer>,
+): Record<string, MotionChannelOwner[]> {
+  const boneIds = new Set<string>();
+  for (const { frame } of inputs) {
+    for (const boneId of Object.keys(frame.bones ?? {})) {
+      boneIds.add(boneId);
+    }
+  }
+
+  const result: Record<string, MotionChannelOwner[]> = {};
+  for (const boneId of boneIds) {
+    const candidates = inputs
+      .map(({ sourceId, frame }) => ({
+        sourceId,
+        layer: resolveLayer(sourceId, layerMap),
+        transform: frame.bones?.[boneId],
+      }))
+      .filter(
+        (candidate): candidate is {
+          sourceId: string;
+          layer: MotionLayer;
+          transform: NonNullable<typeof candidate.transform>;
+        } => candidate.transform !== undefined,
+      )
+      .filter(({ layer }) => isAllowed(layer.bones, boneId));
+    const owners = inspectCandidates(candidates.map(({ sourceId, layer }) => ({ sourceId, layer })));
+    if (owners.length > 0) {
+      result[boneId] = owners;
+    }
+  }
+  return result;
+}
+
+function inspectNumericDomain(
+  inputs: readonly MotionFrameInput[],
+  layerMap: ReadonlyMap<string, MotionLayer>,
+  domain: "blendShapes" | "parameters",
+): Record<string, MotionChannelOwner[]> {
+  const keys = new Set<string>();
+  for (const { frame } of inputs) {
+    for (const key of Object.keys(frame[domain] ?? {})) {
+      keys.add(key);
+    }
+  }
+
+  const result: Record<string, MotionChannelOwner[]> = {};
+  for (const key of keys) {
+    const candidates = inputs
+      .map(({ sourceId, frame }) => ({
+        sourceId,
+        layer: resolveLayer(sourceId, layerMap),
+        value: frame[domain]?.[key],
+      }))
+      .filter(({ value }) => value !== undefined)
+      .filter(({ layer }) => isAllowed(layer[domain], key));
+    const owners = inspectCandidates(candidates.map(({ sourceId, layer }) => ({ sourceId, layer })));
+    if (owners.length > 0) {
+      result[key] = owners;
+    }
+  }
+  return result;
+}
+
+function inspectCandidates(
+  candidates: readonly { sourceId: string; layer: MotionLayer }[],
+): MotionChannelOwner[] {
+  const eligible = candidates
+    .map(({ sourceId, layer }) => ({
+      sourceId,
+      priority: layer.priority,
+      weight: layer.weight ?? 1,
+    }))
+    .filter(({ weight }) => weight > 0);
+  if (eligible.length === 0) {
+    return [];
+  }
+
+  const highestPriority = Math.max(...eligible.map(({ priority }) => priority));
+  return eligible.filter(({ priority }) => priority === highestPriority);
 }
 
 function mixFrames(

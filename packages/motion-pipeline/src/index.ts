@@ -23,8 +23,10 @@ export type {
   MotionFrameFilter,
   MotionFrameInput,
   MotionFramePipeline,
+  MotionChannelOwner,
   MotionLayer,
   MotionMixer,
+  MotionMixerInspection,
   MotionRetargetBoneConfig,
   MotionRetargetProfile,
 } from "./types.js";

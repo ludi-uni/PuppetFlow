@@ -3,6 +3,75 @@ import { describe, expect, it } from "vitest";
 import { createMotionMixer } from "./mixer.js";
 
 describe("MotionMixer", () => {
+  it("reports highest-priority owners and weighted contributors", () => {
+    const mixer = createMotionMixer([
+      {
+        source: "body",
+        priority: 90,
+        bones: ["Hips"],
+        blendShapes: ["Smile"],
+        parameters: ["lean"],
+      },
+      { source: "webcam", priority: 110, bones: ["Head"] },
+      { source: "face-a", priority: 100, weight: 0.25, blendShapes: ["Smile"] },
+      { source: "face-b", priority: 100, weight: 0.75, blendShapes: ["Smile"] },
+      { source: "missing", priority: 200, bones: ["Missing"] },
+    ]);
+
+    const inspection = (
+      mixer as unknown as {
+        inspect(inputs: readonly unknown[]): {
+          bones: Record<string, unknown>;
+          blendShapes: Record<string, unknown>;
+          parameters: Record<string, unknown>;
+        };
+      }
+    ).inspect([
+      {
+        sourceId: "body",
+        frame: {
+          timestamp: 1,
+          bones: {
+            Hips: { position: { x: 0, y: 0, z: 0 } },
+            Head: { rotation: { x: 0, y: 0, z: 0, w: 1 } },
+          },
+          blendShapes: { Smile: 0.4 },
+          parameters: { lean: 0.2 },
+        },
+      },
+      {
+        sourceId: "webcam",
+        frame: {
+          timestamp: 2,
+          bones: { Head: { rotation: { x: 0, y: 0, z: 0, w: 1 } } },
+        },
+      },
+      {
+        sourceId: "face-a",
+        frame: { timestamp: 3, blendShapes: { Smile: 0.2 } },
+      },
+      {
+        sourceId: "face-b",
+        frame: { timestamp: 4, blendShapes: { Smile: 0.8 } },
+      },
+    ]);
+
+    expect(inspection.bones.Hips).toEqual([
+      { sourceId: "body", priority: 90, weight: 1 },
+    ]);
+    expect(inspection.bones.Head).toEqual([
+      { sourceId: "webcam", priority: 110, weight: 1 },
+    ]);
+    expect(inspection.blendShapes.Smile).toEqual([
+      { sourceId: "face-a", priority: 100, weight: 0.25 },
+      { sourceId: "face-b", priority: 100, weight: 0.75 },
+    ]);
+    expect(inspection.parameters).toEqual({
+      lean: [{ sourceId: "body", priority: 90, weight: 1 }],
+    });
+    expect(inspection.bones.Missing).toBeUndefined();
+  });
+
   it("lets the highest-priority source override a lower-priority source", () => {
     const mixer = createMotionMixer([
       { source: "idle", priority: 10 },

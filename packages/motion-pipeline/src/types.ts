@@ -19,6 +19,18 @@ export interface MotionLayer {
   parameters?: readonly string[];
 }
 
+export interface MotionChannelOwner {
+  sourceId: string;
+  priority: number;
+  weight: number;
+}
+
+export interface MotionMixerInspection {
+  bones: Record<string, MotionChannelOwner[]>;
+  blendShapes: Record<string, MotionChannelOwner[]>;
+  parameters: Record<string, MotionChannelOwner[]>;
+}
+
 export interface MotionFrameFilter {
   readonly id: string;
   apply(frame: MotionFrame, deltaTime: number): MotionFrame;
@@ -27,6 +39,7 @@ export interface MotionFrameFilter {
 
 export interface MotionMixer {
   mix(inputs: readonly MotionFrameInput[]): MotionFrame | undefined;
+  inspect?(inputs: readonly MotionFrameInput[]): MotionMixerInspection;
 }
 
 export interface MotionRetargetBoneConfig {
