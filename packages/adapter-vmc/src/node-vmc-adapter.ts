@@ -1,10 +1,11 @@
-import type { Adapter } from "@puppetflow/adapter-core";
+import type { Adapter, MotionFrameAdapter } from "@puppetflow/adapter-core";
+import type { MotionFrame } from "@puppetflow/core";
 import {
   profileFromParamNames,
   VMC_PROFILE,
   type MotionMapperProfile,
 } from "@puppetflow/motion-mapper";
-import { NodeOscAdapter } from "./node-osc-adapter.js";
+import { NodeOscAdapter, type OscTransport } from "./node-osc-adapter.js";
 import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT, type VmcAdapterConfig } from "./types.js";
 
 function resolveProfile(config: VmcAdapterConfig): MotionMapperProfile {
@@ -19,11 +20,16 @@ function resolveProfile(config: VmcAdapterConfig): MotionMapperProfile {
   return VMC_PROFILE;
 }
 
-export class NodeVmcAdapter implements Adapter {
+export interface NodeVmcAdapterConfig extends VmcAdapterConfig {
+  transport?: OscTransport;
+  now?: () => number;
+}
+
+export class NodeVmcAdapter implements Adapter, MotionFrameAdapter {
   readonly id = "vmc-node";
   private readonly inner: NodeOscAdapter;
 
-  constructor(config: VmcAdapterConfig = { mapping: {} }) {
+  constructor(config: NodeVmcAdapterConfig = { mapping: {} }) {
     this.inner = new NodeOscAdapter({
       id: "vmc-node",
       host: config.host ?? DEFAULT_VMC_HOST,
@@ -31,6 +37,10 @@ export class NodeVmcAdapter implements Adapter {
       profile: resolveProfile(config),
       customParams: config.customParams,
       customTransforms: config.customTransforms,
+      outputRateHz: config.outputRateHz,
+      timestampMode: config.timestampMode,
+      transport: config.transport,
+      now: config.now,
     });
   }
 
@@ -40,6 +50,10 @@ export class NodeVmcAdapter implements Adapter {
 
   update(motion: Parameters<Adapter["update"]>[0], deltaTime: number): Promise<void> {
     return this.inner.update(motion, deltaTime);
+  }
+
+  updateFrame(frame: MotionFrame, deltaTime: number): Promise<void> {
+    return this.inner.updateFrame(frame, deltaTime);
   }
 
   dispose(): Promise<void> {

@@ -1,6 +1,8 @@
 export { createOscMappingAdapter } from "./create-osc-adapter.js";
 export { NodeOscAdapter } from "./node-osc-adapter.js";
 export { NodeVmcAdapter } from "./node-vmc-adapter.js";
+export type { OscTransport } from "./node-osc-adapter.js";
+export type { NodeVmcAdapterConfig } from "./node-vmc-adapter.js";
 export {
   DEFAULT_VMC_HOST,
   DEFAULT_VMC_PORT,
