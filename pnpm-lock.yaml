@@ -551,9 +551,6 @@ importers:
       '@puppetflow/motion-graph':
         specifier: workspace:*
         version: link:../motion-graph
-      '@puppetflow/motion-pipeline':
-        specifier: workspace:*
-        version: link:../motion-pipeline
       '@puppetflow/stateful-core':
         specifier: workspace:*
         version: link:../stateful-core
@@ -618,6 +615,16 @@ importers:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
 
+  packages/motion-pipeline:
+    dependencies:
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
   packages/motion-recording:
     dependencies:
       '@puppetflow/core':
@@ -626,16 +633,6 @@ importers:
       '@puppetflow/source-core':
         specifier: workspace:*
         version: link:../source-core
-    devDependencies:
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
-
-  packages/motion-pipeline:
-    dependencies:
-      '@puppetflow/core':
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       tsup:
         specifier: ^8.5.0
@@ -847,6 +844,9 @@ importers:
       '@puppetflow/motion-graph':
         specifier: workspace:*
         version: link:../motion-graph
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../motion-pipeline
       '@puppetflow/preset':
         specifier: workspace:*
         version: link:../preset
