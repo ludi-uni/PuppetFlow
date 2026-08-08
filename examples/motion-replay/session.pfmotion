@@ -1,0 +1,4 @@
+{"type":"header","format":"puppetflow-motion","version":1,"timeUnit":"ms","metadata":{"example":"motion-replay"}}
+{"type":"frame","frame":{"timestamp":0,"blendShapes":{"Smile":0.1},"parameters":{"mouthX":0.2},"metadata":{"sourceId":"example","clock":"relative"}}}
+{"type":"frame","frame":{"timestamp":120,"bones":{"Head":{"position":{"x":0,"y":0.02,"z":0},"rotation":{"x":0,"y":0,"z":0,"w":1}}},"blendShapes":{"Smile":0.6},"parameters":{"mouthX":0.8},"metadata":{"sourceId":"example","clock":"relative"}}}
+{"type":"frame","frame":{"timestamp":240,"bones":{"Head":{"position":{"x":0,"y":0,"z":0},"rotation":{"x":0,"y":0.1,"z":0,"w":0.995}}},"blendShapes":{"Smile":0.2},"parameters":{"mouthX":0.3},"metadata":{"sourceId":"example","clock":"relative"}}}
