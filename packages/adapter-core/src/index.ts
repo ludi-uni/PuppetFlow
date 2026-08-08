@@ -1,1 +1,6 @@
-export { type Adapter, type LegacyAdapter, wrapLegacyAdapter } from "./adapter.js";
+export {
+  type Adapter,
+  type LegacyAdapter,
+  type MotionFrameAdapter,
+  wrapLegacyAdapter,
+} from "./adapter.js";

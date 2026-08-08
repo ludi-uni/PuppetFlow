@@ -1,9 +1,16 @@
-import type { MotionState } from "@puppetflow/core";
+import type { MotionFrame, MotionState } from "@puppetflow/core";
 
 export interface Adapter {
   readonly id: string;
   initialize(): Promise<void>;
   update(motion: MotionState, deltaTime: number): Promise<void>;
+  dispose(): Promise<void>;
+}
+
+export interface MotionFrameAdapter {
+  readonly id: string;
+  initialize(): Promise<void>;
+  updateFrame(frame: MotionFrame, deltaTime: number): Promise<void>;
   dispose(): Promise<void>;
 }
 

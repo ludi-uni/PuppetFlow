@@ -1,3 +1,5 @@
+import type { BoneTransform } from "@puppetflow/core";
+
 function encodeString(value: string): Uint8Array {
   const bytes = new TextEncoder().encode(`${value}\0`);
   const padding = (4 - (bytes.length % 4)) % 4;
@@ -31,5 +33,28 @@ export function encodeBlendShapeMessage(blendName: string, value: number): Uint8
     encodeString(",sf"),
     encodeString(blendName),
     encodeFloat(value),
+  ]);
+}
+
+export function encodeBonePoseMessage(
+  boneName: string,
+  transform: BoneTransform,
+): Uint8Array | null {
+  const position = transform.position;
+  const rotation = transform.rotation;
+  if (!position || !rotation) {
+    return null;
+  }
+
+  const values = [position.x, position.y, position.z, rotation.x, rotation.y, rotation.z, rotation.w];
+  if (values.some((value) => !Number.isFinite(value))) {
+    throw new RangeError("VMC Bone/Pos values must be finite");
+  }
+
+  return concatChunks([
+    encodeString("/VMC/Ext/Bone/Pos"),
+    encodeString(",sfffffff"),
+    encodeString(boneName),
+    ...values.map(encodeFloat),
   ]);
 }
