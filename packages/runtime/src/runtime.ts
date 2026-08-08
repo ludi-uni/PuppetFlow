@@ -1,12 +1,15 @@
-import type { Adapter } from "@puppetflow/adapter-core";
+import type { Adapter, MotionFrameAdapter } from "@puppetflow/adapter-core";
 import {
   executeBehaviorWithInvocations,
   type BehaviorBlock,
 } from "@puppetflow/behavior";
 import {
   addMotionState,
+  cloneMotionFrame,
   createEmptyMotionState,
   TimelineStore,
+  normalizeMotionFrame,
+  type MotionFrame,
   type BehaviorPlugin,
   type ChannelStore,
   type MotionState,
@@ -40,7 +43,7 @@ import {
   MicroBehaviorEngine,
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
-import type { StateSource } from "@puppetflow/source-core";
+import type { MotionSource, StateSource } from "@puppetflow/source-core";
 import { MotionOverrideStore } from "@puppetflow/source-core";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
 import { RuntimeStateStore } from "./state-store.js";
@@ -78,8 +81,11 @@ export class PuppetFlowRuntime {
 
   private readonly plugins: BehaviorPlugin[] = [];
   private readonly adapters: Adapter[] = [];
+  private readonly motionFrameAdapters: MotionFrameAdapter[] = [];
   private readonly modifiers: MotionModifier[] = [];
   private readonly sources: StateSource[] = [];
+  private readonly motionSources: MotionSource[] = [];
+  private readonly latestMotionFrames = new Map<string, MotionFrame>();
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
 
@@ -104,7 +110,9 @@ export class PuppetFlowRuntime {
   private tickInProgress = false;
   private lastTickTime: number | null = null;
   private adaptersInitialized = false;
+  private readonly initializedAdapterObjects = new Set<Adapter | MotionFrameAdapter>();
   private sourcesInitialized = false;
+  private motionSourcesStarted = false;
   private readonly motionOverride = new MotionOverrideStore();
 
   use(plugin: BehaviorPlugin): this {
@@ -114,6 +122,11 @@ export class PuppetFlowRuntime {
 
   attachAdapter(adapter: Adapter): this {
     this.adapters.push(adapter);
+    return this;
+  }
+
+  attachMotionAdapter(adapter: MotionFrameAdapter): this {
+    this.motionFrameAdapters.push(adapter);
     return this;
   }
 
@@ -127,12 +140,25 @@ export class PuppetFlowRuntime {
     return this;
   }
 
+  attachMotionSource(source: MotionSource): this {
+    this.motionSources.push(source);
+    return this;
+  }
+
   getMicroBehaviorSnapshot(): MicroBehaviorSnapshot {
     return this.microBehavior.getSnapshot();
   }
 
   getAdapters(): readonly Adapter[] {
     return this.adapters;
+  }
+
+  getMotionFrameAdapters(): readonly MotionFrameAdapter[] {
+    return this.motionFrameAdapters;
+  }
+
+  getMotionSources(): readonly MotionSource[] {
+    return this.motionSources;
   }
 
   getModifiers(): readonly MotionModifier[] {
@@ -186,6 +212,7 @@ export class PuppetFlowRuntime {
 
     this.running = true;
     this.lastTickTime = null;
+    await this.startMotionSources();
     await this.tick();
     this.intervalId = setInterval(() => {
       void this.tick();
@@ -219,6 +246,7 @@ export class PuppetFlowRuntime {
 
     await this.disposeAdapters();
     await this.disposeSources();
+    await this.stopMotionSources();
     this.motionOverride.clear();
     this.microBehavior.reset();
     this.statefulStore.reset();
@@ -299,7 +327,15 @@ export class PuppetFlowRuntime {
   }
 
   private async initializeAdapters(): Promise<void> {
-    for (const adapter of this.adapters) {
+    const adapters: Array<Adapter | MotionFrameAdapter> = [
+      ...this.adapters,
+      ...this.motionFrameAdapters,
+    ];
+    for (const adapter of adapters) {
+      if (this.initializedAdapterObjects.has(adapter)) {
+        continue;
+      }
+      this.initializedAdapterObjects.add(adapter);
       try {
         await adapter.initialize();
       } catch (error) {
@@ -314,7 +350,7 @@ export class PuppetFlowRuntime {
   }
 
   private async disposeAdapters(): Promise<void> {
-    for (const adapter of this.adapters) {
+    for (const adapter of this.initializedAdapterObjects) {
       try {
         await adapter.dispose();
       } catch (error) {
@@ -326,6 +362,7 @@ export class PuppetFlowRuntime {
     }
 
     this.adaptersInitialized = false;
+    this.initializedAdapterObjects.clear();
   }
 
   private async initializeSources(): Promise<void> {
@@ -356,6 +393,56 @@ export class PuppetFlowRuntime {
     }
 
     this.sourcesInitialized = false;
+  }
+
+  private async startMotionSources(): Promise<void> {
+    for (const source of this.motionSources) {
+      try {
+        await source.start((frame) => {
+          this.acceptMotionFrame(source, frame);
+        });
+      } catch (error) {
+        console.error(
+          `[PuppetFlowRuntime] motion source "${source.id}" start failed`,
+          error,
+        );
+      }
+    }
+    this.motionSourcesStarted = true;
+  }
+
+  private async stopMotionSources(): Promise<void> {
+    if (!this.motionSourcesStarted) {
+      return;
+    }
+
+    for (const source of this.motionSources) {
+      try {
+        await source.stop();
+      } catch (error) {
+        console.error(
+          `[PuppetFlowRuntime] motion source "${source.id}" stop failed`,
+          error,
+        );
+      }
+    }
+    this.motionSourcesStarted = false;
+    this.latestMotionFrames.clear();
+  }
+
+  private acceptMotionFrame(source: MotionSource, frame: MotionFrame): void {
+    if (!this.running) {
+      return;
+    }
+
+    try {
+      this.latestMotionFrames.set(source.id, normalizeMotionFrame(frame));
+    } catch (error) {
+      console.error(
+        `[PuppetFlowRuntime] motion source "${source.id}" frame rejected`,
+        error,
+      );
+    }
   }
 
   private async tick(): Promise<void> {
@@ -603,6 +690,28 @@ export class PuppetFlowRuntime {
             `[PuppetFlowRuntime] adapter "${adapter.id}" update failed`,
             error,
           );
+        }
+      }
+
+      for (const source of this.motionSources) {
+        const latestFrame = this.latestMotionFrames.get(source.id);
+        if (!latestFrame) {
+          continue;
+        }
+
+        for (const adapter of this.motionFrameAdapters) {
+          if (!this.running) {
+            return;
+          }
+
+          try {
+            await adapter.updateFrame(cloneMotionFrame(latestFrame), deltaTime);
+          } catch (error) {
+            console.error(
+              `[PuppetFlowRuntime] motion frame adapter "${adapter.id}" update failed`,
+              error,
+            );
+          }
         }
       }
 

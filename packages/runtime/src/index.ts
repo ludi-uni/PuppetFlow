@@ -1,4 +1,5 @@
-export type { StateSource } from "@puppetflow/source-core";
+export type { MotionSource, StateSource } from "@puppetflow/source-core";
+export type { MotionFrameAdapter } from "@puppetflow/adapter-core";
 export type {
   BehaviorId,
   MicroBehaviorId,

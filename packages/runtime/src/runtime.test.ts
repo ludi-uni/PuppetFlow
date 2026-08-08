@@ -1,10 +1,11 @@
-import type { Adapter } from "@puppetflow/adapter-core";
-import type { BehaviorPlugin, MotionState, PluginInputStores } from "@puppetflow/core";
+import type { Adapter, MotionFrameAdapter } from "@puppetflow/adapter-core";
+import type { BehaviorPlugin, MotionFrame, MotionState, PluginInputStores } from "@puppetflow/core";
 import { SmoothingModifier } from "@puppetflow/modifier";
 import { loadPreset } from "@puppetflow/preset";
 import { describe, expect, it, vi } from "vitest";
 import { GazePlugin } from "@puppetflow/plugin-gaze";
 import { StatefulStore } from "@puppetflow/stateful-core";
+import type { MotionSource } from "@puppetflow/source-core";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 class TestPlugin implements BehaviorPlugin {
@@ -27,6 +28,73 @@ function createTestAdapter(update: Adapter["update"]): Adapter {
 }
 
 describe("PuppetFlowRuntime", () => {
+  it("starts motion sources and delivers latest frames in source attachment order", async () => {
+    const frameA: MotionFrame = { timestamp: 1, blendShapes: { A: 0.1 } };
+    const frameB: MotionFrame = { timestamp: 2, bones: { Head: {} } };
+    const sourceA: MotionSource = {
+      id: "source-a",
+      start: vi.fn(async (emit) => emit(frameA)),
+      stop: vi.fn(async () => {}),
+    };
+    const sourceB: MotionSource = {
+      id: "source-b",
+      start: vi.fn(async (emit) => emit(frameB)),
+      stop: vi.fn(async () => {}),
+    };
+    const updateFrame = vi.fn(async (_frame: MotionFrame, _deltaTime: number) => {});
+    const adapter: MotionFrameAdapter = {
+      id: "frame-adapter",
+      initialize: vi.fn(async () => {}),
+      updateFrame,
+      dispose: vi.fn(async () => {}),
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(sourceA)
+      .attachMotionSource(sourceB)
+      .attachMotionAdapter(adapter);
+
+    await runtime.start();
+
+    expect(sourceA.start).toHaveBeenCalledTimes(1);
+    expect(sourceB.start).toHaveBeenCalledTimes(1);
+    expect(updateFrame.mock.calls.map(([frame]) => frame.timestamp)).toEqual([1, 2]);
+    expect(runtime.getMotionSources()).toEqual([sourceA, sourceB]);
+    expect(runtime.getMotionFrameAdapters()).toEqual([adapter]);
+
+    await runtime.stop();
+
+    expect(sourceA.stop).toHaveBeenCalledTimes(1);
+    expect(sourceB.stop).toHaveBeenCalledTimes(1);
+    expect((runtime as unknown as { latestMotionFrames: Map<string, MotionFrame> }).latestMotionFrames.size).toBe(0);
+  });
+
+  it("initializes and disposes one object once when it is both legacy and frame-capable", async () => {
+    const adapter: Adapter & MotionFrameAdapter = {
+      id: "dual-adapter",
+      initialize: vi.fn(async () => {}),
+      update: vi.fn(async () => {}),
+      updateFrame: vi.fn(async () => {}),
+      dispose: vi.fn(async () => {}),
+    };
+    const source: MotionSource = {
+      id: "source",
+      start: vi.fn(async (emit) => emit({ timestamp: 0, blendShapes: { Smile: 0.4 } })),
+      stop: vi.fn(async () => {}),
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachAdapter(adapter)
+      .attachMotionAdapter(adapter)
+      .attachMotionSource(source);
+
+    await runtime.start();
+    await runtime.stop();
+
+    expect(adapter.initialize).toHaveBeenCalledTimes(1);
+    expect(adapter.dispose).toHaveBeenCalledTimes(1);
+    expect(adapter.update).toHaveBeenCalled();
+    expect(adapter.updateFrame).toHaveBeenCalled();
+  });
+
   it("adds plugin outputs and notifies adapters with deltaTime", async () => {
     const update = vi.fn(async () => {});
     const adapter = createTestAdapter(update);
