@@ -1,0 +1,17 @@
+{
+  "name": "@puppetflow/example-motion-mixer",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx pipeline.ts"
+  },
+  "dependencies": {
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/motion-pipeline": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}
