@@ -1,4 +1,4 @@
-import { cloneMotionFrame, type MotionFrame } from "@puppetflow/core";
+import { cloneMotionFrame } from "@puppetflow/core";
 import type { MotionFrameEmitter, MotionSource } from "@puppetflow/source-core";
 import { readMotionRecording } from "./motion-recording.js";
 
