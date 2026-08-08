@@ -15,6 +15,10 @@ export {
   type MotionFilterPipeline,
   type MotionFilterScope,
 } from "./filters.js";
+export {
+  createMotionFramePipeline,
+  type MotionFramePipelineOptions,
+} from "./pipeline.js";
 export type {
   MotionFrameFilter,
   MotionFrameInput,
