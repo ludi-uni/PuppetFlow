@@ -49,6 +49,10 @@ import {
 } from "@puppetflow/micro-behavior";
 import type { MotionSource, StateSource } from "@puppetflow/source-core";
 import { MotionOverrideStore } from "@puppetflow/source-core";
+import {
+  applyMotionFailSafe,
+  type MotionFailSafeOptions,
+} from "./motion-failsafe.js";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
 import { RuntimeStateStore } from "./state-store.js";
 
@@ -77,6 +81,21 @@ function now(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
+function pruneEventTimes(times: number[], currentTime: number): void {
+  const cutoff = currentTime - 1000;
+  while (times.length > 0 && times[0]! < cutoff) {
+    times.shift();
+  }
+}
+
+interface MotionSourceHealth {
+  connected: boolean;
+  stale: boolean;
+  lastFrameAt?: number;
+  lastFrameTimestamp?: number;
+  receiptTimes: number[];
+}
+
 export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
@@ -90,7 +109,9 @@ export class PuppetFlowRuntime {
   private readonly sources: StateSource[] = [];
   private readonly motionSources: MotionSource[] = [];
   private readonly latestMotionFrames = new Map<string, MotionFrame>();
+  private readonly motionSourceHealth = new Map<string, MotionSourceHealth>();
   private motionPipeline: MotionFramePipeline | undefined;
+  private motionFailSafeOptions: MotionFailSafeOptions | undefined;
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
 
@@ -147,6 +168,11 @@ export class PuppetFlowRuntime {
 
   attachMotionSource(source: MotionSource): this {
     this.motionSources.push(source);
+    this.motionSourceHealth.set(source.id, {
+      connected: false,
+      stale: false,
+      receiptTimes: [],
+    });
     return this;
   }
 
@@ -173,6 +199,18 @@ export class PuppetFlowRuntime {
 
   getMotionPipeline(): MotionFramePipeline | undefined {
     return this.motionPipeline;
+  }
+
+  configureMotionFailSafe(options: MotionFailSafeOptions): this {
+    applyMotionFailSafe({ timestamp: 0 }, 0, options);
+    this.motionFailSafeOptions = { ...options };
+    return this;
+  }
+
+  getMotionFailSafe(): MotionFailSafeOptions | undefined {
+    return this.motionFailSafeOptions
+      ? { ...this.motionFailSafeOptions }
+      : undefined;
   }
 
   getModifiers(): readonly MotionModifier[] {
@@ -412,15 +450,26 @@ export class PuppetFlowRuntime {
 
   private async startMotionSources(): Promise<void> {
     for (const source of this.motionSources) {
+      const health = this.motionSourceHealth.get(source.id);
+      if (health) {
+        health.connected = false;
+        health.stale = false;
+      }
       try {
         await source.start((frame) => {
           this.acceptMotionFrame(source, frame);
         });
+        if (health) {
+          health.connected = true;
+        }
       } catch (error) {
         console.error(
           `[PuppetFlowRuntime] motion source "${source.id}" start failed`,
           error,
         );
+        if (health) {
+          health.connected = false;
+        }
       }
     }
     this.motionSourcesStarted = true;
@@ -440,6 +489,14 @@ export class PuppetFlowRuntime {
           error,
         );
       }
+      const health = this.motionSourceHealth.get(source.id);
+      if (health) {
+        health.connected = false;
+        health.stale = false;
+        health.lastFrameAt = undefined;
+        health.lastFrameTimestamp = undefined;
+        health.receiptTimes.length = 0;
+      }
     }
     this.motionSourcesStarted = false;
     this.latestMotionFrames.clear();
@@ -451,7 +508,18 @@ export class PuppetFlowRuntime {
     }
 
     try {
-      this.latestMotionFrames.set(source.id, normalizeMotionFrame(frame));
+      const normalized = normalizeMotionFrame(frame);
+      this.latestMotionFrames.set(source.id, normalized);
+      const health = this.motionSourceHealth.get(source.id);
+      if (health) {
+        const receivedAt = now();
+        health.connected = true;
+        health.stale = false;
+        health.lastFrameAt = receivedAt;
+        health.lastFrameTimestamp = normalized.timestamp;
+        health.receiptTimes.push(receivedAt);
+        pruneEventTimes(health.receiptTimes, receivedAt);
+      }
     } catch (error) {
       console.error(
         `[PuppetFlowRuntime] motion source "${source.id}" frame rejected`,
@@ -729,10 +797,24 @@ export class PuppetFlowRuntime {
 
   private async dispatchMotionFrames(deltaTime: number): Promise<void> {
     const inputs: MotionFrameInput[] = [];
+    const currentTime = now();
     for (const source of this.motionSources) {
       const latestFrame = this.latestMotionFrames.get(source.id);
       if (latestFrame) {
-        inputs.push({ sourceId: source.id, frame: cloneMotionFrame(latestFrame) });
+        const health = this.motionSourceHealth.get(source.id);
+        const ageMs =
+          health?.lastFrameAt === undefined
+            ? 0
+            : Math.max(0, currentTime - health.lastFrameAt);
+        const safe = this.motionFailSafeOptions
+          ? applyMotionFailSafe(latestFrame, ageMs, this.motionFailSafeOptions)
+          : { stale: false, frame: cloneMotionFrame(latestFrame) };
+        if (health) {
+          health.stale = safe.stale;
+        }
+        if (safe.frame) {
+          inputs.push({ sourceId: source.id, frame: safe.frame });
+        }
       }
     }
 

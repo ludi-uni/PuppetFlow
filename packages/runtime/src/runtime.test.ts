@@ -93,6 +93,117 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
   });
 
+  it("omits stale source frames when fail-safe disables the source", async () => {
+    const process = vi.fn(() => ({ timestamp: 1, parameters: { value: 1 } }));
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "stale-source",
+        start: vi.fn(async (emit) => emit({ timestamp: 1, parameters: { value: 1 } })),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionPipeline({ process, reset: vi.fn() })
+      .configureMotionFailSafe({
+        timeoutMs: 0,
+        action: "disable-source",
+      });
+
+    await runtime.start();
+
+    expect(process).not.toHaveBeenCalled();
+    await runtime.stop();
+  });
+
+  it("holds the latest frame when fail-safe marks a source stale", async () => {
+    const updateFrame = vi.fn(async () => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "stale-source",
+        start: vi.fn(async (emit) => emit({ timestamp: 1, parameters: { value: 1 } })),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionAdapter({
+        id: "frame-adapter",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      })
+      .configureMotionFailSafe({
+        timeoutMs: 0,
+        action: "hold-last-frame",
+      });
+
+    await runtime.start();
+
+    expect(updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ parameters: { value: 1 } }),
+      expect.any(Number),
+    );
+    await runtime.stop();
+  });
+
+  it("blends stale source frames to neutral immediately when configured", async () => {
+    const updateFrame = vi.fn(async () => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "stale-source",
+        start: vi.fn(async (emit) => emit({ timestamp: 1, parameters: { value: 1 } })),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionAdapter({
+        id: "frame-adapter",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      })
+      .configureMotionFailSafe({
+        timeoutMs: 0,
+        action: "blend-to-neutral",
+        transitionMs: 0,
+      });
+
+    await runtime.start();
+
+    expect(updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ parameters: { value: 0 } }),
+      expect.any(Number),
+    );
+    await runtime.stop();
+  });
+
+  it("does not reuse a stopped source frame on the next start", async () => {
+    let startCount = 0;
+    const updateFrame = vi.fn(async () => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource({
+        id: "one-shot-source",
+        start: vi.fn(async (emit) => {
+          startCount += 1;
+          if (startCount === 1) {
+            emit({ timestamp: 1, parameters: { value: 1 } });
+          }
+        }),
+        stop: vi.fn(async () => {}),
+      })
+      .attachMotionAdapter({
+        id: "frame-adapter",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      })
+      .configureMotionFailSafe({
+        timeoutMs: 1000,
+        action: "hold-last-frame",
+      });
+
+    await runtime.start();
+    await runtime.stop();
+    updateFrame.mockClear();
+    await runtime.start();
+
+    expect(updateFrame).not.toHaveBeenCalled();
+    await runtime.stop();
+  });
+
   it("starts motion sources and delivers latest frames in source attachment order", async () => {
     const frameA: MotionFrame = { timestamp: 1, blendShapes: { A: 0.1 } };
     const frameB: MotionFrame = { timestamp: 2, bones: { Head: {} } };
