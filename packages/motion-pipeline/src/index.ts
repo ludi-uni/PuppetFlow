@@ -6,6 +6,7 @@ export {
   quaternionNlerp,
 } from "./quaternion.js";
 export { createMotionMixer } from "./mixer.js";
+export { applyRetarget } from "./retarget.js";
 export type {
   MotionFrameFilter,
   MotionFrameInput,
