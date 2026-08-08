@@ -1,10 +1,7 @@
 import { createWriteStream, createReadStream, type WriteStream } from "node:fs";
 import { createInterface } from "node:readline";
 import { once } from "node:events";
-import {
-  normalizeMotionFrame,
-  type MotionFrame,
-} from "@puppetflow/core";
+import { normalizeMotionFrame, type MotionFrame } from "@puppetflow/core";
 
 export interface MotionRecordingHeader {
   type: "header";
@@ -64,7 +61,9 @@ export class MotionFrameRecorder {
     await finishStream(stream);
   }
 
-  private enqueue(record: MotionRecordingHeader | { type: "frame"; frame: MotionFrame }): Promise<void> {
+  private enqueue(
+    record: MotionRecordingHeader | { type: "frame"; frame: MotionFrame },
+  ): Promise<void> {
     const line = `${JSON.stringify(record)}\n`;
     this.writeQueue = this.writeQueue.then(async () => {
       if (!this.stream) {
@@ -128,7 +127,10 @@ export async function* readMotionRecording(
   }
 }
 
-function validateHeader(value: unknown, lineNumber: number): asserts value is MotionRecordingHeader {
+function validateHeader(
+  value: unknown,
+  lineNumber: number,
+): asserts value is MotionRecordingHeader {
   if (
     !isRecord(value) ||
     value.type !== "header" ||

@@ -56,7 +56,8 @@ export function encodeOscBundle(
   timetag: OscTimetagOptions = {},
 ): Uint8Array {
   const tag = resolveOscTimetag(timetag);
-  const totalLength = 16 + messages.reduce((total, message) => total + 4 + message.length, 0);
+  const totalLength =
+    16 + messages.reduce((total, message) => total + 4 + message.length, 0);
   const bundle = new Uint8Array(totalLength);
   bundle.set(new TextEncoder().encode("#bundle\0"), 0);
   bundle.set(tag, 8);

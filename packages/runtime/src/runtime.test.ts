@@ -1,5 +1,10 @@
 import type { Adapter, MotionFrameAdapter } from "@puppetflow/adapter-core";
-import type { BehaviorPlugin, MotionFrame, MotionState, PluginInputStores } from "@puppetflow/core";
+import type {
+  BehaviorPlugin,
+  MotionFrame,
+  MotionState,
+  PluginInputStores,
+} from "@puppetflow/core";
 import { SmoothingModifier } from "@puppetflow/modifier";
 import { loadPreset } from "@puppetflow/preset";
 import { describe, expect, it, vi } from "vitest";
@@ -65,7 +70,10 @@ describe("PuppetFlowRuntime", () => {
 
     expect(sourceA.stop).toHaveBeenCalledTimes(1);
     expect(sourceB.stop).toHaveBeenCalledTimes(1);
-    expect((runtime as unknown as { latestMotionFrames: Map<string, MotionFrame> }).latestMotionFrames.size).toBe(0);
+    expect(
+      (runtime as unknown as { latestMotionFrames: Map<string, MotionFrame> })
+        .latestMotionFrames.size,
+    ).toBe(0);
   });
 
   it("initializes and disposes one object once when it is both legacy and frame-capable", async () => {

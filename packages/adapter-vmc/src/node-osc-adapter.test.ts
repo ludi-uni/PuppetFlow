@@ -91,7 +91,10 @@ describe("NodeOscAdapter.updateFrame", () => {
       now: () => 1_800_000_000_000,
     });
 
-    await adapter.updateFrame({ timestamp: 1_700_000_000_000, blendShapes: { Smile: 0.5 } }, 0);
+    await adapter.updateFrame(
+      { timestamp: 1_700_000_000_000, blendShapes: { Smile: 0.5 } },
+      0,
+    );
     const fallbackBundle = sent[0];
     await adapter.updateFrame(
       {
@@ -102,9 +105,11 @@ describe("NodeOscAdapter.updateFrame", () => {
       0,
     );
 
-    expect(new DataView(fallbackBundle.buffer, fallbackBundle.byteOffset).getUint32(8)).not.toBe(
+    expect(
+      new DataView(fallbackBundle.buffer, fallbackBundle.byteOffset).getUint32(8),
+    ).not.toBe(0xe8fe6f80);
+    expect(new DataView(sent[1].buffer, sent[1].byteOffset).getUint32(8)).toBe(
       0xe8fe6f80,
     );
-    expect(new DataView(sent[1].buffer, sent[1].byteOffset).getUint32(8)).toBe(0xe8fe6f80);
   });
 });

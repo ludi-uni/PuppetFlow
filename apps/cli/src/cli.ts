@@ -47,11 +47,8 @@ export function createProgram(actions: CliActions = defaultActions): Command {
 
   program
     .command("replay <input>")
-    .description("Replay canonical motion frames").option(
-      "--speed <factor>",
-      "Playback speed factor",
-      parsePositiveNumber,
-    )
+    .description("Replay canonical motion frames")
+    .option("--speed <factor>", "Playback speed factor", parsePositiveNumber)
     .option("--loop", "Loop at end of recording")
     .option(
       "--start-offset <ms>",
@@ -92,14 +89,25 @@ function addRunOptions(command: Command): Command {
     .option("--vrm", "Enable VRM OSC adapter")
     .option("--vrm-host <host>", "VRM OSC host")
     .option("--vrm-port <port>", "VRM OSC port", parsePort)
-    .option("--websocket-port <port>", "Enable WebSocket motion broadcast on port", parsePort)
+    .option(
+      "--websocket-port <port>",
+      "Enable WebSocket motion broadcast on port",
+      parsePort,
+    )
     .option("--no-websocket", "Disable WebSocket adapter from config")
     .option("--no-logger", "Disable throttled motion logger")
-    .option("--logger-throttle-ms <ms>", "Logger throttle interval", parseNonNegativeInt)
+    .option(
+      "--logger-throttle-ms <ms>",
+      "Logger throttle interval",
+      parseNonNegativeInt,
+    )
     .option("--behavior-port <port>", "Enable Behavior HTTP API on port", parsePort)
     .option("--behavior-host <host>", "Behavior HTTP API bind host")
     .option("--no-behavior-api", "Disable Behavior HTTP API")
-    .option("--micro-behaviors <path>", "Load custom micro behaviors from .pfmicrobehaviors JSON");
+    .option(
+      "--micro-behaviors <path>",
+      "Load custom micro behaviors from .pfmicrobehaviors JSON",
+    );
 }
 
 function toRunOptions(options: Record<string, unknown>): RunCliOptions {

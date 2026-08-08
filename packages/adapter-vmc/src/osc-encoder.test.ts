@@ -21,7 +21,9 @@ function readFloatArguments(packet: Uint8Array): number[] {
   offset = afterBoneName;
 
   const view = new DataView(packet.buffer, packet.byteOffset, packet.byteLength);
-  return Array.from({ length: 7 }, (_, index) => view.getFloat32(offset + index * 4, false));
+  return Array.from({ length: 7 }, (_, index) =>
+    view.getFloat32(offset + index * 4, false),
+  );
 }
 
 describe("encodeBlendShapeMessage", () => {
@@ -41,7 +43,9 @@ describe("encodeBonePoseMessage", () => {
     });
 
     expect(packet).not.toBeNull();
-    expect(new TextDecoder().decode(packet as Uint8Array)).toContain("/VMC/Ext/Bone/Pos");
+    expect(new TextDecoder().decode(packet as Uint8Array)).toContain(
+      "/VMC/Ext/Bone/Pos",
+    );
     expect(readFloatArguments(packet as Uint8Array)).toEqual([
       1,
       2,

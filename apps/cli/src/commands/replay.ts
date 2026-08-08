@@ -15,7 +15,10 @@ export function validateReplayOptions(options: ReplayCliOptions): ReplayCliOptio
   if (!options.input.trim()) {
     throw new Error("Replay input path is required.");
   }
-  if (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0)) {
+  if (
+    options.speed !== undefined &&
+    (!Number.isFinite(options.speed) || options.speed <= 0)
+  ) {
     throw new Error("Replay speed must be a positive number.");
   }
   if (
@@ -26,7 +29,9 @@ export function validateReplayOptions(options: ReplayCliOptions): ReplayCliOptio
   }
   if (
     options.vmcPort !== undefined &&
-    (!Number.isInteger(options.vmcPort) || options.vmcPort < 1 || options.vmcPort > 65535)
+    (!Number.isInteger(options.vmcPort) ||
+      options.vmcPort < 1 ||
+      options.vmcPort > 65535)
   ) {
     throw new Error("Replay VMC port must be between 1 and 65535.");
   }

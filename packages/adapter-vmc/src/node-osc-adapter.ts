@@ -14,11 +14,7 @@ import {
 } from "@puppetflow/motion-mapper";
 import { encodeBlendShapeMessage, encodeBonePoseMessage } from "./osc-encoder.js";
 import { encodeOscBundle } from "./osc-bundle.js";
-import {
-  DEFAULT_VMC_HOST,
-  DEFAULT_VMC_PORT,
-  type VmcTimestampMode,
-} from "./types.js";
+import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT, type VmcTimestampMode } from "./types.js";
 
 export interface OscTransport {
   initialize?(): void | Promise<void>;
@@ -190,7 +186,9 @@ function mapFrameParameters(
     }
   }
   motion.custom = Object.fromEntries(
-    Object.entries(parameters).filter(([key]) => !MOTION_STATE_KEYS.includes(key as (typeof MOTION_STATE_KEYS)[number])),
+    Object.entries(parameters).filter(
+      ([key]) => !MOTION_STATE_KEYS.includes(key as (typeof MOTION_STATE_KEYS)[number]),
+    ),
   );
 
   const mapped = mapMotion(motion, profile);

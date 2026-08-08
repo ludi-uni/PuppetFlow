@@ -21,7 +21,10 @@ export class MotionStateFrameSource implements MotionSource {
   private emitter: MotionFrameEmitter | undefined;
   private startedAt = 0;
 
-  constructor(readState: () => MotionState, options: MotionStateFrameSourceOptions = {}) {
+  constructor(
+    readState: () => MotionState,
+    options: MotionStateFrameSourceOptions = {},
+  ) {
     if (
       options.intervalMs !== undefined &&
       (!Number.isFinite(options.intervalMs) || options.intervalMs <= 0)

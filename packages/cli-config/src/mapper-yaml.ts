@@ -200,7 +200,9 @@ export function parseOscAdapterYamlConfig(
       typeof value.timestampMode !== "string" ||
       !VMC_TIMESTAMP_MODES.has(value.timestampMode as VmcTimestampMode)
     ) {
-      throw new Error(`${path}.timestampMode must be immediate, send-time, or frame-unix.`);
+      throw new Error(
+        `${path}.timestampMode must be immediate, send-time, or frame-unix.`,
+      );
     }
     config.timestampMode = value.timestampMode as VmcTimestampMode;
   }

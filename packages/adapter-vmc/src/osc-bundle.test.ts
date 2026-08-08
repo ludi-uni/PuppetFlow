@@ -10,9 +10,9 @@ describe("resolveOscTimetag", () => {
   });
 
   it("converts an explicit Unix timestamp to an NTP timetag", () => {
-    expect(resolveOscTimetag({ mode: "frame-unix", timestampMs: 1_700_000_000_000 })).toEqual(
-      new Uint8Array([232, 254, 111, 128, 0, 0, 0, 0]),
-    );
+    expect(
+      resolveOscTimetag({ mode: "frame-unix", timestampMs: 1_700_000_000_000 }),
+    ).toEqual(new Uint8Array([232, 254, 111, 128, 0, 0, 0, 0]));
   });
 });
 

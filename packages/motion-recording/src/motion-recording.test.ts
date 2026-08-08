@@ -8,7 +8,11 @@ import { MotionFrameRecorder, readMotionRecording } from "./motion-recording.js"
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })));
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true })),
+  );
 });
 
 describe("MotionFrameRecorder", () => {

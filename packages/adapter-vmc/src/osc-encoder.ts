@@ -46,7 +46,15 @@ export function encodeBonePoseMessage(
     return null;
   }
 
-  const values = [position.x, position.y, position.z, rotation.x, rotation.y, rotation.z, rotation.w];
+  const values = [
+    position.x,
+    position.y,
+    position.z,
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w,
+  ];
   if (values.some((value) => !Number.isFinite(value))) {
     throw new RangeError("VMC Bone/Pos values must be finite");
   }

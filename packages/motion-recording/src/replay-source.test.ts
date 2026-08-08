@@ -9,7 +9,11 @@ const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   vi.useRealTimers();
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })));
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true })),
+  );
 });
 
 describe("ReplaySource", () => {

@@ -1,7 +1,4 @@
-import {
-  cloneMotionFrame,
-  type MotionFrame,
-} from "@puppetflow/core";
+import { cloneMotionFrame, type MotionFrame } from "@puppetflow/core";
 import type { MotionFrameEmitter, MotionSource } from "@puppetflow/source-core";
 import { readMotionRecording } from "./motion-recording.js";
 
@@ -24,7 +21,10 @@ export class ReplaySource implements MotionSource {
   private playbackError: unknown;
 
   constructor(path: string, options: ReplaySourceOptions = {}) {
-    if (options.speed !== undefined && (!Number.isFinite(options.speed) || options.speed <= 0)) {
+    if (
+      options.speed !== undefined &&
+      (!Number.isFinite(options.speed) || options.speed <= 0)
+    ) {
       throw new RangeError("speed must be a positive finite number");
     }
     if (
