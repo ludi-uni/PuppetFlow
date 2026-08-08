@@ -5,6 +5,7 @@ export {
   quaternionMultiply,
   quaternionNlerp,
 } from "./quaternion.js";
+export { createMotionMixer } from "./mixer.js";
 export type {
   MotionFrameFilter,
   MotionFrameInput,
