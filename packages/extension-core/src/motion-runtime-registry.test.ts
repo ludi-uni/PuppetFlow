@@ -42,6 +42,13 @@ describe("MotionRuntimeRegistry", () => {
     expect(registry.createSource("synthetic", { rate: 60 })).toBe(source);
     expect(registry.createFilter("double", {})).toBe(filter);
     expect(registry.createFrameAdapter("capture", {})).toBe(adapter);
+    expect(source.start).not.toHaveBeenCalled();
+    expect(source.stop).not.toHaveBeenCalled();
+    expect(filter.apply).not.toHaveBeenCalled();
+    expect(filter.reset).not.toHaveBeenCalled();
+    expect(adapter.initialize).not.toHaveBeenCalled();
+    expect(adapter.updateFrame).not.toHaveBeenCalled();
+    expect(adapter.dispose).not.toHaveBeenCalled();
   });
 
   it("rejects empty, duplicate, and unknown capability types", () => {
@@ -63,11 +70,34 @@ describe("MotionRuntimeRegistry", () => {
     );
   });
 
-  it("allows one shared type ID in different capability namespaces", () => {
+  it("normalizes factory IDs and rejects whitespace-equivalent duplicates", () => {
+    const registry = createMotionRuntimeRegistry();
+    registry.addSourceFactory({
+      type: "  vmc  ",
+      create: () => ({ id: "vmc-in", start: async () => {}, stop: async () => {} }),
+    });
+    expect(registry.createSource("vmc", {})).toMatchObject({ id: "vmc-in" });
+    expect(() =>
+      registry.addSourceFactory({
+        type: "vmc",
+        create: () => ({
+          id: "duplicate",
+          start: async () => {},
+          stop: async () => {},
+        }),
+      }),
+    ).toThrow("already registered");
+  });
+
+  it("allows one shared type ID in all capability namespaces", () => {
     const registry = createMotionRuntimeRegistry();
     registry.addSourceFactory({
       type: "vmc",
       create: () => ({ id: "vmc-in", start: async () => {}, stop: async () => {} }),
+    });
+    registry.addFilterFactory({
+      type: "vmc",
+      create: () => ({ id: "vmc-filter", apply: (frame) => frame, reset: () => {} }),
     });
     registry.addFrameAdapterFactory({
       type: "vmc",
@@ -78,6 +108,30 @@ describe("MotionRuntimeRegistry", () => {
         dispose: async () => {},
       }),
     });
+    expect(registry.createSource("vmc", {}).id).toBe("vmc-in");
+    expect(registry.createFilter("vmc", {}).id).toBe("vmc-filter");
+    expect(registry.createFrameAdapter("vmc", {}).id).toBe("vmc-out");
+  });
+
+  it("preflights all plugin IDs before invoking any registration callback", () => {
+    const callbacks: string[] = [];
+
+    expect(() =>
+      registerMotionRuntimePlugins([
+        { id: "first", register: () => callbacks.push("first") },
+        { id: "  first  ", register: () => callbacks.push("duplicate") },
+      ]),
+    ).toThrow("already registered");
+    expect(callbacks).toEqual([]);
+  });
+
+  it("rejects whitespace-only plugin IDs without invoking callbacks", () => {
+    const callback = vi.fn();
+
+    expect(() =>
+      registerMotionRuntimePlugins([{ id: " \t ", register: callback }]),
+    ).toThrow("non-empty");
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("registers plugins in order and preserves factory errors", () => {

@@ -105,18 +105,19 @@ export function createMotionRuntimeRegistry(): MotionRuntimeRegistryImpl {
 export function registerMotionRuntimePlugins(
   plugins: readonly MotionRuntimePlugin[],
 ): MotionRuntimeRegistryImpl {
-  const registry = createMotionRuntimeRegistry();
   const pluginIds = new Set<string>();
+  const normalizedPluginIds = plugins.map((plugin) => plugin.id.trim());
 
-  for (const plugin of plugins) {
-    const id = plugin.id.trim();
+  for (const id of normalizedPluginIds) {
     if (!id) throw new Error("Motion runtime plugin id must be non-empty");
     if (pluginIds.has(id)) {
       throw new Error(`Motion runtime plugin already registered: ${id}`);
     }
     pluginIds.add(id);
-    plugin.register(registry);
   }
+
+  const registry = createMotionRuntimeRegistry();
+  for (const plugin of plugins) plugin.register(registry);
 
   return registry;
 }
