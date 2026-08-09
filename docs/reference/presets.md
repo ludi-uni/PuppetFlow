@@ -6,12 +6,12 @@
 
 公式プリセットは `Standard.pfpreset` を基準に、次の **役割分担** で構成します。
 
-| 層                                | 担当                                                                                | 例                                              |
-| --------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- |
-| **PFScript** (`behaviorPfScript`) | 体の揺れ、前のめり、口開き（volume）、まぶた開き（energy→`eyeYaw`）、呼吸（custom） | `bodyLean`, `mouthY`, `eyeYaw`, `custom:breath` |
-| **Graph**                         | かんたんモードで編集する笑顔マッピング                                              | `interest × gain → mouthX`                      |
-| **behaviorPlugins**               | 瞬き（`eyeYaw` 上書き）・低 interest 時の視線 wander                                | `blink`, `idle`                                 |
-| **extensions**                    | Motion Pack（Thinking 等）                                                          | `thinking`                                      |
+| 層                                | 担当                                                                                                                                           | 例                                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **PFScript** (`behaviorPfScript`) | 体の揺れ、前のめり、口開き（volume）、まぶた開き（energy→`eyeYaw`）、呼吸（custom）、非 Standard では抑制付き `faceYaw`/`facePitch`/`headTilt` | `bodyLean`, `mouthY`, `eyeYaw`, `custom:breath`, `faceYaw`, `facePitch`, `headTilt` |
+| **Graph**                         | かんたんモードで編集する笑顔マッピング                                                                                                         | `interest × gain → mouthX`                                                          |
+| **behaviorPlugins**               | 瞬き（`eyeYaw` 上書き）、`lookX`/`lookY`、低 interest 時の視線 wander                                                                          | `blink`, `idle`                                                                     |
+| **extensions**                    | Motion Pack（Thinking 等）。Thinking は頭部/顔ポーズを Thinking Pack に委譲。                                                                  | `thinking`                                                                          |
 
 **同一 Motion キーを PFScript と Graph の両方に書かない** こと（load 時に overlap 警告）。笑顔は Graph、体・呼吸は PFScript に寄せます。
 
@@ -71,15 +71,17 @@
 
 ## 公式プリセット（6 種 + Standard）
 
-| 名前         | 概要                                                     |
-| ------------ | -------------------------------------------------------- |
-| **Standard** | 基準テンプレート（PFScript + blink/idle + Graph mouthX） |
-| Curious      | Standard 同等・きょろきょろ                              |
-| Happy        | 活発な揺れ・明るい笑顔（Graph gain 0.8）                 |
-| Idle         | 控えめな揺れ・待機向け                                   |
-| Thinking     | 控えめ + `headTilt` + `thinking` Pack                    |
-| Sleepy       | ゆっくり・半開き目・長めのまばたき                       |
-| Focused      | 引き締め・前のめり強め                                   |
+| 名前         | 概要                                                               |
+| ------------ | ------------------------------------------------------------------ |
+| **Standard** | 変更しない中立基準（PFScript + blink/idle + Graph mouthX）         |
+| Curious      | ゆっくりした顔の左右振りと独立した首傾げ、小さく頻度高めの視線移動 |
+| Happy        | 軽快だが抑えた体の揺れ、短い上下顔向きと首傾げ、やや速いまばたき   |
+| Idle         | 小さくゆっくりした体・顔・首の揺れと、頻度高めで小幅な待機視線     |
+| Thinking     | 控えめな体の揺れと Thinking Pack 単独所有の思考ポーズ              |
+| Sleepy       | やや伏し目の顔向き、非常に遅い首傾げ、半開き目と長めのまばたき     |
+| Focused      | 前寄りで安定した顔向き、最小限の首傾げと視線 wander                |
+
+Mouth の式と笑顔 Graph のゲインは、各プリセットの既存挙動を引き継いでいます。
 
 ```ts
 import { getPresetJson, listPresetNames } from "@puppetflow/behavior-packs";
