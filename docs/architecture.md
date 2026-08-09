@@ -231,3 +231,21 @@ await runtime.start();
 The additive motion path is `MotionSource -> MotionFrame -> MotionFrameAdapter`. `MotionFrame` is protocol-independent and uses millisecond timestamps; `@puppetflow/adapter-vmc` encodes complete Bone/Pos poses and Blend/Val messages into OSC Bundles. JSONL recording/replay is available through `@puppetflow/motion-recording` and `pf record` / `pf replay`.
 
 The existing `MotionState`, `StateSource`, `Adapter`, `pf run`, and YAML contracts remain compatible. Phase 1 deliberately has no Mixer, retargeting, filters, fail-safe, or VMC receive/validation path.
+
+## Canonical MotionFrameGraph flow
+
+Phase 4 separates the legacy `MotionState` graph from the canonical frame graph:
+
+```text
+Legacy flow:
+MotionState -> Behavior/Graph/Modifier -> MotionState Adapter -> output
+
+Canonical flow:
+MotionSource (MotionFrame) -> MotionFrameGraph -> MotionFramePipeline -> MotionFrameAdapter
+```
+
+`MotionFrameGraph`は source の接続/劣化状態とシグナルで毎 tick policy を再構成し、
+pipeline へ `enabled / priority / weight` overlay を適用します。
+Pipeline が未 attach の場合は最新 frame を source attachment 順で raw path 配信します。
+
+既存の `StateSource` / `MotionState` / legacy `Adapter` 経路はそのまま残り、既存設定と YAML/CLI 互換を維持します。`MotionFrame` 系の導線は opt-in です。

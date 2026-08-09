@@ -355,6 +355,22 @@ importers:
         specifier: ^4.19.4
         version: 4.22.4
 
+  examples/motion-frame-graph:
+    dependencies:
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@puppetflow/motion-graph':
+        specifier: workspace:*
+        version: link:../../packages/motion-graph
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../../packages/motion-pipeline
+    devDependencies:
+      tsx:
+        specifier: ^4.19.4
+        version: 4.22.4
+
   examples/motion-mixer:
     dependencies:
       '@puppetflow/core':

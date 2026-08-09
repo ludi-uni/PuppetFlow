@@ -1,6 +1,6 @@
 # PuppetFlow Motion Runtime Phase 1 Design
 
-**Status:** Proposed for implementation after review  
+**Status:** Implemented and verified
 **Date:** 2026-08-08  
 **Scope:** Canonical MotionFrame, VMC Bone Pose, MotionSource, Record/Replay
 

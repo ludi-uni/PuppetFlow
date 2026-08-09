@@ -1,0 +1,18 @@
+{
+  "name": "@puppetflow/example-motion-frame-graph",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx graph.ts"
+  },
+  "dependencies": {
+    "@puppetflow/core": "workspace:*",
+    "@puppetflow/motion-graph": "workspace:*",
+    "@puppetflow/motion-pipeline": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4"
+  }
+}
