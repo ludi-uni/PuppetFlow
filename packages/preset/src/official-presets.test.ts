@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { BehaviorBlock } from "@puppetflow/behavior";
+import { compilePfScript } from "@puppetflow/pfscript-core";
 import { describe, expect, it } from "vitest";
 import { loadPreset } from "./load-preset.js";
 import type { PuppetFlowPreset } from "./types.js";
@@ -31,11 +33,31 @@ function graphGain(preset: PuppetFlowPreset): unknown {
   return preset.graph.nodes.find((node) => node.id === "multiply")?.data.gain;
 }
 
-function assignedKeys(preset: PuppetFlowPreset): string[] {
-  return Array.from(
-    preset.behaviorPfScript?.matchAll(/^([A-Za-z][A-Za-z0-9]*)\s*=/gm) ?? [],
-    (match) => match[1],
-  );
+function assignedKeys(
+  preset: Pick<PuppetFlowPreset, "behaviorPfScript"> & {
+    behavior?: BehaviorBlock;
+  },
+): string[] {
+  const behavior = preset.behavior ?? compilePfScript(preset.behaviorPfScript ?? "");
+
+  const collect = (statements: BehaviorBlock["statements"]): string[] =>
+    statements.flatMap((statement) => {
+      switch (statement.type) {
+        case "ExprAssign":
+          return [statement.target];
+        case "If":
+          return [
+            ...collect(statement.then),
+            ...(statement.else ? collect(statement.else) : []),
+          ];
+        case "Block":
+          return collect(statement.statements);
+        default:
+          return [];
+      }
+    });
+
+  return collect(behavior.statements);
 }
 
 function pluginConfig(preset: PuppetFlowPreset, id: string): unknown {
@@ -86,7 +108,7 @@ const MOUTH_CONTRACT: Record<
 
 const PERSONALITY_CONTRACT = {
   Curious: {
-    addedKeys: ["faceYaw", "headTilt"],
+    assignments: ["faceYaw", "headTilt"],
     blink: {
       minInterval: 3,
       maxInterval: 8,
@@ -96,7 +118,7 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.5, wanderBoost: 0.1 },
   },
   Happy: {
-    addedKeys: ["facePitch", "headTilt"],
+    assignments: ["facePitch", "headTilt"],
     blink: {
       minInterval: 2.8,
       maxInterval: 7,
@@ -106,7 +128,7 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.3, wanderBoost: 0.08 },
   },
   Idle: {
-    addedKeys: ["faceYaw", "headTilt"],
+    assignments: ["faceYaw", "headTilt"],
     blink: {
       minInterval: 3.5,
       maxInterval: 8.5,
@@ -116,7 +138,7 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.5, wanderBoost: 0.07 },
   },
   Thinking: {
-    addedKeys: [],
+    assignments: [],
     blink: {
       minInterval: 3,
       maxInterval: 8,
@@ -126,7 +148,7 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.4, wanderBoost: 0.06 },
   },
   Sleepy: {
-    addedKeys: ["facePitch", "headTilt"],
+    assignments: ["facePitch", "headTilt"],
     blink: {
       minInterval: 4,
       maxInterval: 10,
@@ -136,7 +158,7 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.5, wanderBoost: 0.05 },
   },
   Focused: {
-    addedKeys: ["facePitch", "headTilt"],
+    assignments: ["facePitch", "headTilt"],
     blink: {
       minInterval: 3,
       maxInterval: 8,
@@ -146,6 +168,14 @@ const PERSONALITY_CONTRACT = {
     idle: { interestThreshold: 0.3, wanderBoost: 0.03 },
   },
 } as const;
+
+const RESTRICTED_ASSIGNMENT_KEYS = new Set([
+  "faceYaw",
+  "facePitch",
+  "headTilt",
+  "lookX",
+  "lookY",
+]);
 
 const MOTION_SOURCE_CONTRACT = {
   Curious: [
@@ -171,6 +201,21 @@ const MOTION_SOURCE_CONTRACT = {
 } as const;
 
 describe("official presets", () => {
+  it("detects duplicate restricted assignments inside compiled conditional blocks", () => {
+    const preset = readPreset(PACKAGE_PRESETS_DIR, "Standard");
+    const loaded = loadPreset(
+      JSON.stringify({
+        ...preset,
+        behaviorPfScript: `if interest > 0.5 then
+  headTilt = 0.51
+  headTilt = 0.52
+end`,
+      }),
+    );
+
+    expect(assignedKeys(loaded)).toEqual(["headTilt", "headTilt"]);
+  });
+
   for (const name of OFFICIAL_PRESETS) {
     it(`loads ${name}.pfpreset without plugin/graph motion overlaps`, () => {
       const filename = `${name}.pfpreset`;
@@ -218,11 +263,12 @@ describe("official presets", () => {
         PACKAGE_PRESETS_DIR,
         name as keyof typeof PERSONALITY_CONTRACT,
       );
-      const keys = assignedKeys(preset);
+      const loaded = loadPreset(JSON.stringify(preset));
+      const keys = assignedKeys(loaded).filter((key) =>
+        RESTRICTED_ASSIGNMENT_KEYS.has(key),
+      );
 
-      for (const key of contract.addedKeys) expect(keys).toContain(key);
-      expect(keys).not.toContain("lookX");
-      expect(keys).not.toContain("lookY");
+      expect(keys).toEqual(contract.assignments);
       expect(pluginConfig(preset, "blink")).toEqual(contract.blink);
       expect(pluginConfig(preset, "idle")).toEqual(contract.idle);
     },
@@ -230,7 +276,9 @@ describe("official presets", () => {
 
   it("leaves Thinking head and face pose ownership to the Thinking Pack", () => {
     const preset = readPreset(PACKAGE_PRESETS_DIR, "Thinking");
-    const keys = assignedKeys(preset);
+    const keys = assignedKeys(loadPreset(JSON.stringify(preset))).filter((key) =>
+      RESTRICTED_ASSIGNMENT_KEYS.has(key),
+    );
 
     expect(keys).not.toContain("headTilt");
     expect(keys).not.toContain("facePitch");
