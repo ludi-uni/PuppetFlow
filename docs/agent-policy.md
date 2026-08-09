@@ -53,5 +53,3 @@ GitHub Actions must declare least-privilege permissions. Third-party actions mus
 ## Evidence expected in a Draft PR
 
 The reviewer should be able to map the diff to every Acceptance Criterion, inspect relevant tests, reproduce exact verification commands, see any unavailable check honestly identified, and confirm that no unrelated work is mixed in. The Issue and Pull Request must link to one another.
-
-
