@@ -116,6 +116,35 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
   });
 
+  it("resets graph state and signals when stop times out waiting for a tick", async () => {
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("tracker", 1))
+      .attachMotionPipeline({
+        process: vi.fn((inputs) => inputs[0]?.frame),
+        reset: vi.fn(),
+      })
+      .attachMotionFrameGraph(motionFrameGraph)
+      .setMotionGraphSignal("tracking", true);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      await runtime.start();
+      expect(runtime.getMotionFrameGraphState()?.stateId).toBe("tracking");
+
+      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = true;
+      await runtime.stop();
+
+      expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
+
+      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+      await runtime.start();
+      expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
+      await runtime.stop();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("keeps the legacy two-argument pipeline call when no graph is attached", async () => {
     const process = vi.fn(
       (

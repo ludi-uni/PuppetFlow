@@ -441,6 +441,10 @@ export class PuppetFlowRuntime {
         console.warn(
           "[PuppetFlowRuntime] stop() timed out waiting for tick; skipping dispose to avoid races",
         );
+        if (this.motionFrameGraph) {
+          this.motionFrameGraph.reset();
+          this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
+        }
         return;
       }
     }
