@@ -21,7 +21,10 @@
   "dependencies": {
     "@puppetflow/core": "workspace:*",
     "@puppetflow/behavior": "workspace:*",
+    "@puppetflow/adapter-core": "workspace:*",
     "@puppetflow/motion-graph": "workspace:*",
+    "@puppetflow/motion-pipeline": "workspace:*",
+    "@puppetflow/source-core": "workspace:*",
     "@puppetflow/stateful-core": "workspace:*"
   },
   "devDependencies": {

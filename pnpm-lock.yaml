@@ -558,6 +558,9 @@ importers:
 
   packages/extension-core:
     dependencies:
+      '@puppetflow/adapter-core':
+        specifier: workspace:*
+        version: link:../adapter-core
       '@puppetflow/behavior':
         specifier: workspace:*
         version: link:../behavior
@@ -567,6 +570,12 @@ importers:
       '@puppetflow/motion-graph':
         specifier: workspace:*
         version: link:../motion-graph
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../motion-pipeline
+      '@puppetflow/source-core':
+        specifier: workspace:*
+        version: link:../source-core
       '@puppetflow/stateful-core':
         specifier: workspace:*
         version: link:../stateful-core
