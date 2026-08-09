@@ -101,7 +101,11 @@ snapshot.policy; // 次の pipeline に渡す source policy overlay
 - `setMotionGraphSignal(key, value)` で runtime へシグナルを注入。
 - 毎 tick、`dispatchMotionFrames()` で最新フレームから graph を評価。
 - `evaluate` の戻り値 `policy` は `MotionLayerPolicy` として pipeline に渡され、既存 layer ルールへ overlay されます。
-- `policy[sourceId].enabled === false` は、`mixer` 側も raw path 側も対象 source を抑止します（生の frame 直接配信時は filter で除外）。
+- `priority` と `weight` は、各キーが与えられた場合のみ既存 layer の同名フィールドを置換します。`enabled` は明示指定時のみ候補可否に適用されます。
+- overlay で未指定のフィールドは layer の既定値を維持します。
+- layer は immutable 扱いです。pipeline 内で `layerMap` のコピーへ安全に merge され、入力の `layers` を破壊しません。
+- `policy[sourceId].enabled === false` は `mixer` 側の候補除外を行います。
+- raw adapter 送信（`motionPipeline` 未接続時）は `enabled` フィルタのみで除外し、`priority`/`weight` は無視されます。
 
 ## Runtime API / fail-safe / stop reset
 
@@ -121,7 +125,7 @@ snapshot.policy; // 次の pipeline に渡す source policy overlay
 - `state.sources` には任意 source id を含められる（`""` は不可）。
 - `evaluate` 時の `context.sources` は runtime が保持する接続済み `motionSource` から組み立てるため、定義されていない id は既定 false。
 - `source` 条件の missing field は false。
-- 評価は runtime 上の接続/health 状態を読んだみで、frame 内 `timestamp` ではなく受信時刻ベースで fail-safe を判定。
+- 評価は runtime 上の接続/health 状態を読んだのみで、frame 内 `timestamp` ではなく受信時刻ベースで fail-safe を判定。
 
 ## 運用互換・移行
 
