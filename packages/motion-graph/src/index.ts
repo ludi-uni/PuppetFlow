@@ -31,3 +31,10 @@ export {
   type MotionFrameGraphDocument,
   parseMotionFrameGraph,
 } from "./frame-graph-types.js";
+export {
+  createMotionFrameGraphController,
+  type MotionFrameGraphController,
+  type MotionFrameGraphEvaluationContext,
+  type MotionFrameGraphSnapshot,
+  type MotionFrameGraphSourceStatus,
+} from "./frame-graph-controller.js";
