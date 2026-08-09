@@ -109,7 +109,12 @@ function parseState(value: unknown): MotionFrameGraphStateDefinition {
       if (!sourceId.trim()) {
         throw new Error(`MotionFrameGraph source ID must be a non-empty string: ${id}`);
       }
-      sources[sourceId] = parsePolicy(policy, sourceId);
+      Object.defineProperty(sources, sourceId, {
+        configurable: true,
+        enumerable: true,
+        value: parsePolicy(policy, sourceId),
+        writable: true,
+      });
     }
   }
   return { id, ...(sources ? { sources } : {}) };

@@ -34,6 +34,21 @@ describe("parseMotionFrameGraph", () => {
     expect(parsed.transitions).not.toBe(valid.transitions);
   });
 
+  it("preserves an unknown __proto__ source ID as an own policy entry", () => {
+    const document = JSON.parse(
+      '{"version":1,"initialState":"idle","states":[{"id":"idle","sources":{"__proto__":{"enabled":true,"weight":0.5}}}]}',
+    );
+
+    const parsed = parseMotionFrameGraph(document);
+    const sources = parsed.states[0].sources as Record<
+      string,
+      { enabled?: boolean; weight?: number }
+    >;
+
+    expect(Object.prototype.hasOwnProperty.call(sources, "__proto__")).toBe(true);
+    expect(sources["__proto__"]).toEqual({ enabled: true, weight: 0.5 });
+  });
+
   it.each([
     [{ ...valid, initialState: "missing" }, "initialState"],
     [{ ...valid, states: [{ id: "idle" }, { id: "idle" }] }, "duplicate"],
