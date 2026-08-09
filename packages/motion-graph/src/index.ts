@@ -22,3 +22,12 @@ export {
   type ExtensionGraphFunctionEvaluator,
   type MotionGraphContext,
 } from "./execute.js";
+export {
+  type MotionGraphSignalValue,
+  type MotionSourcePolicyOverride,
+  type MotionFrameGraphStateDefinition,
+  type MotionFrameGraphCondition,
+  type MotionFrameGraphTransition,
+  type MotionFrameGraphDocument,
+  parseMotionFrameGraph,
+} from "./frame-graph-types.js";
