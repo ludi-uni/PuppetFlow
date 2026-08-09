@@ -11,6 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 import { GazePlugin } from "@puppetflow/plugin-gaze";
 import { StatefulStore } from "@puppetflow/stateful-core";
 import type { MotionSource } from "@puppetflow/source-core";
+import type { MotionFrameGraphDocument } from "@puppetflow/motion-graph";
+import type { MotionFrameInput, MotionLayerPolicy } from "@puppetflow/motion-pipeline";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 class TestPlugin implements BehaviorPlugin {
@@ -32,7 +34,198 @@ function createTestAdapter(update: Adapter["update"]): Adapter {
   };
 }
 
+function createMotionSource(id: string, timestamp: number): MotionSource {
+  return {
+    id,
+    start: vi.fn(async (emit) =>
+      emit({ timestamp, parameters: { source: timestamp } }),
+    ),
+    stop: vi.fn(async () => {}),
+  };
+}
+
+const motionFrameGraph: MotionFrameGraphDocument = {
+  version: 1,
+  initialState: "idle",
+  states: [
+    {
+      id: "idle",
+      sources: { idle: { enabled: true }, tracker: { enabled: false } },
+    },
+    {
+      id: "tracking",
+      sources: {
+        idle: { enabled: false },
+        tracker: { enabled: true, priority: 200 },
+      },
+    },
+  ],
+  transitions: [
+    {
+      from: "idle",
+      to: "tracking",
+      when: { type: "signal", key: "tracking", operator: "equals", value: true },
+    },
+  ],
+};
+
 describe("PuppetFlowRuntime", () => {
+  it("evaluates the graph policy for inspect and process and resets on stop", async () => {
+    const inspect = vi.fn(
+      (_inputs: readonly MotionFrameInput[], _policy?: MotionLayerPolicy) => ({
+        bones: {},
+        blendShapes: {},
+        parameters: {},
+      }),
+    );
+    const process = vi.fn(
+      (
+        inputs: readonly MotionFrameInput[],
+        _deltaTime?: number,
+        _policy?: MotionLayerPolicy,
+      ) => inputs[0]?.frame,
+    );
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("idle", 0))
+      .attachMotionSource(createMotionSource("tracker", 1))
+      .attachMotionPipeline({ process, inspect, reset: vi.fn() })
+      .attachMotionFrameGraph(motionFrameGraph)
+      .setMotionGraphSignal("tracking", true);
+
+    await runtime.start();
+
+    expect(process).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.any(Number),
+      expect.objectContaining({ tracker: { enabled: true, priority: 200 } }),
+    );
+    expect(inspect).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ tracker: { enabled: true, priority: 200 } }),
+    );
+    expect((inspect.mock.calls[0] as unknown[])[1]).toBe(
+      (process.mock.calls[0] as unknown[])[2],
+    );
+    expect(runtime.getMotionFrameGraphState()?.stateId).toBe("tracking");
+
+    await runtime.stop();
+
+    expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
+    await runtime.start();
+    expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
+    await runtime.stop();
+  });
+
+  it("keeps the legacy two-argument pipeline call when no graph is attached", async () => {
+    const process = vi.fn(
+      (
+        inputs: readonly MotionFrameInput[],
+        _deltaTime?: number,
+        _policy?: MotionLayerPolicy,
+      ) => inputs[0]?.frame,
+    );
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("idle", 0))
+      .attachMotionPipeline({ process, reset: vi.fn() });
+
+    await runtime.start();
+
+    expect(process.mock.calls[0] as unknown[]).toHaveLength(2);
+    await runtime.stop();
+  });
+
+  it("filters disabled sources on the raw adapter path", async () => {
+    const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("idle", 0))
+      .attachMotionSource(createMotionSource("tracker", 1))
+      .attachMotionAdapter({
+        id: "frame-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      })
+      .attachMotionFrameGraph(motionFrameGraph);
+
+    await runtime.start();
+
+    expect(updateFrame.mock.calls.map(([frame]) => frame.timestamp)).toEqual([0]);
+    await runtime.stop();
+  });
+
+  it("evaluates source connected and stale health after fail-safe updates", async () => {
+    const graph: MotionFrameGraphDocument = {
+      version: 1,
+      initialState: "connected",
+      states: [
+        { id: "connected", sources: { tracker: { enabled: true } } },
+        { id: "stale", sources: { tracker: { enabled: false } } },
+      ],
+      transitions: [
+        {
+          from: "connected",
+          to: "stale",
+          when: { type: "source", sourceId: "tracker", field: "stale", equals: true },
+        },
+      ],
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("tracker", 1))
+      .attachMotionPipeline({
+        process: vi.fn((inputs) => inputs[0]?.frame),
+        reset: vi.fn(),
+      })
+      .configureMotionFailSafe({ timeoutMs: 0, action: "hold-last-frame" })
+      .attachMotionFrameGraph(graph);
+
+    await runtime.start();
+
+    expect(runtime.getMotionFrameGraphState()?.stateId).toBe("stale");
+    await runtime.stop();
+  });
+
+  it("rejects graph signals before attachment and invalid graph documents", () => {
+    const runtime = new PuppetFlowRuntime();
+
+    expect(() => runtime.setMotionGraphSignal("tracking", true)).toThrow(
+      "No MotionFrameGraph is attached",
+    );
+    expect(() =>
+      runtime.attachMotionFrameGraph({ ...motionFrameGraph, initialState: "missing" }),
+    ).toThrow("MotionFrameGraph.initialState is unknown: missing");
+  });
+
+  it("fails open when graph evaluation throws and still dispatches frames", async () => {
+    const process = vi.fn(
+      (
+        inputs: readonly MotionFrameInput[],
+        _deltaTime?: number,
+        _policy?: MotionLayerPolicy,
+      ) => inputs[0]?.frame,
+    );
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("tracker", 1))
+      .attachMotionPipeline({ process, reset: vi.fn() })
+      .attachMotionFrameGraph(motionFrameGraph);
+    const controller = (
+      runtime as unknown as {
+        motionFrameGraph: { evaluate: () => never };
+      }
+    ).motionFrameGraph;
+    controller.evaluate = vi.fn(() => {
+      throw new Error("graph evaluation failed");
+    });
+
+    await runtime.start();
+
+    expect(process).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.any(Number),
+      undefined,
+    );
+    await runtime.stop();
+  });
+
   it("processes latest source frames through an attached motion pipeline", async () => {
     const sourceA: MotionSource = {
       id: "source-a",

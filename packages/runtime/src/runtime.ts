@@ -22,7 +22,15 @@ import {
   DEFAULT_MODIFIER_ORDER,
   type MotionModifier,
 } from "@puppetflow/modifier-core";
-import { executeMotionGraph, type MotionGraphDocument } from "@puppetflow/motion-graph";
+import {
+  createMotionFrameGraphController,
+  executeMotionGraph,
+  type MotionFrameGraphController,
+  type MotionFrameGraphDocument,
+  type MotionFrameGraphSnapshot,
+  type MotionGraphDocument,
+  type MotionGraphSignalValue,
+} from "@puppetflow/motion-graph";
 import {
   executeExtensions,
   executePfScriptFunction,
@@ -33,6 +41,7 @@ import type {
   MotionFrameInput,
   MotionFramePipeline,
   MotionMixerInspection,
+  MotionLayerPolicy,
 } from "@puppetflow/motion-pipeline";
 import {
   createRuntimeStatefulRegistry,
@@ -91,6 +100,21 @@ function pruneEventTimes(times: number[], currentTime: number): void {
   }
 }
 
+function cloneMotionFrameGraphSnapshot(
+  snapshot: MotionFrameGraphSnapshot,
+): MotionFrameGraphSnapshot {
+  return {
+    stateId: snapshot.stateId,
+    enteredAt: snapshot.enteredAt,
+    policy: Object.fromEntries(
+      Object.entries(snapshot.policy).map(([sourceId, override]) => [
+        sourceId,
+        { ...override },
+      ]),
+    ),
+  };
+}
+
 interface MotionSourceHealth {
   connected: boolean;
   stale: boolean;
@@ -124,6 +148,8 @@ export class PuppetFlowRuntime {
   private motionPipeline: MotionFramePipeline | undefined;
   private motionMixerInspection: MotionMixerInspection | undefined;
   private motionFailSafeOptions: MotionFailSafeOptions | undefined;
+  private motionFrameGraph: MotionFrameGraphController | undefined;
+  private motionFrameGraphSnapshot: MotionFrameGraphSnapshot | undefined;
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
 
@@ -193,6 +219,26 @@ export class PuppetFlowRuntime {
   attachMotionPipeline(pipeline: MotionFramePipeline): this {
     this.motionPipeline = pipeline;
     return this;
+  }
+
+  attachMotionFrameGraph(graph: MotionFrameGraphDocument): this {
+    this.motionFrameGraph = createMotionFrameGraphController(graph);
+    this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
+    return this;
+  }
+
+  setMotionGraphSignal(key: string, value: MotionGraphSignalValue): this {
+    if (!this.motionFrameGraph) {
+      throw new Error("No MotionFrameGraph is attached");
+    }
+    this.motionFrameGraph.setSignal(key, value);
+    return this;
+  }
+
+  getMotionFrameGraphState(): MotionFrameGraphSnapshot | undefined {
+    return this.motionFrameGraphSnapshot
+      ? cloneMotionFrameGraphSnapshot(this.motionFrameGraphSnapshot)
+      : undefined;
   }
 
   getMicroBehaviorSnapshot(): MicroBehaviorSnapshot {
@@ -403,6 +449,10 @@ export class PuppetFlowRuntime {
     await this.disposeSources();
     await this.stopMotionSources();
     this.resetMotionPipeline();
+    if (this.motionFrameGraph) {
+      this.motionFrameGraph.reset();
+      this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
+    }
     this.motionMixerInspection = undefined;
     this.resetMotionOutputHealth();
     this.motionOverride.clear();
@@ -931,10 +981,35 @@ export class PuppetFlowRuntime {
       }
     }
 
+    let policy: MotionLayerPolicy | undefined;
+    if (this.motionFrameGraph) {
+      const sources = Object.fromEntries(
+        this.motionSources.map((source) => {
+          const health = this.motionSourceHealth.get(source.id);
+          return [
+            source.id,
+            { connected: health?.connected ?? false, stale: health?.stale ?? false },
+          ];
+        }),
+      );
+      try {
+        const snapshot = this.motionFrameGraph.evaluate({ sources });
+        this.motionFrameGraphSnapshot = snapshot;
+        policy = snapshot.policy;
+      } catch (error) {
+        console.error(
+          "[PuppetFlowRuntime] motion frame graph evaluation failed",
+          error,
+        );
+      }
+    }
+
     this.motionMixerInspection = undefined;
     if (this.motionPipeline?.inspect) {
       try {
-        this.motionMixerInspection = this.motionPipeline.inspect(inputs);
+        this.motionMixerInspection = this.motionFrameGraph
+          ? this.motionPipeline.inspect(inputs, policy)
+          : this.motionPipeline.inspect(inputs);
       } catch (error) {
         console.error("[PuppetFlowRuntime] motion pipeline inspection failed", error);
       }
@@ -946,7 +1021,9 @@ export class PuppetFlowRuntime {
 
     if (this.motionPipeline) {
       try {
-        const processed = this.motionPipeline.process(inputs, deltaTime);
+        const processed = this.motionFrameGraph
+          ? this.motionPipeline.process(inputs, deltaTime, policy)
+          : this.motionPipeline.process(inputs, deltaTime);
         if (processed) {
           await this.updateMotionFrameAdapters(processed, deltaTime);
         }
@@ -956,7 +1033,10 @@ export class PuppetFlowRuntime {
       return;
     }
 
-    for (const input of inputs) {
+    const rawInputs = policy
+      ? inputs.filter((input) => policy[input.sourceId]?.enabled !== false)
+      : inputs;
+    for (const input of rawInputs) {
       await this.updateMotionFrameAdapters(input.frame, deltaTime);
     }
   }
