@@ -3,6 +3,69 @@ import { describe, expect, it } from "vitest";
 import { createMotionMixer } from "./mixer.js";
 
 describe("MotionMixer", () => {
+  it("omits disabled policy sources from output metadata and inspection", () => {
+    const mixer = createMotionMixer([
+      { source: "idle", priority: 10, weight: 1 },
+      { source: "tracking", priority: 100, weight: 1 },
+    ]);
+    const inputs = [
+      { sourceId: "idle", frame: { timestamp: 1, parameters: { x: 0 } } },
+      { sourceId: "tracking", frame: { timestamp: 2, parameters: { x: 1 } } },
+    ] as const;
+    const policy = { tracking: { enabled: false } } as const;
+
+    expect(mixer.mix(inputs, policy)).toMatchObject({
+      parameters: { x: 0 },
+      metadata: { sourceIds: ["idle"] },
+    });
+    expect(mixer.inspect?.(inputs, policy)).toEqual({
+      bones: {},
+      blendShapes: {},
+      parameters: { x: [{ sourceId: "idle", priority: 10, weight: 1 }] },
+    });
+  });
+
+  it("applies priority and weight overrides without mutating configured layers or policy", () => {
+    const layers = [
+      { source: "idle", priority: 10, weight: 1 },
+      { source: "tracking", priority: 100, weight: 1 },
+    ] as const;
+    const mixer = createMotionMixer(layers);
+    const inputs = [
+      { sourceId: "idle", frame: { timestamp: 1, parameters: { x: 0 } } },
+      { sourceId: "tracking", frame: { timestamp: 2, parameters: { x: 1 } } },
+    ] as const;
+    const policy = {
+      tracking: { priority: 10, weight: 0.75 },
+      idle: { priority: 10, weight: 0.25 },
+    } as const;
+
+    expect(mixer.mix(inputs, policy)?.parameters?.x).toBeCloseTo(0.75);
+    expect(mixer.inspect?.(inputs, policy)?.parameters.x).toEqual([
+      { sourceId: "idle", priority: 10, weight: 0.25 },
+      { sourceId: "tracking", priority: 10, weight: 0.75 },
+    ]);
+    expect(layers[0]).toEqual({ source: "idle", priority: 10, weight: 1 });
+    expect(policy).toEqual({
+      tracking: { priority: 10, weight: 0.75 },
+      idle: { priority: 10, weight: 0.25 },
+    });
+  });
+
+  it("preserves no-policy behavior when policy is omitted or undefined", () => {
+    const mixer = createMotionMixer([
+      { source: "idle", priority: 10 },
+      { source: "tracking", priority: 100 },
+    ]);
+    const inputs = [
+      { sourceId: "idle", frame: { timestamp: 1, parameters: { x: 0 } } },
+      { sourceId: "tracking", frame: { timestamp: 2, parameters: { x: 1 } } },
+    ] as const;
+
+    expect(mixer.mix(inputs, undefined)).toEqual(mixer.mix(inputs));
+    expect(mixer.inspect?.(inputs, undefined)).toEqual(mixer.inspect?.(inputs));
+  });
+
   it("reports highest-priority owners and weighted contributors", () => {
     const mixer = createMotionMixer([
       {

@@ -34,7 +34,7 @@ export function createMotionFramePipeline(
   }
 
   return {
-    process(inputs, deltaTime) {
+    process(inputs, deltaTime, policy) {
       const filteredInputs = inputs.map((input) => ({
         sourceId: input.sourceId,
         frame: applyFilters(
@@ -43,7 +43,7 @@ export function createMotionFramePipeline(
           deltaTime,
         ),
       }));
-      const mixed = mixer.mix(filteredInputs);
+      const mixed = mixer.mix(filteredInputs, policy);
       if (!mixed) {
         return undefined;
       }
@@ -53,7 +53,7 @@ export function createMotionFramePipeline(
         : cloneMotionFrame(mixed);
       return outputFilterPipeline.apply(retargeted, deltaTime);
     },
-    inspect(inputs) {
+    inspect(inputs, policy) {
       if (!mixer.inspect) {
         return undefined;
       }
@@ -62,7 +62,7 @@ export function createMotionFramePipeline(
         sourceId: input.sourceId,
         frame: applyFilters(input.frame, sourceFilters[input.sourceId] ?? [], 0),
       }));
-      const inspection = mixer.inspect(filteredInputs);
+      const inspection = mixer.inspect(filteredInputs, policy);
       return options.retarget
         ? remapInspection(inspection, options.retarget)
         : cloneInspection(inspection);

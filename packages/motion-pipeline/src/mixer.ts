@@ -5,6 +5,7 @@ import type {
   MotionChannelOwner,
   MotionFrameInput,
   MotionLayer,
+  MotionLayerPolicy,
   MotionMixer,
   MotionMixerInspection,
 } from "./types.js";
@@ -25,11 +26,11 @@ export function createMotionMixer(layers: readonly MotionLayer[] = []): MotionMi
   }
 
   return {
-    mix(inputs) {
-      return mixFrames(inputs, layerMap);
+    mix(inputs, policy) {
+      return mixFrames(applySourcePolicy(inputs, policy), layerMap, policy);
     },
-    inspect(inputs) {
-      return inspectFrames(inputs, layerMap);
+    inspect(inputs, policy) {
+      return inspectFrames(applySourcePolicy(inputs, policy), layerMap, policy);
     },
   };
 }
@@ -37,17 +38,19 @@ export function createMotionMixer(layers: readonly MotionLayer[] = []): MotionMi
 function inspectFrames(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
+  policy: MotionLayerPolicy | undefined,
 ): MotionMixerInspection {
   return {
-    bones: inspectBones(inputs, layerMap),
-    blendShapes: inspectNumericDomain(inputs, layerMap, "blendShapes"),
-    parameters: inspectNumericDomain(inputs, layerMap, "parameters"),
+    bones: inspectBones(inputs, layerMap, policy),
+    blendShapes: inspectNumericDomain(inputs, layerMap, "blendShapes", policy),
+    parameters: inspectNumericDomain(inputs, layerMap, "parameters", policy),
   };
 }
 
 function inspectBones(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
+  policy: MotionLayerPolicy | undefined,
 ): Record<string, MotionChannelOwner[]> {
   const boneIds = new Set<string>();
   for (const { frame } of inputs) {
@@ -61,7 +64,7 @@ function inspectBones(
     const candidates = inputs
       .map(({ sourceId, frame }) => ({
         sourceId,
-        layer: resolveLayer(sourceId, layerMap),
+        layer: resolveLayer(sourceId, layerMap, policy),
         transform: frame.bones?.[boneId],
       }))
       .filter(
@@ -88,6 +91,7 @@ function inspectNumericDomain(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
   domain: "blendShapes" | "parameters",
+  policy: MotionLayerPolicy | undefined,
 ): Record<string, MotionChannelOwner[]> {
   const keys = new Set<string>();
   for (const { frame } of inputs) {
@@ -101,7 +105,7 @@ function inspectNumericDomain(
     const candidates = inputs
       .map(({ sourceId, frame }) => ({
         sourceId,
-        layer: resolveLayer(sourceId, layerMap),
+        layer: resolveLayer(sourceId, layerMap, policy),
         value: frame[domain]?.[key],
       }))
       .filter(({ value }) => value !== undefined)
@@ -137,14 +141,15 @@ function inspectCandidates(
 function mixFrames(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
+  policy: MotionLayerPolicy | undefined,
 ): MotionFrame | undefined {
   if (inputs.length === 0) {
     return undefined;
   }
 
-  const bones = mixBones(inputs, layerMap);
-  const blendShapes = mixNumericDomain(inputs, layerMap, "blendShapes");
-  const parameters = mixNumericDomain(inputs, layerMap, "parameters");
+  const bones = mixBones(inputs, layerMap, policy);
+  const blendShapes = mixNumericDomain(inputs, layerMap, "blendShapes", policy);
+  const parameters = mixNumericDomain(inputs, layerMap, "parameters", policy);
   const sequences = inputs
     .map(({ frame }) => frame.sequence)
     .filter((sequence): sequence is number => sequence !== undefined);
@@ -166,6 +171,7 @@ function mixFrames(
 function mixBones(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
+  policy: MotionLayerPolicy | undefined,
 ): Record<string, BoneTransform> {
   const boneIds = new Set<string>();
   for (const { frame } of inputs) {
@@ -184,7 +190,7 @@ function mixBones(
         }
 
         return {
-          layer: resolveLayer(sourceId, layerMap),
+          layer: resolveLayer(sourceId, layerMap, policy),
           transform,
         };
       })
@@ -243,6 +249,7 @@ function mixNumericDomain(
   inputs: readonly MotionFrameInput[],
   layerMap: ReadonlyMap<string, MotionLayer>,
   domain: "blendShapes" | "parameters",
+  policy: MotionLayerPolicy | undefined,
 ): Record<string, number> {
   const keys = new Set<string>();
   for (const { frame } of inputs) {
@@ -255,8 +262,8 @@ function mixNumericDomain(
   for (const key of keys) {
     const candidates = inputs.map(({ sourceId, frame }) => ({
       value: frame[domain]?.[key],
-      layer: resolveLayer(sourceId, layerMap),
-      allowed: isAllowed(resolveLayer(sourceId, layerMap)[domain], key),
+      layer: resolveLayer(sourceId, layerMap, policy),
+      allowed: isAllowed(resolveLayer(sourceId, layerMap, policy)[domain], key),
     }));
     const value = mixComponent(candidates, weightedNumber);
     if (value !== undefined) {
@@ -360,8 +367,24 @@ function weightedAverage(candidates: readonly Candidate<number>[]): number {
 function resolveLayer(
   sourceId: string,
   layerMap: ReadonlyMap<string, MotionLayer>,
+  policy: MotionLayerPolicy | undefined,
 ): MotionLayer {
-  return layerMap.get(sourceId) ?? { ...DEFAULT_LAYER, source: sourceId };
+  const base = layerMap.get(sourceId) ?? { ...DEFAULT_LAYER, source: sourceId };
+  const override = policy?.[sourceId];
+  const layer = {
+    ...base,
+    ...(override?.priority !== undefined ? { priority: override.priority } : {}),
+    ...(override?.weight !== undefined ? { weight: override.weight } : {}),
+  };
+  validateLayer(layer);
+  return layer;
+}
+
+function applySourcePolicy(
+  inputs: readonly MotionFrameInput[],
+  policy: MotionLayerPolicy | undefined,
+): readonly MotionFrameInput[] {
+  return inputs.filter(({ sourceId }) => policy?.[sourceId]?.enabled !== false);
 }
 
 function isAllowed(mask: readonly string[] | undefined, key: string): boolean {

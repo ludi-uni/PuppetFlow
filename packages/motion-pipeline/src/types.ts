@@ -1,4 +1,5 @@
 import type { BoneId, MotionFrame, Quaternion, Vec3 } from "@puppetflow/core";
+import type { MotionSourcePolicyOverride } from "@puppetflow/motion-graph";
 
 export interface MotionFrameInput {
   sourceId: string;
@@ -13,6 +14,8 @@ export interface MotionLayer {
   blendShapes?: readonly string[];
   parameters?: readonly string[];
 }
+
+export type MotionLayerPolicy = Readonly<Record<string, MotionSourcePolicyOverride>>;
 
 export interface MotionChannelOwner {
   sourceId: string;
@@ -33,8 +36,14 @@ export interface MotionFrameFilter {
 }
 
 export interface MotionMixer {
-  mix(inputs: readonly MotionFrameInput[]): MotionFrame | undefined;
-  inspect?(inputs: readonly MotionFrameInput[]): MotionMixerInspection;
+  mix(
+    inputs: readonly MotionFrameInput[],
+    policy?: MotionLayerPolicy,
+  ): MotionFrame | undefined;
+  inspect?(
+    inputs: readonly MotionFrameInput[],
+    policy?: MotionLayerPolicy,
+  ): MotionMixerInspection;
 }
 
 export interface MotionRetargetBoneConfig {
@@ -52,7 +61,11 @@ export interface MotionFramePipeline {
   process(
     inputs: readonly MotionFrameInput[],
     deltaTime: number,
+    policy?: MotionLayerPolicy,
   ): MotionFrame | undefined;
   reset(): void;
-  inspect?(inputs: readonly MotionFrameInput[]): MotionMixerInspection | undefined;
+  inspect?(
+    inputs: readonly MotionFrameInput[],
+    policy?: MotionLayerPolicy,
+  ): MotionMixerInspection | undefined;
 }

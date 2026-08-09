@@ -620,6 +620,9 @@ importers:
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core
+      '@puppetflow/motion-graph':
+        specifier: workspace:*
+        version: link:../motion-graph
     devDependencies:
       tsup:
         specifier: ^8.5.0

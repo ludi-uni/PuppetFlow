@@ -23,6 +23,22 @@ function markerFilter(id: string, marker: string, reset = vi.fn()): MotionFrameF
 }
 
 describe("createMotionFramePipeline", () => {
+  it("forwards source policy to mixer process and inspection", () => {
+    const mix = vi.fn(() => ({ timestamp: 1 }));
+    const inspect = vi.fn(() => ({ bones: {}, blendShapes: {}, parameters: {} }));
+    const pipeline = createMotionFramePipeline({ mixer: { mix, inspect } });
+    const inputs = [
+      { sourceId: "tracker", frame: { timestamp: 1, parameters: { x: 1 } } },
+    ];
+    const policy = { tracker: { enabled: false, priority: 200 } } as const;
+
+    pipeline.process(inputs, 1 / 60, policy);
+    pipeline.inspect?.(inputs, policy);
+
+    expect(mix).toHaveBeenCalledWith(expect.any(Array), policy);
+    expect(inspect).toHaveBeenCalledWith(expect.any(Array), policy);
+  });
+
   it("exposes mixer ownership after retarget mapping", () => {
     const pipeline = createMotionFramePipeline({
       layers: [{ source: "webcam", priority: 110, bones: ["Head"] }],
