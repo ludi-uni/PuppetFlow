@@ -29,18 +29,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in \\
-            AGENTS.md \\
-            docs/agent-policy.md \\
-            docs/issue-spec.md \\
+          for file in \
+            AGENTS.md \
+            docs/agent-policy.md \
+            docs/issue-spec.md \
             .github/ISSUE_TEMPLATE/agent-task.md; do
             test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
           done
-          test -s .github/ISSUE_TEMPLATE/bug.md \\
+          test -s .github/ISSUE_TEMPLATE/bug.md \
             || test -s .github/ISSUE_TEMPLATE/bug_report.md
-          test -s .github/ISSUE_TEMPLATE/feature.md \\
+          test -s .github/ISSUE_TEMPLATE/feature.md \
             || test -s .github/ISSUE_TEMPLATE/feature_request.md
-          test -s .github/PULL_REQUEST_TEMPLATE.md \\
+          test -s .github/PULL_REQUEST_TEMPLATE.md \
             || test -s .github/pull_request_template.md
           grep -Fq 'Never push directly' AGENTS.md
           grep -Fq 'Draft Pull Request' AGENTS.md
