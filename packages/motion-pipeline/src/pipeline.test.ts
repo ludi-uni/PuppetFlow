@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { MotionLayerPolicy } from "./index.js";
 import { createMotionFramePipeline } from "./pipeline.js";
 import type { MotionFrameFilter } from "./types.js";
 
@@ -30,7 +31,9 @@ describe("createMotionFramePipeline", () => {
     const inputs = [
       { sourceId: "tracker", frame: { timestamp: 1, parameters: { x: 1 } } },
     ];
-    const policy = { tracker: { enabled: false, priority: 200 } } as const;
+    const policy: MotionLayerPolicy = {
+      tracker: { enabled: false, priority: 200 },
+    };
 
     pipeline.process(inputs, 1 / 60, policy);
     pipeline.inspect?.(inputs, policy);

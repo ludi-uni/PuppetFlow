@@ -25,6 +25,7 @@ export type {
   MotionFramePipeline,
   MotionChannelOwner,
   MotionLayer,
+  MotionLayerPolicy,
   MotionMixer,
   MotionMixerInspection,
   MotionRetargetBoneConfig,
