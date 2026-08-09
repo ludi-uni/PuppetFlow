@@ -115,7 +115,7 @@ snapshot.policy; // 次の pipeline に渡す source policy overlay
   - タイムアウト未満: フレームをそのまま複製して配送。
 - stop 挙動:
   - `stop()` が呼ばれた時点で `tickInProgress` なら最大 200 回スピンし、超えると警告を出して destroy をスキップ。
-  - タイムアウト経路でも graph は `reset()` され、`getMotionFrameGraphState()` は idle / リセット済み policy を返す。
+  - タイムアウト経路でも graph は `reset()` され、`getMotionFrameGraphState()` は configured `initialState` / リセット済み policy を返す。
   - 正常終了時は source の latest frame も clear し、graph/inspect/health を初期化。
 - `getMotionFrameGraphState()` は snapshot の defensive clone を返す。
 - Graph 評価例外は `PuppetFlowRuntime` で catch され、`evaluate` が失敗しても pipeline は従来経路（policy undefined）で進行する（fail-open）。

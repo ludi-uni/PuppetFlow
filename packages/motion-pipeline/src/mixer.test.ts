@@ -25,6 +25,32 @@ describe("MotionMixer", () => {
     });
   });
 
+  it.each([
+    ["disabled source", { disabled: { enabled: false, priority: Number.NaN } }],
+    ["channel-less frame", { idle: { weight: Number.POSITIVE_INFINITY } }],
+  ] as const)("rejects invalid policy values during mix for %s", (_name, policy) => {
+    const mixer = createMotionMixer([{ source: "idle", priority: 10 }]);
+
+    expect(() =>
+      mixer.mix([{ sourceId: "idle", frame: { timestamp: 1 } }], policy),
+    ).toThrow();
+  });
+
+  it.each([
+    [
+      "disabled source",
+      { disabled: { enabled: false, priority: Number.NEGATIVE_INFINITY } },
+    ],
+    ["empty inputs", { idle: { weight: 1.1 } }],
+  ] as const)(
+    "rejects invalid policy values during inspect for %s",
+    (_name, policy) => {
+      const mixer = createMotionMixer([{ source: "idle", priority: 10 }]);
+
+      expect(() => mixer.inspect?.([], policy)).toThrow();
+    },
+  );
+
   it("applies priority and weight overrides without mutating configured layers or policy", () => {
     const layers = [
       { source: "idle", priority: 10, weight: 1 },

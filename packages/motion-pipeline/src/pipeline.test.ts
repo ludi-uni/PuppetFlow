@@ -42,6 +42,59 @@ describe("createMotionFramePipeline", () => {
     expect(inspect).toHaveBeenCalledWith(expect.any(Array), policy);
   });
 
+  it("does not apply disabled source filters before process or inspect", () => {
+    const disabledFilter: MotionFrameFilter = {
+      id: "disabled",
+      apply() {
+        throw new Error("disabled filter called");
+      },
+      reset: vi.fn(),
+    };
+    const mix = vi.fn(() => ({ timestamp: 1 }));
+    const inspect = vi.fn(() => ({ bones: {}, blendShapes: {}, parameters: {} }));
+    const pipeline = createMotionFramePipeline({
+      sourceFilters: { disabled: [disabledFilter] },
+      mixer: { mix, inspect },
+    });
+    const inputs = [{ sourceId: "disabled", frame: { timestamp: 1 } }];
+    const policy = { disabled: { enabled: false } } satisfies MotionLayerPolicy;
+
+    expect(() => pipeline.process(inputs, 1 / 60, policy)).not.toThrow();
+    expect(() => pipeline.inspect?.(inputs, policy)).not.toThrow();
+    expect(mix).toHaveBeenCalledWith([], policy);
+    expect(inspect).toHaveBeenCalledWith([], policy);
+  });
+
+  it("keeps enabled output when a disabled source filter throws", () => {
+    const pipeline = createMotionFramePipeline({
+      sourceFilters: {
+        disabled: [
+          {
+            id: "disabled",
+            apply() {
+              throw new Error("disabled filter called");
+            },
+            reset: vi.fn(),
+          },
+        ],
+      },
+      mixer: {
+        mix: (inputs) => inputs[0]?.frame,
+      },
+    });
+
+    expect(
+      pipeline.process(
+        [
+          { sourceId: "disabled", frame: { timestamp: 1 } },
+          { sourceId: "enabled", frame: { timestamp: 2 } },
+        ],
+        1 / 60,
+        { disabled: { enabled: false } },
+      ),
+    ).toEqual({ timestamp: 2 });
+  });
+
   it("exposes mixer ownership after retarget mapping", () => {
     const pipeline = createMotionFramePipeline({
       layers: [{ source: "webcam", priority: 110, bones: ["Head"] }],

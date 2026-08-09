@@ -422,6 +422,7 @@ export class PuppetFlowRuntime {
 
   async stop(): Promise<void> {
     if (!this.running) {
+      this.resetMotionFrameGraph();
       return;
     }
 
@@ -441,10 +442,7 @@ export class PuppetFlowRuntime {
         console.warn(
           "[PuppetFlowRuntime] stop() timed out waiting for tick; skipping dispose to avoid races",
         );
-        if (this.motionFrameGraph) {
-          this.motionFrameGraph.reset();
-          this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
-        }
+        this.resetMotionFrameGraph();
         return;
       }
     }
@@ -453,10 +451,7 @@ export class PuppetFlowRuntime {
     await this.disposeSources();
     await this.stopMotionSources();
     this.resetMotionPipeline();
-    if (this.motionFrameGraph) {
-      this.motionFrameGraph.reset();
-      this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
-    }
+    this.resetMotionFrameGraph();
     this.motionMixerInspection = undefined;
     this.resetMotionOutputHealth();
     this.motionOverride.clear();
@@ -1077,5 +1072,14 @@ export class PuppetFlowRuntime {
     } catch (error) {
       console.error("[PuppetFlowRuntime] motion pipeline reset failed", error);
     }
+  }
+
+  private resetMotionFrameGraph(): void {
+    if (!this.motionFrameGraph) {
+      return;
+    }
+
+    this.motionFrameGraph.reset();
+    this.motionFrameGraphSnapshot = this.motionFrameGraph.snapshot();
   }
 }

@@ -6,6 +6,7 @@ import { applyRetarget } from "./retarget.js";
 import type {
   MotionFrameFilter,
   MotionFramePipeline,
+  MotionLayerPolicy,
   MotionLayer,
   MotionMixer,
   MotionMixerInspection,
@@ -35,14 +36,16 @@ export function createMotionFramePipeline(
 
   return {
     process(inputs, deltaTime, policy) {
-      const filteredInputs = inputs.map((input) => ({
-        sourceId: input.sourceId,
-        frame: applyFilters(
-          input.frame,
-          sourceFilters[input.sourceId] ?? [],
-          deltaTime,
-        ),
-      }));
+      const filteredInputs = inputs
+        .filter((input) => isEnabled(input.sourceId, policy))
+        .map((input) => ({
+          sourceId: input.sourceId,
+          frame: applyFilters(
+            input.frame,
+            sourceFilters[input.sourceId] ?? [],
+            deltaTime,
+          ),
+        }));
       const mixed = mixer.mix(filteredInputs, policy);
       if (!mixed) {
         return undefined;
@@ -58,10 +61,12 @@ export function createMotionFramePipeline(
         return undefined;
       }
 
-      const filteredInputs = inputs.map((input) => ({
-        sourceId: input.sourceId,
-        frame: applyFilters(input.frame, sourceFilters[input.sourceId] ?? [], 0),
-      }));
+      const filteredInputs = inputs
+        .filter((input) => isEnabled(input.sourceId, policy))
+        .map((input) => ({
+          sourceId: input.sourceId,
+          frame: applyFilters(input.frame, sourceFilters[input.sourceId] ?? [], 0),
+        }));
       const inspection = mixer.inspect(filteredInputs, policy);
       return options.retarget
         ? remapInspection(inspection, options.retarget)
@@ -73,6 +78,10 @@ export function createMotionFramePipeline(
       }
     },
   };
+}
+
+function isEnabled(sourceId: string, policy: MotionLayerPolicy | undefined): boolean {
+  return policy?.[sourceId]?.enabled !== false;
 }
 
 function remapInspection(

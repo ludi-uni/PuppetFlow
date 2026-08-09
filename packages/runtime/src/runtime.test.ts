@@ -116,6 +116,19 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
   });
 
+  it("resets graph signals when stop is called while already stopped", async () => {
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(createMotionSource("idle", 0))
+      .attachMotionFrameGraph(motionFrameGraph);
+
+    runtime.setMotionGraphSignal("tracking", true);
+    await runtime.stop();
+    await runtime.start();
+
+    expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
+    await runtime.stop();
+  });
+
   it("resets graph state and signals when stop times out waiting for a tick", async () => {
     const runtime = new PuppetFlowRuntime()
       .attachMotionSource(createMotionSource("tracker", 1))

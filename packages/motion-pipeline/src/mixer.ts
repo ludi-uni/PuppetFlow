@@ -27,9 +27,11 @@ export function createMotionMixer(layers: readonly MotionLayer[] = []): MotionMi
 
   return {
     mix(inputs, policy) {
+      validatePolicy(policy);
       return mixFrames(applySourcePolicy(inputs, policy), layerMap, policy);
     },
     inspect(inputs, policy) {
+      validatePolicy(policy);
       return inspectFrames(applySourcePolicy(inputs, policy), layerMap, policy);
     },
   };
@@ -403,5 +405,23 @@ function validateLayer(layer: MotionLayer): void {
     (!Number.isFinite(layer.weight) || layer.weight < 0 || layer.weight > 1)
   ) {
     throw new Error("MotionLayer.weight must be between 0 and 1");
+  }
+}
+
+function validatePolicy(policy: MotionLayerPolicy | undefined): void {
+  if (!policy) {
+    return;
+  }
+
+  for (const override of Object.values(policy)) {
+    if (override.priority !== undefined && !Number.isFinite(override.priority)) {
+      throw new Error("MotionLayer.priority must be finite");
+    }
+    if (
+      override.weight !== undefined &&
+      (!Number.isFinite(override.weight) || override.weight < 0 || override.weight > 1)
+    ) {
+      throw new Error("MotionLayer.weight must be between 0 and 1");
+    }
   }
 }
