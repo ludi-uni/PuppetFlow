@@ -8,7 +8,10 @@ import { PuppetFlowRuntime } from "./runtime.js";
 
 it("runs plugin-created source, filter, and adapter through Runtime", async () => {
   const updateFrame = vi.fn(async () => {});
+  const initialize = vi.fn(async () => {});
+  const dispose = vi.fn(async () => {});
   const reset = vi.fn();
+  const stop = vi.fn(async () => {});
   const plugin: MotionRuntimePlugin = {
     id: "synthetic",
     register(registry) {
@@ -17,7 +20,7 @@ it("runs plugin-created source, filter, and adapter through Runtime", async () =
         create: () => ({
           id: "synthetic",
           start: async (emit) => emit({ timestamp: 1, parameters: { value: 2 } }),
-          stop: async () => {},
+          stop,
         }),
       });
       registry.addFilterFactory({
@@ -38,9 +41,9 @@ it("runs plugin-created source, filter, and adapter through Runtime", async () =
         type: "capture",
         create: () => ({
           id: "capture",
-          initialize: async () => {},
+          initialize,
           updateFrame,
-          dispose: async () => {},
+          dispose,
         }),
       });
     },
@@ -58,10 +61,17 @@ it("runs plugin-created source, filter, and adapter through Runtime", async () =
     .attachMotionAdapter(adapter);
 
   await runtime.start();
-  expect(updateFrame).toHaveBeenCalledWith(
-    expect.objectContaining({ parameters: { value: 4 } }),
-    expect.any(Number),
-  );
-  await runtime.stop();
+  try {
+    expect(updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ parameters: { value: 4 } }),
+      expect.any(Number),
+    );
+  } finally {
+    await runtime.stop();
+  }
+
+  expect(initialize).toHaveBeenCalledTimes(1);
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(stop).toHaveBeenCalledTimes(1);
   expect(reset).toHaveBeenCalledTimes(1);
 });
