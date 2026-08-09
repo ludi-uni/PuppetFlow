@@ -38,5 +38,3 @@ low / medium / high
 None
 
 <!-- An agent must stop on material unresolved questions rather than inventing an answer. -->
-
-
