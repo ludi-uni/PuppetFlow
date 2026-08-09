@@ -71,6 +71,10 @@ registerMotionRuntimePlugins()  ->  registry.createFrameAdapter()
   例: `source` の `vmc` と `filter` の `vmc` と `frame adapter` の `vmc` は共存できます。
 - `registerMotionRuntimePlugins()` はまずプラグイン ID を事前検査し、重複があると
   どの `register()` も実行しません。
+- すべてのプラグイン `id` は callback 実行前に事前検査されます。その後の factory
+  登録 callback は文書順に実行され、空/重複 `type` または callback の例外で中断し、
+  registry は返されません。factory `type` 自体は事前検査されず、先行 callback の
+  registry 変更や外部副作用もロールバックされません。
 
 ## 設定の所有権
 
@@ -188,6 +192,16 @@ const runtime = new PuppetFlowRuntime()
     }),
   )
   .attachMotionAdapter(registry.createFrameAdapter("capture", {}));
+```
+
+出力側に一括適用する場合は、`outputFilters` に factory の生成物を渡します。
+
+```ts
+runtime.attachMotionPipeline(
+  createMotionFramePipeline({
+    outputFilters: [registry.createFilter("double", {})],
+  }),
+);
 ```
 
 上記を `runtime.start()` すれば、`capture` 側で `parameters.value` が `4` になります。
