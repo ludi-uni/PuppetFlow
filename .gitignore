@@ -24,6 +24,7 @@ apps/*/src-tauri/gen/
 .idea/
 .vscode/
 .cursor/
+.worktrees/
 
 # Vite / Vitest cache
 .vite/
