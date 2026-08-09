@@ -249,3 +249,15 @@ pipeline へ `enabled / priority / weight` overlay を適用します。
 Pipeline が未 attach の場合は最新 frame を source attachment 順で raw path 配信します。
 
 既存の `StateSource` / `MotionState` / legacy `Adapter` 経路はそのまま残り、既存設定と YAML/CLI 互換を維持します。`MotionFrame` 系の導線は opt-in です。
+
+### Motion Runtime Plugin Registry
+
+`@puppetflow/extension-core` は既存 Runtime API に接続するための
+`MotionSource` / `MotionFrameFilter` / `MotionFrameAdapter` ファクトリ registry を提供します。
+
+- `MotionSourceFactory` -> `runtime.attachMotionSource()`
+- `MotionFilterFactory` -> `createMotionFramePipeline({ sourceFilters / outputFilters })`
+- `MotionFrameAdapterFactory` -> `runtime.attachMotionAdapter()`
+
+このレジストリは既存 Runtime の置換ではなく、既存 `@puppetflow/runtime` のライフサイクル（`initialize` / `start` / `stop`）に従って
+factory が作成したインスタンスを接続するための公開 API です。
