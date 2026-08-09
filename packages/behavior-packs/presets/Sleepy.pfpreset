@@ -24,7 +24,7 @@
                     "name": "id",
                     "value": {
                       "type": "String",
-                      "value": "body"
+                      "value": "sleepy-body-lean"
                     }
                   },
                   {
@@ -38,7 +38,7 @@
               },
               "right": {
                 "type": "Number",
-                "value": 0.05
+                "value": 0.035
               }
             },
             "right": {
@@ -89,21 +89,101 @@
                   "name": "id",
                   "value": {
                     "type": "String",
-                    "value": "body"
+                    "value": "sleepy-body-roll"
                   }
                 },
                 {
                   "name": "frequency",
                   "value": {
                     "type": "Number",
-                    "value": 0.08
+                    "value": 0.07
                   }
                 }
               ]
             },
             "right": {
               "type": "Number",
-              "value": 0.04
+              "value": 0.025
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "facePitch",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "sleepy-face-pitch"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.06
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.01
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.47
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "headTilt",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "sleepy-head-tilt"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.05
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.015
             }
           },
           "right": {
@@ -202,7 +282,7 @@
       }
     ]
   },
-  "behaviorPfScript": "-- 体の揺れ（ゆっくり）\nbodyLean = oscillator(id = \"body\", frequency = 0.1) * 0.05 * clamp(energy, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = 0.08) * 0.04 + 0.5\nbodyYaw = interest * -0.1 + 0.5\nmouthY = volume * 0.85\neyeYaw = clamp(energy, 0.2, 0.75)\nbreath = breath(0.06)",
+  "behaviorPfScript": "-- 体の揺れ（ゆっくり）\nbodyLean = oscillator(id = \"sleepy-body-lean\", frequency = 0.1) * 0.035 * clamp(energy, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"sleepy-body-roll\", frequency = 0.07) * 0.025 + 0.5\nfacePitch = oscillator(id = \"sleepy-face-pitch\", frequency = 0.06) * 0.01 + 0.47\nheadTilt = oscillator(id = \"sleepy-head-tilt\", frequency = 0.05) * 0.015 + 0.5\nbodyYaw = interest * -0.1 + 0.5\nmouthY = volume * 0.85\neyeYaw = clamp(energy, 0.2, 0.75)\nbreath = breath(0.06)",
   "behaviorPlugins": [
     {
       "id": "blink",
@@ -216,8 +296,8 @@
     {
       "id": "idle",
       "config": {
-        "interestThreshold": 0.45,
-        "wanderBoost": 0.08
+        "interestThreshold": 0.5,
+        "wanderBoost": 0.05
       }
     }
   ],

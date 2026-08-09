@@ -24,7 +24,7 @@
                     "name": "id",
                     "value": {
                       "type": "String",
-                      "value": "body"
+                      "value": "focused-body-lean"
                     }
                   },
                   {
@@ -37,7 +37,7 @@
                         "op": "*",
                         "left": {
                           "type": "Number",
-                          "value": 0.25
+                          "value": 0.22
                         },
                         "right": {
                           "type": "Identifier",
@@ -54,7 +54,7 @@
               },
               "right": {
                 "type": "Number",
-                "value": 0.04
+                "value": 0.035
               }
             },
             "right": {
@@ -108,7 +108,7 @@
                     "name": "id",
                     "value": {
                       "type": "String",
-                      "value": "body"
+                      "value": "focused-body-roll"
                     }
                   },
                   {
@@ -121,7 +121,7 @@
                         "op": "*",
                         "left": {
                           "type": "Number",
-                          "value": 0.25
+                          "value": 0.18
                         },
                         "right": {
                           "type": "Identifier",
@@ -130,7 +130,7 @@
                       },
                       "right": {
                         "type": "Number",
-                        "value": 0.08
+                        "value": 0.07
                       }
                     }
                   }
@@ -138,7 +138,7 @@
               },
               "right": {
                 "type": "Number",
-                "value": 0.03
+                "value": 0.025
               }
             },
             "right": {
@@ -164,6 +164,86 @@
                   }
                 }
               ]
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "facePitch",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "focused-face-pitch"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.12
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.008
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.48
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "headTilt",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "focused-head-tilt"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.09
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.008
             }
           },
           "right": {
@@ -254,7 +334,7 @@
       }
     ]
   },
-  "behaviorPfScript": "-- 体の揺れ（引き締め）\nbodyLean = oscillator(id = \"body\", frequency = (0.25 * interest) + 0.08) * 0.04 * clamp(interest, 0.4, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = (0.25 * interest) + 0.08) * 0.03 * clamp(interest, 0.4, 1) + 0.5\nbodyYaw = interest * -0.35 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.5, 1)\nbreath = breath(0.08)",
+  "behaviorPfScript": "-- 体の揺れ（引き締め）\nbodyLean = oscillator(id = \"focused-body-lean\", frequency = (0.22 * interest) + 0.08) * 0.035 * clamp(interest, 0.4, 1) + 0.5\nbodyRoll = oscillator(id = \"focused-body-roll\", frequency = (0.18 * interest) + 0.07) * 0.025 * clamp(interest, 0.4, 1) + 0.5\nfacePitch = oscillator(id = \"focused-face-pitch\", frequency = 0.12) * 0.008 + 0.48\nheadTilt = oscillator(id = \"focused-head-tilt\", frequency = 0.09) * 0.008 + 0.5\nbodyYaw = interest * -0.35 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.5, 1)\nbreath = breath(0.08)",
   "behaviorPlugins": [
     {
       "id": "blink",
@@ -268,8 +348,8 @@
     {
       "id": "idle",
       "config": {
-        "interestThreshold": 0.4,
-        "wanderBoost": 0.06
+        "interestThreshold": 0.3,
+        "wanderBoost": 0.03
       }
     }
   ],

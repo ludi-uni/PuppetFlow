@@ -24,37 +24,21 @@
                     "name": "id",
                     "value": {
                       "type": "String",
-                      "value": "body"
+                      "value": "idle-body-lean"
                     }
                   },
                   {
                     "name": "frequency",
                     "value": {
-                      "type": "Binary",
-                      "op": "+",
-                      "left": {
-                        "type": "Binary",
-                        "op": "*",
-                        "left": {
-                          "type": "Number",
-                          "value": 0.2
-                        },
-                        "right": {
-                          "type": "Identifier",
-                          "name": "interest"
-                        }
-                      },
-                      "right": {
-                        "type": "Number",
-                        "value": 0.08
-                      }
+                      "type": "Number",
+                      "value": 0.12
                     }
                   }
                 ]
               },
               "right": {
                 "type": "Number",
-                "value": 0.06
+                "value": 0.04
               }
             },
             "right": {
@@ -108,37 +92,21 @@
                     "name": "id",
                     "value": {
                       "type": "String",
-                      "value": "body"
+                      "value": "idle-body-roll"
                     }
                   },
                   {
                     "name": "frequency",
                     "value": {
-                      "type": "Binary",
-                      "op": "+",
-                      "left": {
-                        "type": "Binary",
-                        "op": "*",
-                        "left": {
-                          "type": "Number",
-                          "value": 0.2
-                        },
-                        "right": {
-                          "type": "Identifier",
-                          "name": "interest"
-                        }
-                      },
-                      "right": {
-                        "type": "Number",
-                        "value": 0.08
-                      }
+                      "type": "Number",
+                      "value": 0.09
                     }
                   }
                 ]
               },
               "right": {
                 "type": "Number",
-                "value": 0.05
+                "value": 0.03
               }
             },
             "right": {
@@ -164,6 +132,86 @@
                   }
                 }
               ]
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "faceYaw",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "idle-face-yaw"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.07
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.015
+            }
+          },
+          "right": {
+            "type": "Number",
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "type": "ExprAssign",
+        "target": "headTilt",
+        "value": {
+          "type": "Binary",
+          "op": "+",
+          "left": {
+            "type": "Binary",
+            "op": "*",
+            "left": {
+              "type": "Call",
+              "callee": "oscillator",
+              "args": [
+                {
+                  "name": "id",
+                  "value": {
+                    "type": "String",
+                    "value": "idle-head-tilt"
+                  }
+                },
+                {
+                  "name": "frequency",
+                  "value": {
+                    "type": "Number",
+                    "value": 0.05
+                  }
+                }
+              ]
+            },
+            "right": {
+              "type": "Number",
+              "value": 0.01
             }
           },
           "right": {
@@ -254,22 +302,22 @@
       }
     ]
   },
-  "behaviorPfScript": "-- 体の揺れ（ゆったり）\nbodyLean = oscillator(id = \"body\", frequency = (0.2 * interest) + 0.08) * 0.06 * clamp(interest, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = (0.2 * interest) + 0.08) * 0.05 * clamp(interest, 0.2, 1) + 0.5\nbodyYaw = interest * -0.15 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.35, 1)\nbreath = breath(0.08)",
+  "behaviorPfScript": "-- 体の揺れ（ゆったり）\nbodyLean = oscillator(id = \"idle-body-lean\", frequency = 0.12) * 0.04 * clamp(interest, 0.2, 1) + 0.5\nbodyRoll = oscillator(id = \"idle-body-roll\", frequency = 0.09) * 0.03 * clamp(interest, 0.2, 1) + 0.5\nfaceYaw = oscillator(id = \"idle-face-yaw\", frequency = 0.07) * 0.015 + 0.5\nheadTilt = oscillator(id = \"idle-head-tilt\", frequency = 0.05) * 0.01 + 0.5\nbodyYaw = interest * -0.15 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.35, 1)\nbreath = breath(0.08)",
   "behaviorPlugins": [
     {
       "id": "blink",
       "config": {
-        "minInterval": 3,
-        "maxInterval": 8,
-        "closeDuration": 0.12,
+        "minInterval": 3.5,
+        "maxInterval": 8.5,
+        "closeDuration": 0.13,
         "blinkStrength": 1
       }
     },
     {
       "id": "idle",
       "config": {
-        "interestThreshold": 0.35,
-        "wanderBoost": 0.12
+        "interestThreshold": 0.5,
+        "wanderBoost": 0.07
       }
     }
   ],

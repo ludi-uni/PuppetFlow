@@ -31,6 +31,17 @@ function graphGain(preset: PuppetFlowPreset): unknown {
   return preset.graph.nodes.find((node) => node.id === "multiply")?.data.gain;
 }
 
+function assignedKeys(preset: PuppetFlowPreset): string[] {
+  return Array.from(
+    preset.behaviorPfScript?.matchAll(/^([A-Za-z][A-Za-z0-9]*)\s*=/gm) ?? [],
+    (match) => match[1],
+  );
+}
+
+function pluginConfig(preset: PuppetFlowPreset, id: string): unknown {
+  return preset.behaviorPlugins?.find((plugin) => plugin.id === id)?.config;
+}
+
 const STANDARD_PFSCRIPT = `-- 体の揺れ
 bodyLean = oscillator(id = "body", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5
 bodyRoll = oscillator(id = "body", frequency = (0.3 * interest) + 0.1) * 0.1 * clamp(interest, 0.3, 1) + 0.5
@@ -73,6 +84,92 @@ const MOUTH_CONTRACT: Record<
   Focused: { mouthY: "mouthY = volume", mouthXGain: 0.35 },
 };
 
+const PERSONALITY_CONTRACT = {
+  Curious: {
+    addedKeys: ["faceYaw", "headTilt"],
+    blink: {
+      minInterval: 3,
+      maxInterval: 8,
+      closeDuration: 0.12,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.5, wanderBoost: 0.1 },
+  },
+  Happy: {
+    addedKeys: ["facePitch", "headTilt"],
+    blink: {
+      minInterval: 2.8,
+      maxInterval: 7,
+      closeDuration: 0.11,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.3, wanderBoost: 0.08 },
+  },
+  Idle: {
+    addedKeys: ["faceYaw", "headTilt"],
+    blink: {
+      minInterval: 3.5,
+      maxInterval: 8.5,
+      closeDuration: 0.13,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.5, wanderBoost: 0.07 },
+  },
+  Thinking: {
+    addedKeys: [],
+    blink: {
+      minInterval: 3,
+      maxInterval: 8,
+      closeDuration: 0.12,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.4, wanderBoost: 0.06 },
+  },
+  Sleepy: {
+    addedKeys: ["facePitch", "headTilt"],
+    blink: {
+      minInterval: 4,
+      maxInterval: 10,
+      closeDuration: 0.18,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.5, wanderBoost: 0.05 },
+  },
+  Focused: {
+    addedKeys: ["facePitch", "headTilt"],
+    blink: {
+      minInterval: 3,
+      maxInterval: 8,
+      closeDuration: 0.12,
+      blinkStrength: 1,
+    },
+    idle: { interestThreshold: 0.3, wanderBoost: 0.03 },
+  },
+} as const;
+
+const MOTION_SOURCE_CONTRACT = {
+  Curious: [
+    'faceYaw = oscillator(id = "curious-face-yaw", frequency = 0.12) * 0.045 + 0.5',
+    'headTilt = oscillator(id = "curious-head-tilt", frequency = 0.17) * 0.035 + 0.5',
+  ],
+  Happy: [
+    'facePitch = oscillator(id = "happy-face-pitch", frequency = 0.42) * 0.025 + 0.5',
+    'headTilt = oscillator(id = "happy-head-tilt", frequency = 0.31) * 0.02 + 0.5',
+  ],
+  Idle: [
+    'faceYaw = oscillator(id = "idle-face-yaw", frequency = 0.07) * 0.015 + 0.5',
+    'headTilt = oscillator(id = "idle-head-tilt", frequency = 0.05) * 0.01 + 0.5',
+  ],
+  Sleepy: [
+    'facePitch = oscillator(id = "sleepy-face-pitch", frequency = 0.06) * 0.01 + 0.47',
+    'headTilt = oscillator(id = "sleepy-head-tilt", frequency = 0.05) * 0.015 + 0.5',
+  ],
+  Focused: [
+    'facePitch = oscillator(id = "focused-face-pitch", frequency = 0.12) * 0.008 + 0.48',
+    'headTilt = oscillator(id = "focused-head-tilt", frequency = 0.09) * 0.008 + 0.5',
+  ],
+} as const;
+
 describe("official presets", () => {
   for (const name of OFFICIAL_PRESETS) {
     it(`loads ${name}.pfpreset without plugin/graph motion overlaps`, () => {
@@ -113,4 +210,44 @@ describe("official presets", () => {
       readFileSync(join(ROOT_PRESETS_DIR, filename), "utf8"),
     );
   });
+
+  it.each(Object.entries(PERSONALITY_CONTRACT))(
+    "gives %s its approved motion ownership and plugin profile",
+    (name, contract) => {
+      const preset = readPreset(
+        PACKAGE_PRESETS_DIR,
+        name as keyof typeof PERSONALITY_CONTRACT,
+      );
+      const keys = assignedKeys(preset);
+
+      for (const key of contract.addedKeys) expect(keys).toContain(key);
+      expect(keys).not.toContain("lookX");
+      expect(keys).not.toContain("lookY");
+      expect(pluginConfig(preset, "blink")).toEqual(contract.blink);
+      expect(pluginConfig(preset, "idle")).toEqual(contract.idle);
+    },
+  );
+
+  it("leaves Thinking head and face pose ownership to the Thinking Pack", () => {
+    const preset = readPreset(PACKAGE_PRESETS_DIR, "Thinking");
+    const keys = assignedKeys(preset);
+
+    expect(keys).not.toContain("headTilt");
+    expect(keys).not.toContain("facePitch");
+    expect(preset.extensions).toEqual({
+      packs: [{ id: "thinking", config: { intensity: 0.5 } }],
+    });
+  });
+
+  it.each(Object.entries(MOTION_SOURCE_CONTRACT))(
+    "keeps %s head and face motion within the approved first-pass bounds",
+    (name, expectedLines) => {
+      const source = readPreset(
+        PACKAGE_PRESETS_DIR,
+        name as keyof typeof MOTION_SOURCE_CONTRACT,
+      ).behaviorPfScript;
+
+      for (const line of expectedLines) expect(source).toContain(line);
+    },
+  );
 });

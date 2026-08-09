@@ -21,7 +21,7 @@
                   "name": "id",
                   "value": {
                     "type": "String",
-                    "value": "body"
+                    "value": "thinking-body-lean"
                   }
                 },
                 {
@@ -35,7 +35,7 @@
             },
             "right": {
               "type": "Number",
-              "value": 0.05
+              "value": 0.04
             }
           },
           "right": {
@@ -61,21 +61,21 @@
                   "name": "id",
                   "value": {
                     "type": "String",
-                    "value": "body"
+                    "value": "thinking-body-roll"
                   }
                 },
                 {
                   "name": "frequency",
                   "value": {
                     "type": "Number",
-                    "value": 0.12
+                    "value": 0.11
                   }
                 }
               ]
             },
             "right": {
               "type": "Number",
-              "value": 0.04
+              "value": 0.03
             }
           },
           "right": {
@@ -109,50 +109,6 @@
           "right": {
             "type": "Number",
             "value": 0.5
-          }
-        }
-      },
-      {
-        "type": "ExprAssign",
-        "target": "headTilt",
-        "value": {
-          "type": "Binary",
-          "op": "+",
-          "left": {
-            "type": "Number",
-            "value": 0.5
-          },
-          "right": {
-            "type": "Binary",
-            "op": "*",
-            "left": {
-              "type": "Call",
-              "callee": "clamp",
-              "args": [
-                {
-                  "value": {
-                    "type": "Identifier",
-                    "name": "interest"
-                  }
-                },
-                {
-                  "value": {
-                    "type": "Number",
-                    "value": 0.5
-                  }
-                },
-                {
-                  "value": {
-                    "type": "Number",
-                    "value": 1
-                  }
-                }
-              ]
-            },
-            "right": {
-              "type": "Number",
-              "value": 0.08
-            }
           }
         }
       },
@@ -210,7 +166,7 @@
       }
     ]
   },
-  "behaviorPfScript": "-- 体の揺れ（控えめ）\nbodyLean = oscillator(id = \"body\", frequency = 0.15) * 0.05 + 0.5\nbodyRoll = oscillator(id = \"body\", frequency = 0.12) * 0.04 + 0.5\nbodyYaw = interest * -0.2 + 0.5\nheadTilt = 0.5 + clamp(interest, 0.5, 1) * 0.08\nmouthY = volume\neyeYaw = clamp(energy, 0.45, 1)\nbreath = breath(0.09)",
+  "behaviorPfScript": "-- 体の揺れ（控えめ）\nbodyLean = oscillator(id = \"thinking-body-lean\", frequency = 0.15) * 0.04 + 0.5\nbodyRoll = oscillator(id = \"thinking-body-roll\", frequency = 0.11) * 0.03 + 0.5\nbodyYaw = interest * -0.2 + 0.5\nmouthY = volume\neyeYaw = clamp(energy, 0.45, 1)\nbreath = breath(0.09)",
   "behaviorPlugins": [
     {
       "id": "blink",
@@ -225,7 +181,7 @@
       "id": "idle",
       "config": {
         "interestThreshold": 0.4,
-        "wanderBoost": 0.08
+        "wanderBoost": 0.06
       }
     }
   ],
@@ -283,7 +239,7 @@
       {
         "id": "thinking",
         "config": {
-          "intensity": 0.65
+          "intensity": 0.5
         }
       }
     ]
