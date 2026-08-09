@@ -16,3 +16,20 @@
 - [ ] `pnpm build` passes (if packages/apps changed)
 - [ ] Preset outputs updated with `pnpm build:presets` (if preset build changed)
 - [ ] Docs updated (if user-facing behavior changed)
+
+## Related Issue
+
+Closes #
+
+## Changes
+
+## Verification
+
+## Test Results
+
+## Risk / Impact
+
+## Remaining Issues
+
+None
+

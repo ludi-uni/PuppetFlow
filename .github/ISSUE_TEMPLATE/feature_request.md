@@ -14,3 +14,28 @@ What problem does this solve?
 ## Alternatives considered
 
 ## Additional context
+
+## Goal
+
+## Background
+
+## Requirements
+
+## Acceptance Criteria
+
+- [ ]
+
+## Constraints
+
+## Out of Scope
+
+## Verification
+
+## Risk
+
+low / medium / high
+
+## Open Questions
+
+None
+
