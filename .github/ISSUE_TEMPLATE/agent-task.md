@@ -31,6 +31,7 @@ assignees: []
 ## Risk
 
 <!-- Keep exactly one: low / medium / high. High-risk work requires explicit human approval before implementation. -->
+
 low / medium / high
 
 ## Open Questions

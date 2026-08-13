@@ -112,4 +112,3 @@ Do not implement high-risk work without explicit human approval recorded in the 
 - Lint: `pnpm lint`
 - Format check: `pnpm format:check`
 - Build: `pnpm build`
-

@@ -45,4 +45,3 @@ jobs:
           grep -Fq 'Never push directly' AGENTS.md
           grep -Fq 'Draft Pull Request' AGENTS.md
           grep -Eq 'high[- ]risk' AGENTS.md
-
