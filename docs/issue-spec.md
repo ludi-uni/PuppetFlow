@@ -53,4 +53,3 @@ Name expected tests or checks only after inspecting the derived repository's rea
 - [ ] Risk has exactly one justified level.
 - [ ] Open Questions is `None` and all material ambiguity is resolved.
 - [ ] No rejected or unapproved proposal is presented as a requirement.
-
