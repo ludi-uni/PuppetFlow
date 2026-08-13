@@ -28,3 +28,28 @@ labels: bug
 ```yaml
 # puppetflow.yaml or .pfpreset excerpt — redact secrets
 ```
+
+## Goal
+
+## Background
+
+## Requirements
+
+## Acceptance Criteria
+
+- [ ]
+
+## Constraints
+
+## Out of Scope
+
+## Verification
+
+## Risk
+
+low / medium / high
+
+## Open Questions
+
+None
+
