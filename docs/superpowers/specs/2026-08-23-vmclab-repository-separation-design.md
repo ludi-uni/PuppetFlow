@@ -1,7 +1,7 @@
 # VMC Lab Repository Separation Design
 
 **Date:** 2026-08-23
-**Status:** Direction approved in chat; written design pending user review
+**Status:** Approved
 
 ## Context
 
@@ -139,8 +139,8 @@ The separation is accepted when:
 3. The new repository contains no PuppetFlow `.env`, pnpm, worktree, or cache data.
 4. pytest, Ruff, and mypy results are captured; failures are allowed only when reported
    explicitly as pre-existing imported debt.
-5. PuppetFlow's tracked diff remains limited to this approved design document on the
-   design branch.
+5. PuppetFlow's tracked diff remains limited to the approved design and implementation
+   plan documents on the design branch.
 6. PuppetFlow's original untracked VMC Lab files still exist and remain unchanged.
 
 ## Follow-up Work
