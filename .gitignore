@@ -34,3 +34,7 @@ node_modules/.vite/
 deploy/
 apps/cli/deploy/
 dist-artifacts/
+
+# Local tool caches
+.codesearch.db/
+.pnpm-store/
