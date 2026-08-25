@@ -33,4 +33,12 @@ describe("compile command", () => {
     );
     await expect(compileCommand({ preset: "Curious" })).rejects.toThrow(/output/i);
   });
+
+  it("does not overwrite a file preset used as input", async () => {
+    const input = "examples/pfscript/pfscript-demo.pfpreset";
+
+    await expect(compileCommand({ preset: input, output: input })).rejects.toThrow(
+      /must not overwrite/i,
+    );
+  });
 });
