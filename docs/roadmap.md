@@ -159,13 +159,13 @@ Phase 1 を完了したうえで、OSS として段階的に拡張する計画�
 
 [guides/cli.md](guides/cli.md)
 
-| 項目                                  | 状況  |
-| ------------------------------------- | ----- |
-| `pf run`（Preset + VMC + Sources）    | ✅    |
-| YAML 設定（`puppetflow.yaml`）        | ✅    |
-| `@puppetflow/runtime-launcher` 共通化 | ✅    |
-| `pf validate` / `pf compile`（CI）    | ⬜ C2 |
-| Studio → YAML export                  | ✅    |
+| 項目                                  | 状況 |
+| ------------------------------------- | ---- |
+| `pf run`（Preset + VMC + Sources）    | ✅   |
+| YAML 設定（`puppetflow.yaml`）        | ✅   |
+| `@puppetflow/runtime-launcher` 共通化 | ✅   |
+| `pf validate` / `pf compile`（CI）    | ✅   |
+| Studio → YAML export                  | ✅   |
 
 ---
 

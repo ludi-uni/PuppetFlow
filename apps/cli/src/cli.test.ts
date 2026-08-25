@@ -83,4 +83,33 @@ describe("pf motion commands", () => {
     ).rejects.toThrow();
     expect(replay).not.toHaveBeenCalled();
   });
+
+  it("parses validate and compile input options without invoking runtime actions", async () => {
+    const validate = vi.fn(async () => {});
+    const compile = vi.fn(async () => {});
+    const program = createProgram({
+      run: vi.fn(async () => {}),
+      record: vi.fn(async () => {}),
+      replay: vi.fn(async () => {}),
+      validate,
+      compile,
+    });
+
+    await program.parseAsync(["node", "pf", "validate", "--config", "puppetflow.yaml"]);
+    await program.parseAsync([
+      "node",
+      "pf",
+      "compile",
+      "--preset",
+      "Curious",
+      "--output",
+      "dist/Curious.pfpreset",
+    ]);
+
+    expect(validate).toHaveBeenCalledWith({ configPath: "puppetflow.yaml" });
+    expect(compile).toHaveBeenCalledWith({
+      preset: "Curious",
+      output: "dist/Curious.pfpreset",
+    });
+  });
 });
