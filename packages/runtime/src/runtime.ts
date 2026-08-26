@@ -425,8 +425,20 @@ export class PuppetFlowRuntime {
     this.running = true;
     this.lastTickTime = null;
     this.sourceScheduler.start(this.sources);
+    if (!this.running) {
+      return;
+    }
+
     await this.startMotionSources();
+    if (!this.running) {
+      return;
+    }
+
     await this.tick();
+    if (!this.running) {
+      return;
+    }
+
     this.intervalId = setInterval(() => {
       void this.tick();
     }, TICK_INTERVAL_MS);

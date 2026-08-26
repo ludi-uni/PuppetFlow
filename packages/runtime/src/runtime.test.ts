@@ -88,6 +88,55 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("does not finish startup after an initial polling source requests stop", async () => {
+    vi.useFakeTimers();
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    let disposeCalls = 0;
+    let requestedStop: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const source: PollingStateSource = {
+      id: "stop-during-initial-poll",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+      },
+      pollIntervalMs: 100_000,
+      poll: async () => {
+        requestedStop = runtimeRef.current!.stop();
+        return poll.promise;
+      },
+      apply: () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    runtimeRef.current = runtime;
+
+    try {
+      await runtime.start();
+
+      expect(requestedStop).toBeDefined();
+      expect(runtime.isRunning()).toBe(false);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+      expect(disposeCalls).toBe(0);
+
+      poll.resolve(undefined);
+      await requestedStop;
+
+      expect(disposeCalls).toBe(1);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+    } finally {
+      poll.resolve(undefined);
+      await requestedStop;
+      vi.useRealTimers();
+    }
+  });
+
   it("does not delay the first behavior tick for a pending polling source", async () => {
     const poll = createDeferred<StateSourceUpdate | undefined>();
     let signal: AbortSignal | undefined;
