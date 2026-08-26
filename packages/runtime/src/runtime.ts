@@ -57,8 +57,13 @@ import {
   MicroBehaviorEngine,
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
-import type { MotionSource, StateSource } from "@puppetflow/source-core";
-import { MotionOverrideStore } from "@puppetflow/source-core";
+import {
+  isPollingStateSource,
+  MotionOverrideStore,
+  type MotionSource,
+  type SourceUpdateTarget,
+  type StateSource,
+} from "@puppetflow/source-core";
 import { applyMotionFailSafe, type MotionFailSafeOptions } from "./motion-failsafe.js";
 import {
   calculateRateHz,
@@ -66,6 +71,7 @@ import {
   type MotionInspectorSnapshot,
 } from "./motion-inspector.js";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
+import { StateSourceScheduler } from "./source-scheduler.js";
 import { RuntimeStateStore } from "./state-store.js";
 
 const TICK_INTERVAL_MS = 1000 / 60;
@@ -141,6 +147,11 @@ export class PuppetFlowRuntime {
   private readonly motionFrameAdapters: MotionFrameAdapter[] = [];
   private readonly modifiers: MotionModifier[] = [];
   private readonly sources: StateSource[] = [];
+  private readonly sourceScheduler = new StateSourceScheduler({
+    onError: (source, error) => {
+      console.error(`[PuppetFlowRuntime] source "${source.id}" update failed`, error);
+    },
+  });
   private readonly motionSources: MotionSource[] = [];
   private readonly latestMotionFrames = new Map<string, MotionFrame>();
   private readonly motionSourceHealth = new Map<string, MotionSourceHealth>();
@@ -413,6 +424,7 @@ export class PuppetFlowRuntime {
 
     this.running = true;
     this.lastTickTime = null;
+    this.sourceScheduler.start(this.sources);
     await this.startMotionSources();
     await this.tick();
     this.intervalId = setInterval(() => {
@@ -422,6 +434,7 @@ export class PuppetFlowRuntime {
 
   async stop(): Promise<void> {
     if (!this.running) {
+      await this.sourceScheduler.stop();
       this.resetMotionFrameGraph();
       return;
     }
@@ -432,6 +445,8 @@ export class PuppetFlowRuntime {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+
+    await this.sourceScheduler.stop();
 
     let spinCount = 0;
     while (this.tickInProgress) {
@@ -485,6 +500,20 @@ export class PuppetFlowRuntime {
     return {
       state: this.state,
       channels: this.channels,
+    };
+  }
+
+  private getSourceUpdateTarget(): SourceUpdateTarget {
+    return {
+      state: this.state,
+      channels: this.channels,
+      timeline: this.timeline,
+      motion: this.motionOverride,
+      microBehavior: {
+        applyFromInputRecord: (record: Record<string, unknown>) => {
+          this.microBehavior.applyFromInputRecord(record);
+        },
+      },
     };
   }
 
@@ -696,6 +725,9 @@ export class PuppetFlowRuntime {
     this.tickInProgress = true;
 
     try {
+      const sourceTarget = this.getSourceUpdateTarget();
+      this.sourceScheduler.drain(sourceTarget);
+
       const currentTime = now();
       const deltaTime =
         this.lastTickTime === null
@@ -711,21 +743,13 @@ export class PuppetFlowRuntime {
       this.timelineCurrentMs = Math.floor(this.elapsedTime * 1000);
       this.activeTimelineEvents = this.timeline.getActiveEvents(this.timelineCurrentMs);
 
-      const sourceTarget = {
-        state: this.state,
-        channels: this.channels,
-        timeline: this.timeline,
-        motion: this.motionOverride,
-        microBehavior: {
-          applyFromInputRecord: (record: Record<string, unknown>) => {
-            this.microBehavior.applyFromInputRecord(record);
-          },
-        },
-      };
-
       for (const source of this.sources) {
         if (!this.running) {
           return;
+        }
+
+        if (isPollingStateSource(source)) {
+          continue;
         }
 
         try {

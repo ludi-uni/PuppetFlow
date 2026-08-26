@@ -10,7 +10,12 @@ import { loadPreset } from "@puppetflow/preset";
 import { describe, expect, it, vi } from "vitest";
 import { GazePlugin } from "@puppetflow/plugin-gaze";
 import { StatefulStore } from "@puppetflow/stateful-core";
-import type { MotionSource } from "@puppetflow/source-core";
+import type {
+  MotionSource,
+  PollingStateSource,
+  StateSource,
+  StateSourceUpdate,
+} from "@puppetflow/source-core";
 import type { MotionFrameGraphDocument } from "@puppetflow/motion-graph";
 import type { MotionFrameInput, MotionLayerPolicy } from "@puppetflow/motion-pipeline";
 import { PuppetFlowRuntime } from "./runtime.js";
@@ -23,6 +28,19 @@ class TestPlugin implements BehaviorPlugin {
   process(_input: PluginInputStores, _motion: MotionState): Partial<MotionState> {
     return this.output;
   }
+}
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve(value: T): void;
+}
+
+function createDeferred<T>(): Deferred<T> {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
 }
 
 function createTestAdapter(update: Adapter["update"]): Adapter {
@@ -70,6 +88,226 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("does not delay the first behavior tick for a pending polling source", async () => {
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    let signal: AbortSignal | undefined;
+    const observed: unknown[] = [];
+    const source: PollingStateSource = {
+      id: "delayed",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async (nextSignal) => {
+        signal = nextSignal;
+        return poll.promise;
+      },
+      apply: () => {},
+    };
+    const runtime = new PuppetFlowRuntime()
+      .use({
+        id: "observer",
+        process(input) {
+          observed.push(input.state.get("pollingValue"));
+          return {};
+        },
+      })
+      .attachSource(source);
+
+    await runtime.start();
+
+    expect(observed).toEqual([undefined]);
+    expect(signal).toBeDefined();
+
+    const stop = runtime.stop();
+    expect(signal?.aborted).toBe(true);
+    poll.resolve(undefined);
+    await stop;
+  });
+
+  it("applies a completed polling update to behavior once at a later tick boundary", async () => {
+    vi.useFakeTimers();
+    const firstPoll = createDeferred<StateSourceUpdate | undefined>();
+    const secondPoll = createDeferred<StateSourceUpdate | undefined>();
+    const observed: unknown[] = [];
+    const applied: unknown[] = [];
+    let legacyUpdateCalls = 0;
+    let pollCalls = 0;
+    const source: PollingStateSource = {
+      id: "latest",
+      initialize: async () => {},
+      update: async () => {
+        legacyUpdateCalls += 1;
+      },
+      dispose: async () => {},
+      pollIntervalMs: 0,
+      poll: async () => {
+        pollCalls += 1;
+        return pollCalls === 1 ? firstPoll.promise : secondPoll.promise;
+      },
+      apply: (update, target) => {
+        applied.push(update.payload);
+        target.state.set("pollingValue", update.payload);
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .use({
+        id: "observer",
+        process(input) {
+          observed.push(input.state.get("pollingValue"));
+          return {};
+        },
+      })
+      .attachSource(source);
+
+    try {
+      await runtime.start();
+      firstPoll.resolve({ payload: "older" });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(pollCalls).toBe(2);
+
+      secondPoll.resolve({ payload: "newest" });
+      await Promise.resolve();
+      runtime.state.set("forceTick", true);
+      await Promise.resolve();
+
+      expect(observed).toEqual([undefined, "newest"]);
+      expect(applied).toEqual(["newest"]);
+      expect(legacyUpdateCalls).toBe(0);
+    } finally {
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("drains completed polling sources in attachment order", async () => {
+    const applyOrder: string[] = [];
+    const createSource = (id: string): PollingStateSource => ({
+      id,
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async () => ({ payload: id }),
+      apply: (update, target) => {
+        applyOrder.push(id);
+        target.state.set(id, update.payload);
+      },
+    });
+    const runtime = new PuppetFlowRuntime()
+      .attachSource(createSource("first"))
+      .attachSource(createSource("second"));
+
+    await runtime.start();
+    await Promise.resolve();
+    runtime.state.set("forceTick", true);
+
+    await vi.waitFor(() => expect(applyOrder).toEqual(["first", "second"]));
+    expect(runtime.state.get("first")).toBe("first");
+    expect(runtime.state.get("second")).toBe("second");
+
+    await runtime.stop();
+  });
+
+  it("aborts polling and ignores a late update before disposing its source", async () => {
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    const lifecycle: string[] = [];
+    let signal: AbortSignal | undefined;
+    let applied = 0;
+    const source: PollingStateSource = {
+      id: "stopped",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        lifecycle.push("dispose");
+      },
+      pollIntervalMs: 100_000,
+      poll: async (nextSignal) => {
+        signal = nextSignal;
+        return poll.promise;
+      },
+      apply: () => {
+        applied += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+
+    await runtime.start();
+    const stop = runtime.stop();
+
+    expect(signal?.aborted).toBe(true);
+    expect(lifecycle).toEqual([]);
+    poll.resolve({ payload: "late" });
+    await stop;
+
+    expect(applied).toBe(0);
+    expect(lifecycle).toEqual(["dispose"]);
+  });
+
+  it("reports polling failures with the existing source error format", async () => {
+    const failure = new Error("poll failed");
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const source: PollingStateSource = {
+      id: "broken-poll",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async () => {
+        throw failure;
+      },
+      apply: () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+
+    try {
+      await runtime.start();
+      await vi.waitFor(() =>
+        expect(error).toHaveBeenCalledWith(
+          '[PuppetFlowRuntime] source "broken-poll" update failed',
+          failure,
+        ),
+      );
+    } finally {
+      await runtime.stop();
+      error.mockRestore();
+    }
+  });
+
+  it("awaits legacy source updates before behavior evaluation", async () => {
+    const update = createDeferred<void>();
+    const observed: unknown[] = [];
+    let updateStarted = false;
+    const source: StateSource = {
+      id: "legacy",
+      initialize: async () => {},
+      update: async (target) => {
+        updateStarted = true;
+        await update.promise;
+        target.state.set("legacyValue", "ready");
+      },
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime()
+      .use({
+        id: "observer",
+        process(input) {
+          observed.push(input.state.get("legacyValue"));
+          return {};
+        },
+      })
+      .attachSource(source);
+
+    const start = runtime.start();
+    await vi.waitFor(() => expect(updateStarted).toBe(true));
+    expect(observed).toEqual([]);
+    update.resolve();
+    await start;
+
+    expect(observed).toEqual(["ready"]);
+    await runtime.stop();
+  });
+
   it("evaluates the graph policy for inspect and process and resets on stop", async () => {
     const inspect = vi.fn(
       (_inputs: readonly MotionFrameInput[], _policy?: MotionLayerPolicy) => ({
