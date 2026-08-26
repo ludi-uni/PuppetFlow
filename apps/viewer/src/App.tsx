@@ -1,9 +1,13 @@
-import { DEFAULT_MOTION_STATE, type MotionState } from "@puppetflow/core";
+import {
+  DEFAULT_MOTION_STATE,
+  type MotionState,
+  type MotionStateKey,
+} from "@puppetflow/core";
 import { useEffect, useState } from "react";
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:3939";
 
-const FIELDS: Array<{ key: keyof MotionState; label: string }> = [
+const FIELDS: Array<{ key: MotionStateKey; label: string }> = [
   { key: "mouthX", label: "mouthX" },
   { key: "facePitch", label: "facePitch" },
   { key: "headTilt", label: "HeadTilt" },
@@ -68,15 +72,15 @@ export function App() {
             transform: `translate(${(motion.lookX - 0.5) * 24}px, ${(motion.lookY - 0.5) * 16}px)`,
           }}
         >
-          <div className="eye" style={{ height: `${motion.eyeOpen * 28 + 6}px` }} />
-          <div className="eye" style={{ height: `${motion.eyeOpen * 28 + 6}px` }} />
+          <div className="eye" style={{ height: `${motion.eyeYaw * 28 + 6}px` }} />
+          <div className="eye" style={{ height: `${motion.eyeYaw * 28 + 6}px` }} />
         </div>
         <div
           className="mouth"
           style={{
-            width: `${40 + motion.smile * 30}px`,
-            height: `${8 + motion.mouthOpen * 20}px`,
-            borderRadius: motion.smile > 0.3 ? "999px" : "8px",
+            width: `${40 + motion.mouthX * 30}px`,
+            height: `${8 + motion.mouthY * 20}px`,
+            borderRadius: motion.mouthX > 0.3 ? "999px" : "8px",
           }}
         />
         <div

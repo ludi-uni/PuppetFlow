@@ -1,4 +1,3 @@
-import type { MotionState } from "@puppetflow/core";
 import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriVmcAdapter } from "@puppetflow/adapter-vmc";

@@ -1,4 +1,4 @@
-import type { MotionState } from "@puppetflow/core";
+import type { MotionState, MotionStateKey } from "@puppetflow/core";
 import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { setTauriOscEnabled } from "@puppetflow/adapter-vmc";
 import { useEffect, useState } from "react";
@@ -26,7 +26,7 @@ const INPUT_SLIDERS: SliderConfig[] = [
   { key: "stress", label: "Stress", defaultValue: 0.2 },
 ];
 
-const OUTPUT_FIELDS: Array<{ key: keyof MotionState; label: string }> = [
+const OUTPUT_FIELDS: Array<{ key: MotionStateKey; label: string }> = [
   { key: "mouthX", label: "mouthX" },
   { key: "facePitch", label: "facePitch" },
   { key: "headTilt", label: "headTilt" },
