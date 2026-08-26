@@ -34,13 +34,17 @@ export interface PollingStateSource extends StateSource {
 export function isPollingStateSource(
   source: StateSource,
 ): source is PollingStateSource {
-  const candidate = source as Partial<PollingStateSource>;
-  const pollIntervalMs = candidate.pollIntervalMs;
-  return (
-    typeof pollIntervalMs === "number" &&
-    Number.isFinite(pollIntervalMs) &&
-    pollIntervalMs >= 0 &&
-    typeof candidate.poll === "function" &&
-    typeof candidate.apply === "function"
-  );
+  try {
+    const candidate = source as Partial<PollingStateSource>;
+    const pollIntervalMs = candidate.pollIntervalMs;
+    return (
+      typeof pollIntervalMs === "number" &&
+      Number.isFinite(pollIntervalMs) &&
+      pollIntervalMs >= 0 &&
+      typeof candidate.poll === "function" &&
+      typeof candidate.apply === "function"
+    );
+  } catch {
+    return false;
+  }
 }

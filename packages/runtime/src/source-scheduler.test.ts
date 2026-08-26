@@ -69,6 +69,68 @@ describe("StateSourceScheduler", () => {
     expect(isPollingStateSource({ ...polling, apply: undefined })).toBe(false);
   });
 
+  it("treats throwing polling accessors as unmanaged without stranding earlier sources", async () => {
+    vi.useFakeTimers();
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const pending = deferred<StateSourceUpdate | undefined>();
+    let validPollCalls = 0;
+    let malformedPollCalls = 0;
+    const valid = createPollingSource(
+      "valid",
+      () => {
+        validPollCalls += 1;
+        return pending.promise;
+      },
+      applied,
+    );
+    const malformed = {
+      id: "malformed",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      get pollIntervalMs(): number {
+        throw new Error("interval getter failed");
+      },
+      poll: async () => {
+        malformedPollCalls += 1;
+        return undefined;
+      },
+      apply: () => {},
+    };
+    const scheduler = new StateSourceScheduler();
+    let started = false;
+
+    try {
+      scheduler.start([valid, malformed]);
+      started = true;
+
+      expect(isPollingStateSource(malformed)).toBe(false);
+      expect(validPollCalls).toBe(1);
+      expect(malformedPollCalls).toBe(0);
+
+      const stopped = scheduler.stop();
+      let stopResolved = false;
+      void stopped.then(() => {
+        stopResolved = true;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stopResolved).toBe(false);
+
+      pending.resolve(undefined);
+      await stopped;
+      expect(stopResolved).toBe(true);
+    } finally {
+      pending.resolve(undefined);
+      if (started) {
+        await scheduler.stop();
+      }
+    }
+  });
+
   it("keeps only the newest completed update before a drain", async () => {
     vi.useFakeTimers();
     const applied: Array<{
