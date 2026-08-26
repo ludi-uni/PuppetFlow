@@ -96,6 +96,18 @@ describe("HttpSource", () => {
     expect(target.state.get("mood")).toBe(0.7);
   });
 
+  it("applies a direct update through its configured field mapping", () => {
+    const source = new HttpSource({
+      url: "http://example.com/state",
+      fieldMapping: { interest: "mood" },
+    });
+    const target = createTarget();
+
+    source.apply({ payload: { interest: 0.7 } }, target);
+
+    expect(target.state.get("mood")).toBe(0.7);
+  });
+
   it("resolves an aborted poll without publishing an update", async () => {
     vi.mocked(fetch).mockImplementation(
       (_url, init) =>

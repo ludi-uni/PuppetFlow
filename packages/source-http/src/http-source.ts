@@ -111,7 +111,7 @@ export class HttpSource implements PollingStateSource {
   }
 
   apply(update: StateSourceUpdate, target: SourceUpdateTarget): void {
-    applyInputPayload(target, update.payload, update.fieldMapping);
+    applyInputPayload(target, update.payload, update.fieldMapping ?? this.fieldMapping);
   }
 
   async dispose(): Promise<void> {
