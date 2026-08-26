@@ -5,6 +5,7 @@ import { WebSocketSource } from "./websocket-source.js";
 
 class MockWebSocket {
   static readonly instances: MockWebSocket[] = [];
+  static autoOpen = true;
 
   onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
@@ -12,19 +13,37 @@ class MockWebSocket {
 
   constructor(readonly url: string) {
     MockWebSocket.instances.push(this);
-    queueMicrotask(() => this.onopen?.());
+    if (MockWebSocket.autoOpen) {
+      queueMicrotask(() => this.onopen?.());
+    }
   }
 
   close(): void {}
 }
 
+async function initializationStatus(
+  promise: Promise<void>,
+): Promise<"pending" | "rejected" | "resolved"> {
+  return Promise.race([
+    promise.then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    ),
+    new Promise<"pending">((resolve) => {
+      setTimeout(() => resolve("pending"), 20);
+    }),
+  ]);
+}
+
 describe("WebSocketSource", () => {
   beforeEach(() => {
     MockWebSocket.instances.length = 0;
+    MockWebSocket.autoOpen = true;
     vi.stubGlobal("WebSocket", MockWebSocket);
   });
 
   afterEach(() => {
+    MockWebSocket.autoOpen = true;
     vi.unstubAllGlobals();
   });
 
@@ -223,5 +242,17 @@ describe("WebSocketSource", () => {
 
     await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();
+  });
+
+  it("settles a pending websocket initialization when disposed", async () => {
+    MockWebSocket.autoOpen = false;
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    const initialization = source.initialize();
+
+    expect(await initializationStatus(initialization)).toBe("pending");
+
+    await source.dispose();
+
+    expect(await initializationStatus(initialization)).toBe("resolved");
   });
 });

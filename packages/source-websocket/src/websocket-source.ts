@@ -14,6 +14,12 @@ function isObjectPayload(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+interface PendingWebSocketInitialization {
+  socket: WebSocket;
+  resolve: () => void;
+  reject: (error: unknown) => void;
+}
+
 export class WebSocketSource implements PollingStateSource {
   readonly id = "websocket";
   readonly pollIntervalMs = 16;
@@ -22,6 +28,7 @@ export class WebSocketSource implements PollingStateSource {
   private readonly fieldMapping: Readonly<Record<string, string>>;
   private socket: WebSocket | null = null;
   private pendingPayload: unknown | undefined;
+  private pendingInitialization: PendingWebSocketInitialization | null = null;
 
   constructor(config: WebSocketSourceConfig) {
     this.url = config.url;
@@ -32,10 +39,25 @@ export class WebSocketSource implements PollingStateSource {
     await new Promise<void>((resolve, reject) => {
       const socket = new WebSocket(this.url);
       this.socket = socket;
+      this.pendingInitialization = { socket, resolve, reject };
 
-      socket.onopen = () => resolve();
-      socket.onerror = () =>
-        reject(new Error(`WebSocket connection failed: ${this.url}`));
+      socket.onopen = () => {
+        if (this.socket !== socket) {
+          return;
+        }
+
+        this.resolveInitialization(socket);
+      };
+      socket.onerror = () => {
+        if (this.socket !== socket) {
+          return;
+        }
+
+        this.rejectInitialization(
+          socket,
+          new Error(`WebSocket connection failed: ${this.url}`),
+        );
+      };
       socket.onmessage = (event) => {
         if (this.socket !== socket) {
           return;
@@ -113,6 +135,27 @@ export class WebSocketSource implements PollingStateSource {
     const socket = this.socket;
     this.socket = null;
     this.pendingPayload = undefined;
+    this.resolveInitialization(socket);
     socket?.close();
+  }
+
+  private resolveInitialization(socket: WebSocket | null): void {
+    const pending = this.pendingInitialization;
+    if (!socket || pending?.socket !== socket) {
+      return;
+    }
+
+    this.pendingInitialization = null;
+    pending.resolve();
+  }
+
+  private rejectInitialization(socket: WebSocket, error: unknown): void {
+    const pending = this.pendingInitialization;
+    if (pending?.socket !== socket) {
+      return;
+    }
+
+    this.pendingInitialization = null;
+    pending.reject(error);
   }
 }

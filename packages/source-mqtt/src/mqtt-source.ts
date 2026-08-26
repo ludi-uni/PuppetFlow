@@ -16,6 +16,12 @@ function isObjectPayload(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+interface PendingMqttInitialization {
+  client: MqttClient;
+  resolve: () => void;
+  reject: (error: unknown) => void;
+}
+
 export class MqttSource implements PollingStateSource {
   readonly id = "mqtt";
   readonly pollIntervalMs = 16;
@@ -25,6 +31,7 @@ export class MqttSource implements PollingStateSource {
   private readonly fieldMapping: Readonly<Record<string, string>>;
   private client: MqttClient | null = null;
   private pendingPayload: unknown | undefined;
+  private pendingInitialization: PendingMqttInitialization | null = null;
 
   constructor(config: MqttSourceConfig) {
     this.brokerUrl = config.brokerUrl;
@@ -41,15 +48,24 @@ export class MqttSource implements PollingStateSource {
         reject(new Error("MQTT client not created"));
         return;
       }
+      this.pendingInitialization = { client, resolve, reject };
 
       client.on("connect", () => {
+        if (this.client !== client) {
+          return;
+        }
+
         client.subscribe(this.topic, (error) => {
-          if (error) {
-            reject(error);
+          if (this.client !== client) {
             return;
           }
 
-          resolve();
+          if (error) {
+            this.rejectInitialization(client, error);
+            return;
+          }
+
+          this.resolveInitialization(client);
         });
       });
 
@@ -71,7 +87,11 @@ export class MqttSource implements PollingStateSource {
       });
 
       client.on("error", (error) => {
-        reject(error);
+        if (this.client !== client) {
+          return;
+        }
+
+        this.rejectInitialization(client, error);
       });
     });
   }
@@ -107,6 +127,7 @@ export class MqttSource implements PollingStateSource {
     const client = this.client;
     this.client = null;
     this.pendingPayload = undefined;
+    this.resolveInitialization(client);
 
     await new Promise<void>((resolve) => {
       if (!client) {
@@ -116,5 +137,25 @@ export class MqttSource implements PollingStateSource {
 
       client.end(false, {}, () => resolve());
     });
+  }
+
+  private resolveInitialization(client: MqttClient | null): void {
+    const pending = this.pendingInitialization;
+    if (!client || pending?.client !== client) {
+      return;
+    }
+
+    this.pendingInitialization = null;
+    pending.resolve();
+  }
+
+  private rejectInitialization(client: MqttClient, error: unknown): void {
+    const pending = this.pendingInitialization;
+    if (pending?.client !== client) {
+      return;
+    }
+
+    this.pendingInitialization = null;
+    pending.reject(error);
   }
 }

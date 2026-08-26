@@ -29,23 +29,42 @@ function createMockMqttClient() {
 }
 
 let mockClient = createMockMqttClient();
+let autoConnect = true;
 
 vi.mock("mqtt", () => ({
   default: {
     connect: vi.fn(() => {
       mockClient = createMockMqttClient();
-      queueMicrotask(() => mockClient.emit("connect"));
+      if (autoConnect) {
+        queueMicrotask(() => mockClient.emit("connect"));
+      }
       return mockClient;
     }),
   },
 }));
 
+async function initializationStatus(
+  promise: Promise<void>,
+): Promise<"pending" | "rejected" | "resolved"> {
+  return Promise.race([
+    promise.then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    ),
+    new Promise<"pending">((resolve) => {
+      setTimeout(() => resolve("pending"), 20);
+    }),
+  ]);
+}
+
 describe("MqttSource", () => {
   beforeEach(() => {
+    autoConnect = true;
     vi.clearAllMocks();
   });
 
   afterEach(() => {
+    autoConnect = true;
     mockClient = createMockMqttClient();
   });
 
@@ -220,5 +239,20 @@ describe("MqttSource", () => {
 
     await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();
+  });
+
+  it("settles a pending mqtt initialization when disposed", async () => {
+    autoConnect = false;
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+    });
+    const initialization = source.initialize();
+
+    expect(await initializationStatus(initialization)).toBe("pending");
+
+    await source.dispose();
+
+    expect(await initializationStatus(initialization)).toBe("resolved");
   });
 });
