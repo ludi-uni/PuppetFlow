@@ -12,6 +12,10 @@ export interface MqttSourceConfig {
   fieldMapping?: Record<string, string>;
 }
 
+function isObjectPayload(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export class MqttSource implements PollingStateSource {
   readonly id = "mqtt";
   readonly pollIntervalMs = 16;
@@ -50,9 +54,13 @@ export class MqttSource implements PollingStateSource {
       });
 
       client.on("message", (_topic, payload) => {
+        if (this.client !== client) {
+          return;
+        }
+
         try {
           const parsed: unknown = JSON.parse(payload.toString());
-          if (typeof parsed !== "object" || parsed === null) {
+          if (!isObjectPayload(parsed)) {
             return;
           }
 
@@ -96,15 +104,17 @@ export class MqttSource implements PollingStateSource {
   }
 
   async dispose(): Promise<void> {
+    const client = this.client;
+    this.client = null;
+    this.pendingPayload = undefined;
+
     await new Promise<void>((resolve) => {
-      if (!this.client) {
+      if (!client) {
         resolve();
         return;
       }
 
-      this.client.end(false, {}, () => resolve());
+      client.end(false, {}, () => resolve());
     });
-
-    this.client = null;
   }
 }

@@ -158,6 +158,7 @@ describe("WebSocketSource", () => {
     ["null", "null"],
     ["number", "0"],
     ["string", '"state"'],
+    ["array", "[]"],
   ])("ignores a top-level websocket %s payload", async (_kind, data) => {
     const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
     await source.initialize();
@@ -171,21 +172,54 @@ describe("WebSocketSource", () => {
   it.each([
     ["state", { type: "state", state: 0 }],
     ["payload", { payload: "state" }],
-  ])("ignores a websocket envelope with a scalar %s value", async (_key, message) => {
-    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
-    await source.initialize();
+    ["state", { type: "state", state: [] }],
+    ["payload", { payload: [] }],
+  ])(
+    "ignores a websocket envelope with a malformed %s value",
+    async (_key, message) => {
+      const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+      await source.initialize();
 
-    MockWebSocket.instances[0]?.onmessage?.({ data: JSON.stringify(message) });
+      MockWebSocket.instances[0]?.onmessage?.({ data: JSON.stringify(message) });
 
-    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
-    await source.dispose();
-  });
+      await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+      await source.dispose();
+    },
+  );
 
   it("ignores malformed websocket payloads", async () => {
     const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
     await source.initialize();
 
     MockWebSocket.instances[0]?.onmessage?.({ data: "not-json" });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("clears a buffered websocket payload when disposed before reinitialization", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.55 }),
+    });
+
+    await source.dispose();
+    await source.initialize();
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("ignores a late message from a disposed websocket after reinitialization", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+    const oldSocket = MockWebSocket.instances[0];
+
+    await source.dispose();
+    await source.initialize();
+
+    oldSocket?.onmessage?.({ data: JSON.stringify({ interest: 0.2 }) });
 
     await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();

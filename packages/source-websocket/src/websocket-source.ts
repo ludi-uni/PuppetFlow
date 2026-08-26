@@ -10,8 +10,8 @@ export interface WebSocketSourceConfig {
   fieldMapping?: Record<string, string>;
 }
 
-function isObjectPayload(value: unknown): value is object {
-  return typeof value === "object" && value !== null;
+function isObjectPayload(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export class WebSocketSource implements PollingStateSource {
@@ -37,6 +37,10 @@ export class WebSocketSource implements PollingStateSource {
       socket.onerror = () =>
         reject(new Error(`WebSocket connection failed: ${this.url}`));
       socket.onmessage = (event) => {
+        if (this.socket !== socket) {
+          return;
+        }
+
         try {
           const parsed: unknown = JSON.parse(String(event.data));
           if (!isObjectPayload(parsed)) {
@@ -106,7 +110,9 @@ export class WebSocketSource implements PollingStateSource {
   }
 
   async dispose(): Promise<void> {
-    this.socket?.close();
+    const socket = this.socket;
     this.socket = null;
+    this.pendingPayload = undefined;
+    socket?.close();
   }
 }

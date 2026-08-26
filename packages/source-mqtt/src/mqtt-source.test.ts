@@ -168,4 +168,57 @@ describe("MqttSource", () => {
     await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();
   });
+
+  it("ignores a top-level mqtt array payload", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+    });
+    await source.initialize();
+
+    mockClient.emit("message", "puppetflow/state", Buffer.from("[]"));
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("clears a buffered mqtt payload when disposed before reinitialization", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+    });
+    await source.initialize();
+    mockClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.6 })),
+    );
+
+    await source.dispose();
+    await source.initialize();
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("ignores a late message from a disposed mqtt client after reinitialization", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+    });
+    await source.initialize();
+    const oldClient = mockClient;
+
+    await source.dispose();
+    await source.initialize();
+
+    oldClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.2 })),
+    );
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
 });
