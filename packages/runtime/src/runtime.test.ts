@@ -88,6 +88,43 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("releases an initialization hook that awaits stop after bounded quiescence", async () => {
+    const escapeHook = createDeferred<void>();
+    const hookEntered = createDeferred<void>();
+    let hookCompleted = false;
+    let requestedStop: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const source: StateSource = {
+      id: "await-stop-initialize",
+      initialize: async () => {
+        hookEntered.resolve();
+        requestedStop = runtimeRef.current!.stop();
+        await Promise.race([requestedStop, escapeHook.promise]);
+        hookCompleted = true;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    runtimeRef.current = runtime;
+    const start = runtime.start();
+
+    try {
+      await hookEntered.promise;
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 3_500);
+      });
+
+      expect(hookCompleted).toBe(true);
+      await Promise.all([start, requestedStop]);
+      expect(runtime.isRunning()).toBe(false);
+    } finally {
+      escapeHook.resolve();
+      await Promise.allSettled([start, requestedStop ?? runtime.stop()]);
+      await runtime.stop();
+    }
+  }, 10_000);
+
   it("keeps the runtime stopped when a later stop cancels a queued start", async () => {
     vi.useFakeTimers();
     const initialization = createDeferred<void>();
@@ -825,6 +862,7 @@ describe("PuppetFlowRuntime", () => {
       expect(disposeCalls).toBe(0);
 
       poll.resolve(undefined);
+      await vi.advanceTimersByTimeAsync(0);
       await requestedStop;
 
       expect(disposeCalls).toBe(1);
@@ -1884,6 +1922,30 @@ describe("PuppetFlowRuntime", () => {
 
     expect(sharedStopCalls).toBe(1);
     expect(distinctStopCalls).toBe(1);
+  });
+
+  it("dispatches and inspects a repeated MotionSource object once", async () => {
+    const process = vi.fn((inputs: readonly MotionFrameInput[]) => inputs[0]?.frame);
+    const inspect = vi.fn(() => ({ bones: {}, blendShapes: {}, parameters: {} }));
+    const source: MotionSource = {
+      id: "duplicate-projection-source",
+      start: async (emit) => {
+        emit({ timestamp: 1, parameters: { value: 1 } });
+      },
+      stop: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(source)
+      .attachMotionSource(source)
+      .attachMotionPipeline({ process, inspect, reset: vi.fn() });
+
+    await runtime.start();
+
+    expect(process.mock.calls[0]?.[0]).toHaveLength(1);
+    expect(inspect.mock.calls[0]?.[0]).toHaveLength(1);
+    expect(runtime.getMotionInspectorSnapshot().sources).toHaveLength(1);
+
+    await runtime.stop();
   });
 
   it("initializes and disposes one object once when it is both legacy and frame-capable", async () => {

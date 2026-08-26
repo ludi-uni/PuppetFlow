@@ -136,6 +136,12 @@ interface MotionOutputHealth {
   error?: string;
 }
 
+interface LifecyclePromiseSettlement {
+  settled: boolean;
+  failed: boolean;
+  error?: unknown;
+}
+
 export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
@@ -294,7 +300,7 @@ export class PuppetFlowRuntime {
 
   getMotionInspectorSnapshot(): MotionInspectorSnapshot {
     const timestamp = now();
-    const sources = this.motionSources.map((source) => {
+    const sources = this.uniqueMotionSources().map((source) => {
       const health = this.motionSourceHealth.get(source.id) ?? {
         connected: false,
         stale: false,
@@ -654,26 +660,20 @@ export class PuppetFlowRuntime {
     shouldDispose: boolean,
   ): Promise<void> {
     const schedulerStop = this.sourceScheduler.stop();
-    let startupError: unknown;
-    let schedulerError: unknown;
-    let startupFailed = false;
-    let schedulerFailed = false;
+    const prerequisites = await this.waitForStopPrerequisites(
+      waitForStartup ? pendingStart : undefined,
+      schedulerStop,
+    );
 
-    if (pendingStart && waitForStartup) {
-      try {
-        await pendingStart;
-      } catch (error) {
-        startupFailed = true;
-        startupError = error;
-      }
+    if (!prerequisites.startup.settled || !prerequisites.scheduler.settled) {
+      this.beginRestartGate(pendingStart, schedulerStop);
+      return;
     }
 
-    try {
-      await schedulerStop;
-    } catch (error) {
-      schedulerFailed = true;
-      schedulerError = error;
-    }
+    let startupError = prerequisites.startup.error;
+    const schedulerError = prerequisites.scheduler.error;
+    let startupFailed = prerequisites.startup.failed;
+    const schedulerFailed = prerequisites.scheduler.failed;
 
     if (!shouldDispose) {
       this.resetMotionFrameGraph();
@@ -687,7 +687,7 @@ export class PuppetFlowRuntime {
     }
 
     if (!(await this.waitForTickCompletion())) {
-      this.beginRestartGate(pendingStart);
+      this.beginRestartGate(pendingStart, schedulerStop);
       return;
     }
 
@@ -726,12 +726,70 @@ export class PuppetFlowRuntime {
     return true;
   }
 
-  private beginRestartGate(pendingStart: Promise<void> | undefined): void {
+  private async waitForStopPrerequisites(
+    pendingStart: Promise<void> | undefined,
+    schedulerStop: Promise<void>,
+  ): Promise<{
+    startup: LifecyclePromiseSettlement;
+    scheduler: LifecyclePromiseSettlement;
+  }> {
+    const startup: LifecyclePromiseSettlement = {
+      settled: pendingStart === undefined,
+      failed: false,
+    };
+    const scheduler: LifecyclePromiseSettlement = {
+      settled: false,
+      failed: false,
+    };
+
+    if (pendingStart) {
+      void pendingStart.then(
+        () => {
+          startup.settled = true;
+        },
+        (error) => {
+          startup.settled = true;
+          startup.failed = true;
+          startup.error = error;
+        },
+      );
+    }
+
+    void schedulerStop.then(
+      () => {
+        scheduler.settled = true;
+      },
+      (error) => {
+        scheduler.settled = true;
+        scheduler.failed = true;
+        scheduler.error = error;
+      },
+    );
+
+    let spinCount = 0;
+    while ((!startup.settled || !scheduler.settled) && spinCount < 200) {
+      if (spinCount < 8) {
+        await Promise.resolve();
+      } else {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      }
+      spinCount += 1;
+    }
+
+    return { startup, scheduler };
+  }
+
+  private beginRestartGate(
+    pendingStart: Promise<void> | undefined,
+    schedulerStop?: Promise<void>,
+  ): void {
     if (this.restartGate) {
       return;
     }
 
-    const restartGate = this.finishQuiescing(pendingStart);
+    const restartGate = this.finishQuiescing(pendingStart, schedulerStop);
     this.restartGate = restartGate;
     void restartGate.then(() => {
       if (this.restartGate === restartGate) {
@@ -742,6 +800,7 @@ export class PuppetFlowRuntime {
 
   private async finishQuiescing(
     pendingStart: Promise<void> | undefined,
+    schedulerStop?: Promise<void>,
   ): Promise<void> {
     while (this.tickInProgress) {
       await new Promise<void>((resolve) => {
@@ -754,6 +813,14 @@ export class PuppetFlowRuntime {
         await pendingStart;
       } catch {
         // The original stop already surfaced this startup error when appropriate.
+      }
+    }
+
+    if (schedulerStop) {
+      try {
+        await schedulerStop;
+      } catch {
+        // The stop path already observed this scheduler error when appropriate.
       }
     }
 
@@ -986,16 +1053,10 @@ export class PuppetFlowRuntime {
   }
 
   private async startMotionSources(isCurrent: () => boolean): Promise<void> {
-    const attemptedMotionSources = new Set<MotionSource>();
-    for (const source of this.motionSources) {
+    for (const source of this.uniqueMotionSources()) {
       if (!isCurrent()) {
         return;
       }
-
-      if (attemptedMotionSources.has(source)) {
-        continue;
-      }
-      attemptedMotionSources.add(source);
 
       const health = this.motionSourceHealth.get(source.id);
       if (health) {
@@ -1351,7 +1412,7 @@ export class PuppetFlowRuntime {
   private async dispatchMotionFrames(deltaTime: number): Promise<void> {
     const inputs: MotionFrameInput[] = [];
     const currentTime = now();
-    for (const source of this.motionSources) {
+    for (const source of this.uniqueMotionSources()) {
       const latestFrame = this.latestMotionFrames.get(source.id);
       if (latestFrame) {
         const health = this.motionSourceHealth.get(source.id);
@@ -1374,7 +1435,7 @@ export class PuppetFlowRuntime {
     let policy: MotionLayerPolicy | undefined;
     if (this.motionFrameGraph) {
       const sources = Object.fromEntries(
-        this.motionSources.map((source) => {
+        this.uniqueMotionSources().map((source) => {
           const health = this.motionSourceHealth.get(source.id);
           return [
             source.id,
@@ -1451,6 +1512,14 @@ export class PuppetFlowRuntime {
         );
       }
     }
+  }
+
+  private uniqueMotionSources(): MotionSource[] {
+    const uniqueSources = new Set<MotionSource>();
+    for (const source of this.motionSources) {
+      uniqueSources.add(source);
+    }
+    return [...uniqueSources];
   }
 
   private resetMotionPipeline(): void {
