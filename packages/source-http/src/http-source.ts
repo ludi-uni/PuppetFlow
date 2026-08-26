@@ -5,6 +5,13 @@ import type {
   StateSourceUpdate,
 } from "@puppetflow/source-core";
 
+class HttpSourceTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`HTTP source timed out after ${timeoutMs}ms`);
+    this.name = "HttpSourceTimeoutError";
+  }
+}
+
 export interface HttpSourceConfig {
   url: string;
   intervalMs?: number;
@@ -86,6 +93,10 @@ export class HttpSource implements PollingStateSource {
 
       return { payload, fieldMapping: this.fieldMapping };
     } catch (error) {
+      if (error instanceof HttpSourceTimeoutError) {
+        throw error;
+      }
+
       if (abortController.signal.aborted) {
         return undefined;
       }
@@ -111,7 +122,15 @@ export class HttpSource implements PollingStateSource {
   }
 
   private async fetchPayload(abortController: AbortController): Promise<unknown> {
-    const timeoutId = setTimeout(() => abortController.abort(), this.timeoutMs);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      timedOut = true;
+      abortController.abort();
+    }, this.timeoutMs);
 
     try {
       const response = await fetch(this.url, {
@@ -124,6 +143,12 @@ export class HttpSource implements PollingStateSource {
       }
 
       return await response.json();
+    } catch (error) {
+      if (timedOut) {
+        throw new HttpSourceTimeoutError(this.timeoutMs);
+      }
+
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }

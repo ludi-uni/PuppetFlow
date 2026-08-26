@@ -18,6 +18,7 @@ describe("HttpSource", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -129,6 +130,31 @@ describe("HttpSource", () => {
     await source.dispose();
 
     await expect(pending).resolves.toBeUndefined();
+  });
+
+  it("rejects a poll when the request times out", async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockImplementation(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const source = new HttpSource({
+      url: "http://example.com/state",
+      timeoutMs: 50,
+    });
+
+    const pending = source.poll(new AbortController().signal);
+    const timeout = expect(pending).rejects.toThrow(
+      /HTTP source timed out after 50ms/i,
+    );
+    await vi.advanceTimersByTimeAsync(50);
+
+    await timeout;
+    await source.dispose();
   });
 
   it("respects polling interval", async () => {
