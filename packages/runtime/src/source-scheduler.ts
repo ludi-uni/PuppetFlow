@@ -6,6 +6,8 @@ import {
   type StateSourceUpdate,
 } from "@puppetflow/source-core";
 
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 export interface StateSourceSchedulerOptions {
   onError?: (source: PollingStateSource, error: unknown) => void;
 }
@@ -25,15 +27,31 @@ function waitForInterval(intervalMs: number, signal: AbortSignal): Promise<void>
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(finish, intervalMs);
+    let remaining = intervalMs;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
 
     function finish(): void {
-      clearTimeout(timeout);
+      if (timeout !== undefined) {
+        clearTimeout(timeout);
+      }
       signal.removeEventListener("abort", finish);
       resolve();
     }
 
+    function waitForNextChunk(): void {
+      const delay = Math.min(remaining, MAX_TIMER_DELAY_MS);
+      timeout = setTimeout(() => {
+        remaining -= delay;
+        if (remaining <= 0) {
+          finish();
+          return;
+        }
+        waitForNextChunk();
+      }, delay);
+    }
+
     signal.addEventListener("abort", finish, { once: true });
+    waitForNextChunk();
   });
 }
 

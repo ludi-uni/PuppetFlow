@@ -7,6 +7,8 @@ import { isPollingStateSource } from "@puppetflow/source-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StateSourceScheduler } from "./source-scheduler.js";
 
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 interface Deferred<T> {
   promise: Promise<T>;
   resolve(value: T): void;
@@ -148,6 +150,45 @@ describe("StateSourceScheduler", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(pollCalls).toBe(2);
     await scheduler.stop();
+  });
+
+  it("does not let a long polling interval clamp to a one-millisecond loop", async () => {
+    vi.useFakeTimers();
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    let pollCalls = 0;
+    const source = createPollingSource(
+      "long-interval",
+      async () => {
+        pollCalls += 1;
+        return undefined;
+      },
+      applied,
+      { intervalMs: MAX_TIMER_DELAY_MS + 1 },
+    );
+    const scheduler = new StateSourceScheduler();
+    const nativeSetTimeout = globalThis.setTimeout;
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, "setTimeout")
+      .mockImplementation(((callback: () => void, delay?: number) =>
+        nativeSetTimeout(
+          callback,
+          delay !== undefined && delay > MAX_TIMER_DELAY_MS ? 1 : delay,
+        )) as typeof setTimeout);
+
+    try {
+      scheduler.start([source]);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(pollCalls).toBe(1);
+      await scheduler.stop();
+    } finally {
+      await scheduler.stop();
+      setTimeoutSpy.mockRestore();
+    }
   });
 
   it("aborts a pending poll and ignores its late result after stop", async () => {
