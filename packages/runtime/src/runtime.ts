@@ -184,6 +184,7 @@ export class PuppetFlowRuntime {
   private lifecycleGeneration = 0;
   private startPromise: Promise<void> | undefined;
   private stopPromise: Promise<void> | undefined;
+  private restartGate: Promise<void> | undefined;
   private startupGeneration: number | undefined;
   private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
   private tickPending = false;
@@ -415,6 +416,10 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
+    if (this.restartGate) {
+      return this.restartGate.then(() => this.start());
+    }
+
     if (this.stopPromise) {
       return this.stopPromise.then(() => this.start());
     }
@@ -456,6 +461,10 @@ export class PuppetFlowRuntime {
   stop(): Promise<void> {
     if (this.stopPromise) {
       return this.stopPromise;
+    }
+
+    if (this.restartGate) {
+      return this.restartGate;
     }
 
     const pendingStart = this.startPromise;
@@ -549,17 +558,63 @@ export class PuppetFlowRuntime {
     waitForStartup: boolean,
     shouldDispose: boolean,
   ): Promise<void> {
+    const schedulerStop = this.sourceScheduler.stop();
+    let startupError: unknown;
+    let schedulerError: unknown;
+    let startupFailed = false;
+    let schedulerFailed = false;
+
     if (pendingStart && waitForStartup) {
-      await pendingStart;
+      try {
+        await pendingStart;
+      } catch (error) {
+        startupFailed = true;
+        startupError = error;
+      }
     }
 
-    await this.sourceScheduler.stop();
+    try {
+      await schedulerStop;
+    } catch (error) {
+      schedulerFailed = true;
+      schedulerError = error;
+    }
 
     if (!shouldDispose) {
       this.resetMotionFrameGraph();
+      this.throwLifecycleError(
+        startupFailed,
+        startupError,
+        schedulerFailed,
+        schedulerError,
+      );
       return;
     }
 
+    if (!(await this.waitForTickCompletion())) {
+      this.beginRestartGate(pendingStart);
+      return;
+    }
+
+    if (pendingStart && !waitForStartup) {
+      try {
+        await pendingStart;
+      } catch (error) {
+        startupFailed = true;
+        startupError = error;
+      }
+    }
+
+    await this.cleanupStoppedResources();
+    this.throwLifecycleError(
+      startupFailed,
+      startupError,
+      schedulerFailed,
+      schedulerError,
+    );
+  }
+
+  private async waitForTickCompletion(): Promise<boolean> {
     let spinCount = 0;
     while (this.tickInProgress) {
       await new Promise<void>((resolve) => {
@@ -570,14 +625,47 @@ export class PuppetFlowRuntime {
           "[PuppetFlowRuntime] stop() timed out waiting for tick; skipping dispose to avoid races",
         );
         this.resetMotionFrameGraph();
-        return;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private beginRestartGate(pendingStart: Promise<void> | undefined): void {
+    if (this.restartGate) {
+      return;
+    }
+
+    const restartGate = this.finishQuiescing(pendingStart);
+    this.restartGate = restartGate;
+    void restartGate.then(() => {
+      if (this.restartGate === restartGate) {
+        this.restartGate = undefined;
+      }
+    });
+  }
+
+  private async finishQuiescing(
+    pendingStart: Promise<void> | undefined,
+  ): Promise<void> {
+    while (this.tickInProgress) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+
+    if (pendingStart) {
+      try {
+        await pendingStart;
+      } catch {
+        // The original stop already surfaced this startup error when appropriate.
       }
     }
 
-    if (pendingStart && !waitForStartup) {
-      await pendingStart;
-    }
+    await this.cleanupStoppedResources();
+  }
 
+  private async cleanupStoppedResources(): Promise<void> {
     await this.disposeAdapters();
     await this.disposeSources();
     await this.stopMotionSources();
@@ -590,6 +678,20 @@ export class PuppetFlowRuntime {
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
+  }
+
+  private throwLifecycleError(
+    startupFailed: boolean,
+    startupError: unknown,
+    schedulerFailed: boolean,
+    schedulerError: unknown,
+  ): void {
+    if (startupFailed) {
+      throw startupError;
+    }
+    if (schedulerFailed) {
+      throw schedulerError;
+    }
   }
 
   private isStartCurrent(generation: number): boolean {

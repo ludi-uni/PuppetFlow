@@ -185,6 +185,172 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
+  it("aborts polling immediately while a motion source is still starting", async () => {
+    vi.useFakeTimers();
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    const motionStart = createDeferred<void>();
+    const startEntered = createDeferred<void>();
+    let signal: AbortSignal | undefined;
+    const polling: PollingStateSource = {
+      id: "polling-during-motion-start",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async (nextSignal) => {
+        signal = nextSignal;
+        return poll.promise;
+      },
+      apply: () => {},
+    };
+    const motion: MotionSource = {
+      id: "blocked-motion-start",
+      start: async () => {
+        startEntered.resolve();
+        await motionStart.promise;
+      },
+      stop: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachSource(polling)
+      .attachMotionSource(motion);
+    const start = runtime.start();
+    let stop: Promise<void> | undefined;
+
+    try {
+      await startEntered.promise;
+      expect(signal).toBeDefined();
+
+      stop = runtime.stop();
+      expect(signal?.aborted).toBe(true);
+
+      poll.resolve(undefined);
+      motionStart.resolve();
+      await Promise.all([start, stop]);
+    } finally {
+      poll.resolve(undefined);
+      motionStart.resolve();
+      await Promise.allSettled([start, stop ?? runtime.stop()]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("cleans up resources before rethrowing an initial-tick listener failure", async () => {
+    const failure = new Error("initial listener failed");
+    let adapterDisposeCalls = 0;
+    let sourceDisposeCalls = 0;
+    let motionStopCalls = 0;
+    let requestedStop: Promise<void> | undefined;
+    let listenerCalls = 0;
+    const adapter: Adapter = {
+      id: "failing-listener-adapter",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        adapterDisposeCalls += 1;
+      },
+    };
+    const source: StateSource = {
+      id: "failing-listener-source",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        sourceDisposeCalls += 1;
+      },
+    };
+    const motion: MotionSource = {
+      id: "failing-listener-motion",
+      start: async () => {},
+      stop: async () => {
+        motionStopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachAdapter(adapter)
+      .attachSource(source)
+      .attachMotionSource(motion);
+    runtime.onMotionUpdate(() => {
+      listenerCalls += 1;
+      if (listenerCalls === 2) {
+        requestedStop = runtime.stop();
+        throw failure;
+      }
+    });
+
+    const start = runtime.start();
+    try {
+      await expect(start).rejects.toBe(failure);
+      await expect(requestedStop).rejects.toBe(failure);
+
+      expect(adapterDisposeCalls).toBe(1);
+      expect(sourceDisposeCalls).toBe(1);
+      expect(motionStopCalls).toBe(1);
+    } finally {
+      await runtime.stop().catch(() => {});
+    }
+  });
+
+  it("waits to restart until a timed-out tick exits and deferred cleanup completes", async () => {
+    const releaseBlockedUpdate = createDeferred<void>();
+    let blockUpdates = false;
+    let blocked = false;
+    let initializeCalls = 0;
+    let disposeCalls = 0;
+    let updateCalls = 0;
+    const adapter: Adapter = {
+      id: "timeout-gate-adapter",
+      initialize: async () => {
+        initializeCalls += 1;
+      },
+      update: async () => {
+        updateCalls += 1;
+        if (blockUpdates) {
+          blocked = true;
+          await releaseBlockedUpdate.promise;
+        }
+      },
+      dispose: async () => {
+        disposeCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachAdapter(adapter);
+    await runtime.start();
+    blockUpdates = true;
+    runtime.state.set("block", true);
+    await vi.waitFor(() => expect(blocked).toBe(true));
+    const stop = runtime.stop();
+    let restart: Promise<void> | undefined;
+
+    try {
+      await stop;
+      expect(disposeCalls).toBe(0);
+
+      restart = runtime.start();
+      let restartFinished = false;
+      void restart.then(() => {
+        restartFinished = true;
+      });
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 25);
+      });
+
+      expect(restartFinished).toBe(false);
+      expect(initializeCalls).toBe(1);
+      expect(updateCalls).toBe(2);
+
+      releaseBlockedUpdate.resolve();
+      await restart;
+
+      expect(disposeCalls).toBe(1);
+      expect(initializeCalls).toBe(2);
+    } finally {
+      releaseBlockedUpdate.resolve();
+      await Promise.allSettled([stop, restart ?? runtime.stop()]);
+      await runtime.stop();
+    }
+  });
+
   it("shares one startup operation across concurrent starts", async () => {
     vi.useFakeTimers();
     const initialization = createDeferred<void>();
