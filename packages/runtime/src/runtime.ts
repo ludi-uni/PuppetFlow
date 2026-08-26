@@ -58,7 +58,6 @@ import {
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
 import {
-  isPollingStateSource,
   MotionOverrideStore,
   type MotionSource,
   type SourceUpdateTarget,
@@ -196,6 +195,8 @@ export class PuppetFlowRuntime {
   private stopPromise: Promise<void> | undefined;
   private cleanupPromise: Promise<void> | undefined;
   private cleanupInProgress = false;
+  private cleanupHookDepth = 0;
+  private cleanupStartAcknowledgements = 0;
   private restartGate: Promise<void> | undefined;
   private startupGeneration: number | undefined;
   private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
@@ -430,7 +431,13 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
-    if (this.cleanupInProgress) {
+    if (
+      this.cleanupInProgress &&
+      (this.cleanupHookDepth > 0 || this.cleanupStartAcknowledgements > 0)
+    ) {
+      if (this.cleanupHookDepth === 0) {
+        this.cleanupStartAcknowledgements -= 1;
+      }
       this.queueCleanupHookStart();
       return Promise.resolve();
     }
@@ -556,6 +563,9 @@ export class PuppetFlowRuntime {
     this.requestedStartPromise = undefined;
 
     if (this.cleanupInProgress) {
+      if (this.cleanupHookDepth > 0) {
+        this.cleanupStartAcknowledgements += 1;
+      }
       return Promise.resolve();
     }
 
@@ -696,13 +706,19 @@ export class PuppetFlowRuntime {
     shouldDispose: boolean,
   ): Promise<void> {
     const schedulerStop = this.sourceScheduler.stop();
+    const cleanupBeforePendingStart =
+      shouldDispose && pendingStart !== undefined && waitForStartup;
+    if (cleanupBeforePendingStart) {
+      await this.cleanupStoppedResources();
+    }
+
     const prerequisites = await this.waitForStopPrerequisites(
       waitForStartup ? pendingStart : undefined,
       schedulerStop,
     );
 
     if (!prerequisites.startup.settled || !prerequisites.scheduler.settled) {
-      this.beginRestartGate(pendingStart, schedulerStop);
+      this.beginRestartGate(pendingStart, schedulerStop, cleanupBeforePendingStart);
       return;
     }
 
@@ -723,7 +739,7 @@ export class PuppetFlowRuntime {
     }
 
     if (!(await this.waitForTickCompletion())) {
-      this.beginRestartGate(pendingStart, schedulerStop);
+      this.beginRestartGate(pendingStart, schedulerStop, cleanupBeforePendingStart);
       return;
     }
 
@@ -736,7 +752,9 @@ export class PuppetFlowRuntime {
       }
     }
 
-    await this.cleanupStoppedResources();
+    if (!cleanupBeforePendingStart) {
+      await this.cleanupStoppedResources();
+    }
     this.throwLifecycleError(
       startupFailed,
       startupError,
@@ -824,12 +842,17 @@ export class PuppetFlowRuntime {
   private beginRestartGate(
     pendingStart: Promise<void> | undefined,
     schedulerStop?: Promise<void>,
+    cleanupCompleted = false,
   ): void {
     if (this.restartGate) {
       return;
     }
 
-    const restartGate = this.finishQuiescing(pendingStart, schedulerStop);
+    const restartGate = this.finishQuiescing(
+      pendingStart,
+      schedulerStop,
+      cleanupCompleted,
+    );
     this.restartGate = restartGate;
     void restartGate.then(() => {
       if (this.restartGate === restartGate) {
@@ -841,6 +864,7 @@ export class PuppetFlowRuntime {
   private async finishQuiescing(
     pendingStart: Promise<void> | undefined,
     schedulerStop?: Promise<void>,
+    cleanupCompleted = false,
   ): Promise<void> {
     const tickCompletion = this.tickCompletion;
     if (tickCompletion) {
@@ -863,7 +887,9 @@ export class PuppetFlowRuntime {
       }
     }
 
-    await this.cleanupStoppedResources();
+    if (!cleanupCompleted) {
+      await this.cleanupStoppedResources();
+    }
   }
 
   private cleanupStoppedResources(): Promise<void> {
@@ -883,6 +909,7 @@ export class PuppetFlowRuntime {
     void this.performCleanup().then(
       () => {
         this.cleanupInProgress = false;
+        this.cleanupStartAcknowledgements = 0;
         if (this.cleanupPromise === cleanupPromise) {
           this.cleanupPromise = undefined;
         }
@@ -890,6 +917,7 @@ export class PuppetFlowRuntime {
       },
       (error) => {
         this.cleanupInProgress = false;
+        this.cleanupStartAcknowledgements = 0;
         if (this.cleanupPromise === cleanupPromise) {
           this.cleanupPromise = undefined;
         }
@@ -900,9 +928,9 @@ export class PuppetFlowRuntime {
   }
 
   private async performCleanup(): Promise<void> {
-    await this.disposeAdapters();
-    await this.disposeSources();
-    await this.stopMotionSources();
+    await this.invokeCleanupHook(() => this.disposeAdapters());
+    await this.invokeCleanupHook(() => this.disposeSources());
+    await this.invokeCleanupHook(() => this.stopMotionSources());
     this.resetMotionPipeline();
     this.resetMotionFrameGraph();
     this.motionMixerInspection = undefined;
@@ -912,6 +940,17 @@ export class PuppetFlowRuntime {
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
+  }
+
+  private async invokeCleanupHook(operation: () => Promise<void>): Promise<void> {
+    this.cleanupHookDepth += 1;
+    let operationPromise!: Promise<void>;
+    try {
+      operationPromise = operation();
+    } finally {
+      this.cleanupHookDepth -= 1;
+    }
+    await operationPromise;
   }
 
   private throwLifecycleError(
@@ -1266,10 +1305,7 @@ export class PuppetFlowRuntime {
           return;
         }
 
-        if (
-          isPollingStateSource(source) &&
-          this.sourceScheduler.drainSource(source, sourceTarget)
-        ) {
+        if (this.sourceScheduler.drainSource(source, sourceTarget)) {
           continue;
         }
 

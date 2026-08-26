@@ -43,6 +43,12 @@ function createDeferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
+async function flushMicrotasks(count: number): Promise<void> {
+  for (let index = 0; index < count; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 function createTestAdapter(update: Adapter["update"]): Adapter {
   return {
     id: "test-adapter",
@@ -134,14 +140,13 @@ describe("PuppetFlowRuntime", () => {
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 30);
       });
-      expect(restartCompleted).toBe(true);
-      expect(runtime.isRunning()).toBe(false);
+      expect(restartCompleted).toBe(false);
 
       releaseCleanup.resolve();
       await Promise.all([outerStop, restart]);
-      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
 
       expect(disposeCalls).toBe(1);
+      expect(runtime.isRunning()).toBe(true);
     } finally {
       escapeNestedStop.resolve();
       releaseCleanup.resolve();
@@ -506,7 +511,7 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
-  it("waits for pending source initialization before disposing after stop", async () => {
+  it("disposes a pending source initialization before waiting for stop", async () => {
     vi.useFakeTimers();
     const initialization = createDeferred<void>();
     let initializeCalls = 0;
@@ -531,8 +536,8 @@ describe("PuppetFlowRuntime", () => {
       expect(initializeCalls).toBe(1);
 
       stop = runtime.stop();
-      await Promise.resolve();
-      expect(disposeCalls).toBe(0);
+      await flushMicrotasks(6);
+      expect(disposeCalls).toBe(1);
 
       initialization.resolve();
       await Promise.all([start, stop]);
@@ -548,6 +553,42 @@ describe("PuppetFlowRuntime", () => {
       await Promise.allSettled([start, stop ?? runtime.stop()]);
       await runtime.stop();
       vi.useRealTimers();
+    }
+  });
+
+  it("disposes a canceled source before waiting for its initialization to settle", async () => {
+    const initialization = createDeferred<void>();
+    const initializeEntered = createDeferred<void>();
+    let disposeCalls = 0;
+    const source: StateSource = {
+      id: "dispose-releases-initialize",
+      initialize: async () => {
+        initializeEntered.resolve();
+        await initialization.promise;
+      },
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+        initialization.resolve();
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    const start = runtime.start();
+
+    try {
+      await initializeEntered.promise;
+      const stop = runtime.stop();
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 30);
+      });
+
+      expect(disposeCalls).toBe(1);
+      await Promise.all([start, stop]);
+      expect(runtime.isRunning()).toBe(false);
+    } finally {
+      initialization.resolve();
+      await Promise.allSettled([start, runtime.stop()]);
+      await runtime.stop();
     }
   });
 
@@ -594,9 +635,8 @@ describe("PuppetFlowRuntime", () => {
       void stop.then(() => {
         stopFinished = true;
       });
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(stopCalls).toBe(0);
+      await flushMicrotasks(8);
+      expect(stopCalls).toBe(1);
       expect(stopFinished).toBe(false);
 
       motionStart.resolve();
@@ -1045,7 +1085,7 @@ describe("PuppetFlowRuntime", () => {
         (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
           .intervalId,
       ).toBeNull();
-      expect(disposeCalls).toBe(0);
+      expect(disposeCalls).toBe(1);
 
       poll.resolve(undefined);
       await vi.advanceTimersByTimeAsync(0);
@@ -1098,6 +1138,36 @@ describe("PuppetFlowRuntime", () => {
     expect(signal?.aborted).toBe(true);
     poll.resolve(undefined);
     await stop;
+  });
+
+  it("uses scheduler ownership without re-reading a polling capability", async () => {
+    let capabilityReads = 0;
+    let legacyUpdateCalls = 0;
+    const source: PollingStateSource = {
+      id: "snapshot-only-polling",
+      initialize: async () => {},
+      update: async () => {
+        legacyUpdateCalls += 1;
+      },
+      dispose: async () => {},
+      get pollIntervalMs() {
+        capabilityReads += 1;
+        if (capabilityReads > 1) {
+          throw new Error("capability re-read");
+        }
+        return 100_000;
+      },
+      poll: async () => undefined,
+      apply: () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+
+    await runtime.start();
+
+    expect(capabilityReads).toBe(1);
+    expect(legacyUpdateCalls).toBe(0);
+
+    await runtime.stop();
   });
 
   it("applies a completed polling update to behavior once at a later tick boundary", async () => {
