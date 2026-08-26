@@ -182,6 +182,8 @@ export class PuppetFlowRuntime {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private lifecycleGeneration = 0;
+  private lifecycleRequest = 0;
+  private desiredRunning = false;
   private startPromise: Promise<void> | undefined;
   private stopPromise: Promise<void> | undefined;
   private restartGate: Promise<void> | undefined;
@@ -193,7 +195,7 @@ export class PuppetFlowRuntime {
   private adaptersInitialized = false;
   private readonly initializedAdapterObjects = new Set<Adapter | MotionFrameAdapter>();
   private sourcesInitialized = false;
-  private motionSourcesStarted = false;
+  private readonly startedMotionSources = new Set<MotionSource>();
   private readonly motionOverride = new MotionOverrideStore();
 
   use(plugin: BehaviorPlugin): this {
@@ -416,12 +418,22 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
+    const request = ++this.lifecycleRequest;
+    this.desiredRunning = true;
+    return this.requestStart(request);
+  }
+
+  private requestStart(request: number): Promise<void> {
+    if (!this.isStartRequested(request)) {
+      return Promise.resolve();
+    }
+
     if (this.restartGate) {
-      return this.restartGate.then(() => this.start());
+      return this.restartGate.then(() => this.requestStart(request));
     }
 
     if (this.stopPromise) {
-      return this.stopPromise.then(() => this.start());
+      return this.stopPromise.then(() => this.requestStart(request));
     }
 
     if (this.startPromise) {
@@ -432,6 +444,10 @@ export class PuppetFlowRuntime {
       return Promise.resolve();
     }
 
+    return this.beginStart();
+  }
+
+  private beginStart(): Promise<void> {
     const generation = ++this.lifecycleGeneration;
     let resolveStart!: () => void;
     let rejectStart!: (reason?: unknown) => void;
@@ -459,6 +475,9 @@ export class PuppetFlowRuntime {
   }
 
   stop(): Promise<void> {
+    this.lifecycleRequest += 1;
+    this.desiredRunning = false;
+
     if (this.stopPromise) {
       return this.stopPromise;
     }
@@ -507,19 +526,20 @@ export class PuppetFlowRuntime {
   private async performStart(generation: number): Promise<void> {
     this.startupGeneration = generation;
     this.startupPhase = "initializing";
+    const isCurrent = () => this.isStartCurrent(generation);
 
     try {
       if (!this.adaptersInitialized) {
-        await this.initializeAdapters();
+        await this.initializeAdapters(isCurrent);
       }
-      if (!this.isStartCurrent(generation)) {
+      if (!isCurrent()) {
         return;
       }
 
       if (!this.sourcesInitialized) {
-        await this.initializeSources();
+        await this.initializeSources(isCurrent);
       }
-      if (!this.isStartCurrent(generation)) {
+      if (!isCurrent()) {
         return;
       }
 
@@ -527,29 +547,64 @@ export class PuppetFlowRuntime {
       this.lastTickTime = null;
       this.startupPhase = "motion-sources";
       this.sourceScheduler.start(this.sources);
-      if (!this.isStartCurrent(generation)) {
+      if (!isCurrent()) {
         return;
       }
 
-      await this.startMotionSources();
-      if (!this.isStartCurrent(generation)) {
+      await this.startMotionSources(isCurrent);
+      if (!isCurrent()) {
         return;
       }
 
       this.startupPhase = "initial-tick";
       await this.tick();
-      if (!this.isStartCurrent(generation)) {
+      if (!isCurrent()) {
         return;
       }
 
       this.intervalId = setInterval(() => {
         void this.tick();
       }, TICK_INTERVAL_MS);
+    } catch (error) {
+      if (isCurrent()) {
+        await this.rollbackFailedStart();
+      }
+      throw error;
     } finally {
       if (this.startupGeneration === generation) {
         this.startupGeneration = undefined;
         this.startupPhase = undefined;
       }
+    }
+  }
+
+  private async rollbackFailedStart(): Promise<void> {
+    this.lifecycleGeneration += 1;
+    this.lifecycleRequest += 1;
+    this.desiredRunning = false;
+    this.running = false;
+    this.tickPending = false;
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    const schedulerStop = this.sourceScheduler.stop();
+    try {
+      await schedulerStop;
+    } catch {
+      // The original startup error remains authoritative.
+    }
+
+    if (!(await this.waitForTickCompletion())) {
+      this.beginRestartGate(undefined);
+      return;
+    }
+
+    try {
+      await this.cleanupStoppedResources();
+    } catch {
+      // The original startup error remains authoritative.
     }
   }
 
@@ -698,6 +753,10 @@ export class PuppetFlowRuntime {
     return this.lifecycleGeneration === generation;
   }
 
+  private isStartRequested(request: number): boolean {
+    return this.lifecycleRequest === request && this.desiredRunning;
+  }
+
   isRunning(): boolean {
     return this.running;
   }
@@ -784,12 +843,16 @@ export class PuppetFlowRuntime {
     });
   }
 
-  private async initializeAdapters(): Promise<void> {
+  private async initializeAdapters(isCurrent: () => boolean): Promise<void> {
     const adapters: Array<Adapter | MotionFrameAdapter> = [
       ...this.adapters,
       ...this.motionFrameAdapters,
     ];
     for (const adapter of adapters) {
+      if (!isCurrent()) {
+        return;
+      }
+
       this.ensureMotionOutputHealth(adapter.id);
       if (this.initializedAdapterObjects.has(adapter)) {
         continue;
@@ -807,9 +870,15 @@ export class PuppetFlowRuntime {
           error,
         );
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
 
-    this.adaptersInitialized = true;
+    if (isCurrent()) {
+      this.adaptersInitialized = true;
+    }
   }
 
   private async disposeAdapters(): Promise<void> {
@@ -829,9 +898,13 @@ export class PuppetFlowRuntime {
     this.resetMotionOutputHealth();
   }
 
-  private async initializeSources(): Promise<void> {
+  private async initializeSources(isCurrent: () => boolean): Promise<void> {
     const initializedSources = new Set<StateSource>();
     for (const source of this.sources) {
+      if (!isCurrent()) {
+        return;
+      }
+
       if (initializedSources.has(source)) {
         continue;
       }
@@ -844,9 +917,15 @@ export class PuppetFlowRuntime {
           error,
         );
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
 
-    this.sourcesInitialized = true;
+    if (isCurrent()) {
+      this.sourcesInitialized = true;
+    }
   }
 
   private async disposeSources(): Promise<void> {
@@ -869,8 +948,12 @@ export class PuppetFlowRuntime {
     this.sourcesInitialized = false;
   }
 
-  private async startMotionSources(): Promise<void> {
+  private async startMotionSources(isCurrent: () => boolean): Promise<void> {
     for (const source of this.motionSources) {
+      if (!isCurrent()) {
+        return;
+      }
+
       const health = this.motionSourceHealth.get(source.id);
       if (health) {
         health.connected = false;
@@ -880,6 +963,7 @@ export class PuppetFlowRuntime {
         await source.start((frame) => {
           this.acceptMotionFrame(source, frame);
         });
+        this.startedMotionSources.add(source);
         if (health) {
           health.connected = true;
         }
@@ -892,16 +976,20 @@ export class PuppetFlowRuntime {
           health.connected = false;
         }
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
-    this.motionSourcesStarted = true;
   }
 
   private async stopMotionSources(): Promise<void> {
-    if (!this.motionSourcesStarted) {
+    if (this.startedMotionSources.size === 0) {
+      this.latestMotionFrames.clear();
       return;
     }
 
-    for (const source of this.motionSources) {
+    for (const source of this.startedMotionSources) {
       try {
         await source.stop();
       } catch (error) {
@@ -919,7 +1007,7 @@ export class PuppetFlowRuntime {
         health.receiptTimes.length = 0;
       }
     }
-    this.motionSourcesStarted = false;
+    this.startedMotionSources.clear();
     this.latestMotionFrames.clear();
   }
 

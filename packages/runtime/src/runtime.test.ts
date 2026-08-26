@@ -88,6 +88,183 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("keeps the runtime stopped when a later stop cancels a queued start", async () => {
+    vi.useFakeTimers();
+    const initialization = createDeferred<void>();
+    let initializeCalls = 0;
+    const source: StateSource = {
+      id: "queued-start-source",
+      initialize: async () => {
+        initializeCalls += 1;
+        await initialization.promise;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    const initialStart = runtime.start();
+
+    try {
+      await Promise.resolve();
+      expect(initializeCalls).toBe(1);
+
+      const firstStop = runtime.stop();
+      const queuedStart = runtime.start();
+      const finalStop = runtime.stop();
+      initialization.resolve();
+
+      await Promise.all([initialStart, firstStop, queuedStart, finalStop]);
+
+      expect(runtime.isRunning()).toBe(false);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+      expect(initializeCalls).toBe(1);
+    } finally {
+      initialization.resolve();
+      await Promise.allSettled([initialStart, runtime.stop()]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("rolls back a standalone initial-tick listener failure before a later start", async () => {
+    const failure = new Error("standalone initial listener failed");
+    let adapterInitializeCalls = 0;
+    let adapterDisposeCalls = 0;
+    let sourceInitializeCalls = 0;
+    let sourceDisposeCalls = 0;
+    let motionStartCalls = 0;
+    let motionStopCalls = 0;
+    let listenerCalls = 0;
+    const adapter: Adapter = {
+      id: "standalone-failure-adapter",
+      initialize: async () => {
+        adapterInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {
+        adapterDisposeCalls += 1;
+      },
+    };
+    const source: StateSource = {
+      id: "standalone-failure-source",
+      initialize: async () => {
+        sourceInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {
+        sourceDisposeCalls += 1;
+      },
+    };
+    const motion: MotionSource = {
+      id: "standalone-failure-motion",
+      start: async () => {
+        motionStartCalls += 1;
+      },
+      stop: async () => {
+        motionStopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachAdapter(adapter)
+      .attachSource(source)
+      .attachMotionSource(motion);
+    runtime.onMotionUpdate(() => {
+      listenerCalls += 1;
+      if (listenerCalls === 2) {
+        throw failure;
+      }
+    });
+
+    try {
+      await expect(runtime.start()).rejects.toBe(failure);
+
+      expect(runtime.isRunning()).toBe(false);
+      expect(adapterDisposeCalls).toBe(1);
+      expect(sourceDisposeCalls).toBe(1);
+      expect(motionStopCalls).toBe(1);
+
+      await runtime.start();
+
+      expect(runtime.isRunning()).toBe(true);
+      expect(adapterInitializeCalls).toBe(2);
+      expect(sourceInitializeCalls).toBe(2);
+      expect(motionStartCalls).toBe(2);
+    } finally {
+      await runtime.stop().catch(() => {});
+    }
+  });
+
+  it("stops initializing later adapters after cancellation", async () => {
+    let laterInitializeCalls = 0;
+    let requestedStop: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const first: Adapter = {
+      id: "cancelling-first-adapter",
+      initialize: async () => {
+        requestedStop = runtimeRef.current!.stop();
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const later: Adapter = {
+      id: "later-adapter",
+      initialize: async () => {
+        laterInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachAdapter(first).attachAdapter(later);
+    runtimeRef.current = runtime;
+
+    try {
+      await runtime.start();
+      await requestedStop;
+
+      expect(laterInitializeCalls).toBe(0);
+      expect(runtime.isRunning()).toBe(false);
+    } finally {
+      await runtime.stop();
+    }
+  });
+
+  it("stops initializing later sources after cancellation", async () => {
+    let laterInitializeCalls = 0;
+    let requestedStop: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const first: StateSource = {
+      id: "cancelling-first-source",
+      initialize: async () => {
+        requestedStop = runtimeRef.current!.stop();
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const later: StateSource = {
+      id: "later-source",
+      initialize: async () => {
+        laterInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(first).attachSource(later);
+    runtimeRef.current = runtime;
+
+    try {
+      await runtime.start();
+      await requestedStop;
+
+      expect(laterInitializeCalls).toBe(0);
+      expect(runtime.isRunning()).toBe(false);
+    } finally {
+      await runtime.stop();
+    }
+  });
+
   it("waits for pending source initialization before disposing after stop", async () => {
     vi.useFakeTimers();
     const initialization = createDeferred<void>();
@@ -139,6 +316,8 @@ describe("PuppetFlowRuntime", () => {
     const startEntered = createDeferred<void>();
     let startCalls = 0;
     let stopCalls = 0;
+    let laterStartCalls = 0;
+    let laterStopCalls = 0;
     const source: MotionSource = {
       id: "starting-motion-source",
       start: async () => {
@@ -150,7 +329,18 @@ describe("PuppetFlowRuntime", () => {
         stopCalls += 1;
       },
     };
-    const runtime = new PuppetFlowRuntime().attachMotionSource(source);
+    const later: MotionSource = {
+      id: "later-motion-source",
+      start: async () => {
+        laterStartCalls += 1;
+      },
+      stop: async () => {
+        laterStopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(source)
+      .attachMotionSource(later);
     const start = runtime.start();
     let stop: Promise<void> | undefined;
 
@@ -173,6 +363,8 @@ describe("PuppetFlowRuntime", () => {
 
       expect(runtime.isRunning()).toBe(false);
       expect(stopCalls).toBe(1);
+      expect(laterStartCalls).toBe(0);
+      expect(laterStopCalls).toBe(0);
       expect(
         (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
           .intervalId,
@@ -348,6 +540,34 @@ describe("PuppetFlowRuntime", () => {
       releaseBlockedUpdate.resolve();
       await Promise.allSettled([stop, restart ?? runtime.stop()]);
       await runtime.stop();
+    }
+  });
+
+  it("keeps stopped when a later stop cancels a start queued behind a timeout gate", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PuppetFlowRuntime();
+
+    try {
+      await runtime.start();
+      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = true;
+
+      const firstStop = runtime.stop();
+      await firstStop;
+      const queuedStart = runtime.start();
+      const finalStop = runtime.stop();
+      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+
+      await Promise.all([queuedStart, finalStop]);
+
+      expect(runtime.isRunning()).toBe(false);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+    } finally {
+      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+      await runtime.stop();
+      warn.mockRestore();
     }
   });
 
