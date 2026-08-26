@@ -34,7 +34,10 @@ source does not opt into the new capability.
 - Source reconnect/backoff policy beyond the scheduler's cancellation and error
   isolation; that is a separate follow-up.
 - A breaking replacement of `StateSource.update()`.
-- Changes to MotionSource, canonical frame routing, adapters, or external viewers.
+- Changes to public MotionSource or adapter APIs, their transport implementations,
+  canonical frame routing, or external viewers. Narrow Runtime-only lifecycle,
+  identity-deduplication, and teardown-safety corrections for existing
+  MotionSource/adapter objects are in scope as compatibility hardening.
 - New dependencies or a package version floor.
 
 ## Selected Approach

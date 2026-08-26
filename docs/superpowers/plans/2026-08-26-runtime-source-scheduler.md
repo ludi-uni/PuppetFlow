@@ -29,8 +29,11 @@ WebSocket, MQTT
 - Polling updates drain in source attachment order before plugin evaluation.
 - Runtime stop aborts polling, clears pending updates, and rejects late publications.
 - Legacy sources retain their existing awaited update(target) behavior.
-- No MotionSource, adapter, YAML/CLI, preset schema, dependency, or security-policy
-  changes are in scope.
+- No public MotionSource/adapter API, transport implementation, canonical frame
+  routing, or external viewer changes are in scope. Narrow Runtime-only lifecycle,
+  identity-deduplication, and teardown-safety corrections for existing
+  MotionSource/adapter objects are in scope as compatibility hardening. YAML/CLI,
+  preset schema, dependency, and security-policy changes remain out of scope.
 - Tests use no live network or hardware.
 
 ## File Structure
