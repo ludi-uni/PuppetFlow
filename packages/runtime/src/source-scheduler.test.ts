@@ -131,6 +131,43 @@ describe("StateSourceScheduler", () => {
     }
   });
 
+  it("uses the polling interval captured during registration", async () => {
+    vi.useFakeTimers();
+    let intervalReads = 0;
+    let pollCalls = 0;
+    const source = {
+      id: "unstable-interval",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+      get pollIntervalMs(): number {
+        intervalReads += 1;
+        if (intervalReads > 1) {
+          throw new Error("interval getter changed");
+        }
+        return 10;
+      },
+      poll: async () => {
+        pollCalls += 1;
+        return undefined;
+      },
+      apply: () => {},
+    };
+    const scheduler = new StateSourceScheduler();
+
+    scheduler.start([source]);
+    try {
+      expect(intervalReads).toBe(1);
+      expect(pollCalls).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(10);
+      expect(pollCalls).toBe(2);
+      expect(intervalReads).toBe(1);
+    } finally {
+      await scheduler.stop().catch(() => {});
+    }
+  });
+
   it("keeps only the newest completed update before a drain", async () => {
     vi.useFakeTimers();
     const applied: Array<{

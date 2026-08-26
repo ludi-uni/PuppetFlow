@@ -1,5 +1,4 @@
 import {
-  isPollingStateSource,
   type PollingStateSource,
   type SourceUpdateTarget,
   type StateSource,
@@ -12,9 +11,19 @@ export interface StateSourceSchedulerOptions {
   onError?: (source: PollingStateSource, error: unknown) => void;
 }
 
+interface PollingSourceRegistration {
+  readonly apply: (update: StateSourceUpdate, target: SourceUpdateTarget) => void;
+  readonly poll: (signal: AbortSignal) => Promise<StateSourceUpdate | undefined>;
+  readonly pollIntervalMs: number;
+  readonly source: PollingStateSource;
+}
+
 interface PollingSourceState {
+  readonly apply: (update: StateSourceUpdate, target: SourceUpdateTarget) => void;
   readonly controller: AbortController;
   readonly generation: number;
+  readonly poll: (signal: AbortSignal) => Promise<StateSourceUpdate | undefined>;
+  readonly pollIntervalMs: number;
   readonly source: PollingStateSource;
   captureActive: boolean;
   captured?: StateSourceUpdate;
@@ -23,6 +32,35 @@ interface PollingSourceState {
   readonly loop: Promise<void>;
   readonly rejectLoop: (reason?: unknown) => void;
   readonly resolveLoop: () => void;
+}
+
+function capturePollingSource(
+  source: StateSource,
+): PollingSourceRegistration | undefined {
+  try {
+    const candidate = source as Partial<PollingStateSource>;
+    const pollIntervalMs = candidate.pollIntervalMs;
+    const poll = candidate.poll;
+    const apply = candidate.apply;
+    if (
+      typeof pollIntervalMs !== "number" ||
+      !Number.isFinite(pollIntervalMs) ||
+      pollIntervalMs < 0 ||
+      typeof poll !== "function" ||
+      typeof apply !== "function"
+    ) {
+      return undefined;
+    }
+
+    return {
+      source: source as PollingStateSource,
+      pollIntervalMs,
+      poll: (signal) => poll.call(source, signal),
+      apply: (update, target) => apply.call(source, update, target),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function waitForInterval(intervalMs: number, signal: AbortSignal): Promise<void> {
@@ -75,11 +113,12 @@ export class StateSourceScheduler {
     const pollingSources = new Set<PollingStateSource>();
     this.states = [];
     for (const source of sources) {
-      if (!isPollingStateSource(source) || pollingSources.has(source)) {
+      const registration = capturePollingSource(source);
+      if (!registration || pollingSources.has(registration.source)) {
         continue;
       }
 
-      pollingSources.add(source);
+      pollingSources.add(registration.source);
       let resolveLoop!: () => void;
       let rejectLoop!: (reason?: unknown) => void;
       const loop = new Promise<void>((resolve, reject) => {
@@ -89,7 +128,10 @@ export class StateSourceScheduler {
       this.states.push({
         controller: new AbortController(),
         generation,
-        source,
+        source: registration.source,
+        pollIntervalMs: registration.pollIntervalMs,
+        poll: registration.poll,
+        apply: registration.apply,
         captureActive: false,
         inFlight: false,
         loop,
@@ -153,7 +195,7 @@ export class StateSourceScheduler {
     while (this.isCurrent(state)) {
       state.inFlight = true;
       try {
-        const update = await state.source.poll(state.controller.signal);
+        const update = await state.poll(state.controller.signal);
         if (update && this.isCurrent(state)) {
           state.latest = update;
         }
@@ -169,7 +211,7 @@ export class StateSourceScheduler {
         return;
       }
 
-      await waitForInterval(state.source.pollIntervalMs, state.controller.signal);
+      await waitForInterval(state.pollIntervalMs, state.controller.signal);
     }
   }
 
@@ -185,7 +227,7 @@ export class StateSourceScheduler {
       state.latest = undefined;
     }
     try {
-      state.source.apply(update, target);
+      state.apply(update, target);
     } catch (error) {
       this.options.onError?.(state.source, error);
     }
