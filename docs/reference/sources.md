@@ -6,7 +6,7 @@
 
 ```ts
 interface StateSource {
-  id: string;
+  readonly id: string;
   initialize(): Promise<void>;
   update(target: SourceUpdateTarget): Promise<void>;
   dispose(): Promise<void>;
@@ -14,8 +14,9 @@ interface StateSource {
 ```
 
 `StateSource` は `initialize()`、`update(target)`、`dispose()` を持つ互換インターフェースです。
-Polling 用の `pollIntervalMs`、`poll(signal)`、`apply(update, target)` をすべて実装する
-ソースは `PollingStateSource` として、ランタイムの tick から I/O を分離できます。
+Polling 用の `pollIntervalMs`、`poll(signal)`、`apply(update, target)` をすべて実装し、
+`pollIntervalMs` が有限かつ 0 以上であるソースは `PollingStateSource` として、ランタイムの
+tick から I/O を分離できます。
 
 ### PollingStateSource のライフサイクル
 
@@ -27,9 +28,9 @@ poll は常に 1 件だけで、完了した更新はキューを増やさず最
 `stop()` は実行中の poll をキャンセルし、停止後に返ってきた遅延結果は適用しません。poll
 または `apply()` のエラーはそのソースに分離され、他のソースとランタイムの tick は継続します。
 
-Polling の 3 メンバーをすべて持たない従来のカスタムソースは、互換性のため従来どおり
-各 tick 内で `await source.update(target)` されます。したがって、その `update()` の完了は
-その tick の後続処理を進める前に待機されます。
+Polling の 3 メンバーが欠けている、または `pollIntervalMs` が有限でないか 0 未満の
+ソースは、互換性のため従来どおり各 tick 内で `await source.update(target)` されます。
+したがって、その `update()` の完了はその tick の後続処理を進める前に待機されます。
 
 ## パッケージ一覧
 
