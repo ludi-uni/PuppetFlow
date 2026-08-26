@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Studio settings persistence (`localStorage`)
 - PFScript language core, Studio PFScript tab, and official samples
 - Standard preset model (PFScript + blink/idle + graph)
+- CLI `pf validate` / `pf compile` commands for CI preset checks and canonical output
 
 ### Changed
 

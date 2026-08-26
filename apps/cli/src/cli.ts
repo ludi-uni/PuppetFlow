@@ -6,6 +6,8 @@ import { Command } from "commander";
 
 import { recordCommand, type RecordCliOptions } from "./commands/record.js";
 import { replayCommand, type ReplayCliOptions } from "./commands/replay.js";
+import { compileCommand, type CompileCliOptions } from "./commands/compile.js";
+import { validateCommand, type ValidateCliOptions } from "./commands/validate.js";
 import { runCommand } from "./commands/run.js";
 import type { RunCliOptions } from "./config/run-config.js";
 
@@ -13,12 +15,16 @@ export interface CliActions {
   run(options: RunCliOptions): Promise<void>;
   record(options: RecordCliOptions): Promise<void>;
   replay(options: ReplayCliOptions): Promise<void>;
+  validate?(options: ValidateCliOptions): Promise<void>;
+  compile?(options: CompileCliOptions): Promise<void>;
 }
 
 const defaultActions: CliActions = {
   run: runCommand,
   record: recordCommand,
   replay: replayCommand,
+  validate: validateCommand,
+  compile: compileCommand,
 };
 
 export function createProgram(actions: CliActions = defaultActions): Command {
@@ -68,7 +74,32 @@ export function createProgram(actions: CliActions = defaultActions): Command {
       });
     });
 
+  const validate = program
+    .command("validate")
+    .description("Validate a preset or YAML config without starting runtime");
+  addPresetInputOptions(validate).action(async (options) => {
+    await (actions.validate ?? validateCommand)(toPresetInputOptions(options));
+  });
+
+  const compile = program
+    .command("compile")
+    .description("Compile a preset into canonical Preset v3 JSON");
+  addPresetInputOptions(compile)
+    .requiredOption("-o, --output <path>", "Compiled .pfpreset output path")
+    .action(async (options) => {
+      await (actions.compile ?? compileCommand)({
+        ...toPresetInputOptions(options),
+        output: options.output,
+      });
+    });
+
   return program;
+}
+
+function addPresetInputOptions(command: Command): Command {
+  return command
+    .option("-c, --config <path>", "YAML config file")
+    .option("-p, --preset <name-or-path>", "Built-in preset name or .pfpreset path");
 }
 
 function addRunOptions(command: Command): Command {
@@ -136,6 +167,13 @@ function toRunOptions(options: Record<string, unknown>): RunCliOptions {
     behaviorHost: options.behaviorHost as string | undefined,
     behaviorDisabled: options.behaviorApi === false,
     microBehaviorsPath: options.microBehaviors as string | undefined,
+  };
+}
+
+function toPresetInputOptions(options: Record<string, unknown>): ValidateCliOptions {
+  return {
+    configPath: options.config as string | undefined,
+    preset: options.preset as string | undefined,
   };
 }
 

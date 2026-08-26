@@ -104,6 +104,32 @@ Studio 上部の **適用済み設定** パネルにある **CLI 設定をエク
 pnpm pf run --config puppetflow.yaml
 ```
 
+### `pf validate`
+
+PresetまたはYAML設定を、Runtimeや外部入力を起動せずに検証します。Preset名または
+パスと、YAML設定は同時に指定できません。
+
+```bash
+pnpm pf validate --preset Curious
+pnpm pf validate --config examples/cli/puppetflow.yaml
+```
+
+検証成功時は終了コード `0`、入力不正・Preset不正時は終了コード `1` になります。
+既存Presetのmigrationやoverlap warningは標準出力／標準エラーに表示されます。
+
+### `pf compile`
+
+PresetまたはYAML設定から、PFScriptをコンパイルした正規化Preset v3 JSONを出力します。
+`--output` は必須で、入力Presetの上書きは拒否されます。
+
+```bash
+pnpm pf compile --preset Curious --output build/Curious.pfpreset
+pnpm pf compile --config examples/cli/puppetflow.yaml --output build/Standard.pfpreset
+```
+
+出力先の親ディレクトリは事前に作成してください。CompileはRuntime、外部入力、VMC
+送出を開始しません。
+
 ## 停止
 
 `Ctrl+C` で停止します。`PuppetFlow runtime stopped.` と表示されれば VMC 送出も止まっています。
