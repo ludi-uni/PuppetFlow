@@ -288,6 +288,7 @@ describe("PuppetFlowRuntime", () => {
 
   it("stops initializing later sources after cancellation", async () => {
     let laterInitializeCalls = 0;
+    let laterDisposeCalls = 0;
     let requestedStop: Promise<void> | undefined;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const first: StateSource = {
@@ -304,7 +305,9 @@ describe("PuppetFlowRuntime", () => {
         laterInitializeCalls += 1;
       },
       update: async () => {},
-      dispose: async () => {},
+      dispose: async () => {
+        laterDisposeCalls += 1;
+      },
     };
     const runtime = new PuppetFlowRuntime().attachSource(first).attachSource(later);
     runtimeRef.current = runtime;
@@ -314,6 +317,7 @@ describe("PuppetFlowRuntime", () => {
       await requestedStop;
 
       expect(laterInitializeCalls).toBe(0);
+      expect(laterDisposeCalls).toBe(0);
       expect(runtime.isRunning()).toBe(false);
     } finally {
       await runtime.stop();
@@ -480,6 +484,74 @@ describe("PuppetFlowRuntime", () => {
       await Promise.allSettled([start, stop ?? runtime.stop()]);
       await runtime.stop();
       vi.useRealTimers();
+    }
+  });
+
+  it("stops a MotionSource after a partially acquiring start rejects", async () => {
+    const failure = new Error("motion acquisition failed");
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    let stopCalls = 0;
+    const source: MotionSource = {
+      id: "partially-acquired-motion-source",
+      start: async () => {
+        throw failure;
+      },
+      stop: async () => {
+        stopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachMotionSource(source);
+
+    try {
+      await runtime.start();
+      await runtime.stop();
+
+      expect(stopCalls).toBe(1);
+    } finally {
+      await runtime.stop();
+      error.mockRestore();
+    }
+  });
+
+  it("restarts when rollback cleanup requests start after a standalone failure", async () => {
+    const failure = new Error("rollback listener failed");
+    let initializeCalls = 0;
+    let disposeCalls = 0;
+    let listenerCalls = 0;
+    let reentrantStart: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const adapter: Adapter = {
+      id: "rollback-reentrant-adapter",
+      initialize: async () => {
+        initializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+        if (disposeCalls === 1) {
+          reentrantStart = runtimeRef.current!.start();
+        }
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachAdapter(adapter);
+    runtimeRef.current = runtime;
+    runtime.onMotionUpdate(() => {
+      listenerCalls += 1;
+      if (listenerCalls === 2) {
+        throw failure;
+      }
+    });
+
+    try {
+      await expect(runtime.start()).rejects.toBe(failure);
+      expect(reentrantStart).toBeDefined();
+      await expect(reentrantStart).resolves.toBeUndefined();
+
+      expect(runtime.isRunning()).toBe(true);
+      expect(initializeCalls).toBe(2);
+      expect(disposeCalls).toBe(1);
+    } finally {
+      await runtime.stop();
     }
   });
 
@@ -1111,6 +1183,7 @@ describe("PuppetFlowRuntime", () => {
     vi.useFakeTimers();
     let updateCalls = 0;
     let pollCalls = 0;
+    let disposeCalls = 0;
     const source: PollingStateSource = {
       id: "late-attached-polling",
       initialize: async () => {},
@@ -1118,7 +1191,9 @@ describe("PuppetFlowRuntime", () => {
         updateCalls += 1;
         target.state.set("lateAttached", "legacy-update");
       },
-      dispose: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+      },
       pollIntervalMs: 100_000,
       poll: async () => {
         pollCalls += 1;
@@ -1138,6 +1213,9 @@ describe("PuppetFlowRuntime", () => {
       expect(updateCalls).toBe(1);
       expect(runtime.state.get("lateAttached")).toBe("legacy-update");
       expect(pollCalls).toBe(0);
+
+      await runtime.stop();
+      expect(disposeCalls).toBe(1);
     } finally {
       await runtime.stop();
       vi.useRealTimers();

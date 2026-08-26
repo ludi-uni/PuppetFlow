@@ -147,6 +147,7 @@ export class PuppetFlowRuntime {
   private readonly motionFrameAdapters: MotionFrameAdapter[] = [];
   private readonly modifiers: MotionModifier[] = [];
   private readonly sources: StateSource[] = [];
+  private readonly sourceLifecycleObjects = new Set<StateSource>();
   private readonly sourceScheduler = new StateSourceScheduler({
     onError: (source, error) => {
       console.error(`[PuppetFlowRuntime] source "${source.id}" update failed`, error);
@@ -468,6 +469,12 @@ export class PuppetFlowRuntime {
     }
 
     if (this.startPromise) {
+      if (this.startupGeneration !== this.lifecycleGeneration) {
+        return this.startPromise.then(
+          () => this.requestStart(request),
+          () => this.requestStart(request),
+        );
+      }
       return this.startPromise;
     }
 
@@ -942,6 +949,7 @@ export class PuppetFlowRuntime {
         continue;
       }
       initializedSources.add(source);
+      this.sourceLifecycleObjects.add(source);
       try {
         await source.initialize();
       } catch (error) {
@@ -962,12 +970,7 @@ export class PuppetFlowRuntime {
   }
 
   private async disposeSources(): Promise<void> {
-    const disposedSources = new Set<StateSource>();
-    for (const source of this.sources) {
-      if (disposedSources.has(source)) {
-        continue;
-      }
-      disposedSources.add(source);
+    for (const source of this.sourceLifecycleObjects) {
       try {
         await source.dispose();
       } catch (error) {
@@ -979,6 +982,7 @@ export class PuppetFlowRuntime {
     }
 
     this.sourcesInitialized = false;
+    this.sourceLifecycleObjects.clear();
   }
 
   private async startMotionSources(isCurrent: () => boolean): Promise<void> {
@@ -998,11 +1002,11 @@ export class PuppetFlowRuntime {
         health.connected = false;
         health.stale = false;
       }
+      this.startedMotionSources.add(source);
       try {
         await source.start((frame) => {
           this.acceptMotionFrame(source, frame);
         });
-        this.startedMotionSources.add(source);
         if (health) {
           health.connected = true;
         }
@@ -1114,6 +1118,7 @@ export class PuppetFlowRuntime {
           continue;
         }
 
+        this.sourceLifecycleObjects.add(source);
         try {
           await source.update(sourceTarget);
         } catch (error) {
