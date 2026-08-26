@@ -88,6 +88,188 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("waits for pending source initialization before disposing after stop", async () => {
+    vi.useFakeTimers();
+    const initialization = createDeferred<void>();
+    let initializeCalls = 0;
+    let disposeCalls = 0;
+    const source: StateSource = {
+      id: "initializing-source",
+      initialize: async () => {
+        initializeCalls += 1;
+        await initialization.promise;
+      },
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    const start = runtime.start();
+    let stop: Promise<void> | undefined;
+
+    try {
+      await Promise.resolve();
+      expect(initializeCalls).toBe(1);
+
+      stop = runtime.stop();
+      await Promise.resolve();
+      expect(disposeCalls).toBe(0);
+
+      initialization.resolve();
+      await Promise.all([start, stop]);
+
+      expect(runtime.isRunning()).toBe(false);
+      expect(disposeCalls).toBe(1);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+    } finally {
+      initialization.resolve();
+      await Promise.allSettled([start, stop ?? runtime.stop()]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits for a pending motion-source start before stopping it", async () => {
+    vi.useFakeTimers();
+    const motionStart = createDeferred<void>();
+    const startEntered = createDeferred<void>();
+    let startCalls = 0;
+    let stopCalls = 0;
+    const source: MotionSource = {
+      id: "starting-motion-source",
+      start: async () => {
+        startCalls += 1;
+        startEntered.resolve();
+        await motionStart.promise;
+      },
+      stop: async () => {
+        stopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachMotionSource(source);
+    const start = runtime.start();
+    let stop: Promise<void> | undefined;
+
+    try {
+      await startEntered.promise;
+      expect(startCalls).toBe(1);
+
+      stop = runtime.stop();
+      let stopFinished = false;
+      void stop.then(() => {
+        stopFinished = true;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(stopCalls).toBe(0);
+      expect(stopFinished).toBe(false);
+
+      motionStart.resolve();
+      await Promise.all([start, stop]);
+
+      expect(runtime.isRunning()).toBe(false);
+      expect(stopCalls).toBe(1);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).toBeNull();
+    } finally {
+      motionStart.resolve();
+      await Promise.allSettled([start, stop ?? runtime.stop()]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("shares one startup operation across concurrent starts", async () => {
+    vi.useFakeTimers();
+    const initialization = createDeferred<void>();
+    let initializeCalls = 0;
+    const source: StateSource = {
+      id: "single-flight-source",
+      initialize: async () => {
+        initializeCalls += 1;
+        await initialization.promise;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    const firstStart = runtime.start();
+    const secondStart = runtime.start();
+
+    try {
+      await Promise.resolve();
+      expect(initializeCalls).toBe(1);
+
+      initialization.resolve();
+      await Promise.all([firstStart, secondStart]);
+
+      expect(runtime.isRunning()).toBe(true);
+      expect(
+        (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
+          .intervalId,
+      ).not.toBeNull();
+      expect(vi.getTimerCount()).toBe(1);
+    } finally {
+      initialization.resolve();
+      await Promise.allSettled([firstStart, secondStart]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("initializes and disposes duplicate StateSource objects once by identity", async () => {
+    vi.useFakeTimers();
+    let sharedInitializeCalls = 0;
+    let sharedDisposeCalls = 0;
+    let distinctInitializeCalls = 0;
+    let distinctDisposeCalls = 0;
+    const shared: StateSource = {
+      id: "duplicate-id",
+      initialize: async () => {
+        sharedInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {
+        sharedDisposeCalls += 1;
+      },
+    };
+    const distinctSameId: StateSource = {
+      id: "duplicate-id",
+      initialize: async () => {
+        distinctInitializeCalls += 1;
+      },
+      update: async () => {},
+      dispose: async () => {
+        distinctDisposeCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachSource(shared)
+      .attachSource(shared)
+      .attachSource(distinctSameId);
+
+    try {
+      await runtime.start();
+
+      expect(sharedInitializeCalls).toBe(1);
+      expect(distinctInitializeCalls).toBe(1);
+
+      await runtime.stop();
+
+      expect(sharedDisposeCalls).toBe(1);
+      expect(distinctDisposeCalls).toBe(1);
+    } finally {
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
   it("does not finish startup after an initial polling source requests stop", async () => {
     vi.useFakeTimers();
     const poll = createDeferred<StateSourceUpdate | undefined>();

@@ -181,6 +181,11 @@ export class PuppetFlowRuntime {
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  private lifecycleGeneration = 0;
+  private startPromise: Promise<void> | undefined;
+  private stopPromise: Promise<void> | undefined;
+  private startupGeneration: number | undefined;
+  private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
   private tickPending = false;
   private tickInProgress = false;
   private lastTickTime: number | null = null;
@@ -409,48 +414,55 @@ export class PuppetFlowRuntime {
     return this;
   }
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
+    if (this.stopPromise) {
+      return this.stopPromise.then(() => this.start());
+    }
+
+    if (this.startPromise) {
+      return this.startPromise;
+    }
+
     if (this.running) {
-      return;
+      return Promise.resolve();
     }
 
-    if (!this.adaptersInitialized) {
-      await this.initializeAdapters();
-    }
+    const generation = ++this.lifecycleGeneration;
+    let resolveStart!: () => void;
+    let rejectStart!: (reason?: unknown) => void;
+    const startPromise = new Promise<void>((resolve, reject) => {
+      resolveStart = resolve;
+      rejectStart = reject;
+    });
+    this.startPromise = startPromise;
 
-    if (!this.sourcesInitialized) {
-      await this.initializeSources();
-    }
-
-    this.running = true;
-    this.lastTickTime = null;
-    this.sourceScheduler.start(this.sources);
-    if (!this.running) {
-      return;
-    }
-
-    await this.startMotionSources();
-    if (!this.running) {
-      return;
-    }
-
-    await this.tick();
-    if (!this.running) {
-      return;
-    }
-
-    this.intervalId = setInterval(() => {
-      void this.tick();
-    }, TICK_INTERVAL_MS);
+    void this.performStart(generation).then(
+      () => {
+        if (this.startPromise === startPromise) {
+          this.startPromise = undefined;
+        }
+        resolveStart();
+      },
+      (error) => {
+        if (this.startPromise === startPromise) {
+          this.startPromise = undefined;
+        }
+        rejectStart(error);
+      },
+    );
+    return startPromise;
   }
 
-  async stop(): Promise<void> {
-    if (!this.running) {
-      await this.sourceScheduler.stop();
-      this.resetMotionFrameGraph();
-      return;
+  stop(): Promise<void> {
+    if (this.stopPromise) {
+      return this.stopPromise;
     }
 
+    const pendingStart = this.startPromise;
+    const waitForStartup =
+      pendingStart !== undefined && this.startupPhase !== "initial-tick";
+    const shouldDispose = this.running || pendingStart !== undefined;
+    this.lifecycleGeneration += 1;
     this.running = false;
     this.tickPending = false;
     if (this.intervalId !== null) {
@@ -458,7 +470,95 @@ export class PuppetFlowRuntime {
       this.intervalId = null;
     }
 
+    let resolveStop!: () => void;
+    let rejectStop!: (reason?: unknown) => void;
+    const stopPromise = new Promise<void>((resolve, reject) => {
+      resolveStop = resolve;
+      rejectStop = reject;
+    });
+    this.stopPromise = stopPromise;
+
+    void this.performStop(pendingStart, waitForStartup, shouldDispose).then(
+      () => {
+        if (this.stopPromise === stopPromise) {
+          this.stopPromise = undefined;
+        }
+        resolveStop();
+      },
+      (error) => {
+        if (this.stopPromise === stopPromise) {
+          this.stopPromise = undefined;
+        }
+        rejectStop(error);
+      },
+    );
+    return stopPromise;
+  }
+
+  private async performStart(generation: number): Promise<void> {
+    this.startupGeneration = generation;
+    this.startupPhase = "initializing";
+
+    try {
+      if (!this.adaptersInitialized) {
+        await this.initializeAdapters();
+      }
+      if (!this.isStartCurrent(generation)) {
+        return;
+      }
+
+      if (!this.sourcesInitialized) {
+        await this.initializeSources();
+      }
+      if (!this.isStartCurrent(generation)) {
+        return;
+      }
+
+      this.running = true;
+      this.lastTickTime = null;
+      this.startupPhase = "motion-sources";
+      this.sourceScheduler.start(this.sources);
+      if (!this.isStartCurrent(generation)) {
+        return;
+      }
+
+      await this.startMotionSources();
+      if (!this.isStartCurrent(generation)) {
+        return;
+      }
+
+      this.startupPhase = "initial-tick";
+      await this.tick();
+      if (!this.isStartCurrent(generation)) {
+        return;
+      }
+
+      this.intervalId = setInterval(() => {
+        void this.tick();
+      }, TICK_INTERVAL_MS);
+    } finally {
+      if (this.startupGeneration === generation) {
+        this.startupGeneration = undefined;
+        this.startupPhase = undefined;
+      }
+    }
+  }
+
+  private async performStop(
+    pendingStart: Promise<void> | undefined,
+    waitForStartup: boolean,
+    shouldDispose: boolean,
+  ): Promise<void> {
+    if (pendingStart && waitForStartup) {
+      await pendingStart;
+    }
+
     await this.sourceScheduler.stop();
+
+    if (!shouldDispose) {
+      this.resetMotionFrameGraph();
+      return;
+    }
 
     let spinCount = 0;
     while (this.tickInProgress) {
@@ -474,6 +574,10 @@ export class PuppetFlowRuntime {
       }
     }
 
+    if (pendingStart && !waitForStartup) {
+      await pendingStart;
+    }
+
     await this.disposeAdapters();
     await this.disposeSources();
     await this.stopMotionSources();
@@ -486,6 +590,10 @@ export class PuppetFlowRuntime {
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
+  }
+
+  private isStartCurrent(generation: number): boolean {
+    return this.lifecycleGeneration === generation;
   }
 
   isRunning(): boolean {
@@ -620,7 +728,12 @@ export class PuppetFlowRuntime {
   }
 
   private async initializeSources(): Promise<void> {
+    const initializedSources = new Set<StateSource>();
     for (const source of this.sources) {
+      if (initializedSources.has(source)) {
+        continue;
+      }
+      initializedSources.add(source);
       try {
         await source.initialize();
       } catch (error) {
@@ -635,7 +748,12 @@ export class PuppetFlowRuntime {
   }
 
   private async disposeSources(): Promise<void> {
+    const disposedSources = new Set<StateSource>();
     for (const source of this.sources) {
+      if (disposedSources.has(source)) {
+        continue;
+      }
+      disposedSources.add(source);
       try {
         await source.dispose();
       } catch (error) {
