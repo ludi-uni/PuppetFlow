@@ -209,6 +209,144 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
   });
 
+  it("applies a legacy source before a later polling source in attachment order", async () => {
+    vi.useFakeTimers();
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    const order: string[] = [];
+    const observed: unknown[] = [];
+    let legacyEnabled = false;
+    let pollStarted = false;
+    let pollingUpdateCalls = 0;
+    const legacy: StateSource = {
+      id: "legacy-first",
+      initialize: async () => {},
+      update: async (target) => {
+        if (!legacyEnabled) {
+          return;
+        }
+        order.push("legacy-first");
+        target.state.set("sharedValue", "legacy");
+      },
+      dispose: async () => {},
+    };
+    const polling: PollingStateSource = {
+      id: "polling-second",
+      initialize: async () => {},
+      update: async () => {
+        pollingUpdateCalls += 1;
+      },
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async () => {
+        pollStarted = true;
+        return poll.promise;
+      },
+      apply: (update, target) => {
+        order.push("polling-second");
+        target.state.set("sharedValue", update.payload);
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .use({
+        id: "observer",
+        process(input) {
+          observed.push(input.state.get("sharedValue"));
+          return {};
+        },
+      })
+      .attachSource(legacy)
+      .attachSource(polling);
+
+    try {
+      await runtime.start();
+      expect(pollStarted).toBe(true);
+      observed.length = 0;
+      legacyEnabled = true;
+      poll.resolve({ payload: "polling" });
+      await Promise.resolve();
+      runtime.state.set("forceTick", true);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(order).toEqual(["legacy-first", "polling-second"]);
+      expect(runtime.state.get("sharedValue")).toBe("polling");
+      expect(observed).toEqual(["polling"]);
+      expect(pollingUpdateCalls).toBe(0);
+    } finally {
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it("applies a polling source before a later legacy source in attachment order", async () => {
+    vi.useFakeTimers();
+    const poll = createDeferred<StateSourceUpdate | undefined>();
+    const order: string[] = [];
+    const observed: unknown[] = [];
+    let legacyEnabled = false;
+    let pollStarted = false;
+    let pollingUpdateCalls = 0;
+    const polling: PollingStateSource = {
+      id: "polling-first",
+      initialize: async () => {},
+      update: async () => {
+        pollingUpdateCalls += 1;
+      },
+      dispose: async () => {},
+      pollIntervalMs: 100_000,
+      poll: async () => {
+        pollStarted = true;
+        return poll.promise;
+      },
+      apply: (update, target) => {
+        order.push("polling-first");
+        target.state.set("sharedValue", update.payload);
+      },
+    };
+    const legacy: StateSource = {
+      id: "legacy-second",
+      initialize: async () => {},
+      update: async (target) => {
+        if (!legacyEnabled) {
+          return;
+        }
+        order.push("legacy-second");
+        target.state.set("sharedValue", "legacy");
+      },
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime()
+      .use({
+        id: "observer",
+        process(input) {
+          observed.push(input.state.get("sharedValue"));
+          return {};
+        },
+      })
+      .attachSource(polling)
+      .attachSource(legacy);
+
+    try {
+      await runtime.start();
+      expect(pollStarted).toBe(true);
+      observed.length = 0;
+      legacyEnabled = true;
+      poll.resolve({ payload: "polling" });
+      await Promise.resolve();
+      runtime.state.set("forceTick", true);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(order).toEqual(["polling-first", "legacy-second"]);
+      expect(runtime.state.get("sharedValue")).toBe("legacy");
+      expect(observed).toEqual(["legacy"]);
+      expect(pollingUpdateCalls).toBe(0);
+    } finally {
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
   it("aborts polling and ignores a late update before disposing its source", async () => {
     const poll = createDeferred<StateSourceUpdate | undefined>();
     const lifecycle: string[] = [];

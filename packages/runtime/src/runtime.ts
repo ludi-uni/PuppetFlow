@@ -726,7 +726,6 @@ export class PuppetFlowRuntime {
 
     try {
       const sourceTarget = this.getSourceUpdateTarget();
-      this.sourceScheduler.drain(sourceTarget);
 
       const currentTime = now();
       const deltaTime =
@@ -749,6 +748,7 @@ export class PuppetFlowRuntime {
         }
 
         if (isPollingStateSource(source)) {
+          this.sourceScheduler.drainSource(source, sourceTarget);
           continue;
         }
 
