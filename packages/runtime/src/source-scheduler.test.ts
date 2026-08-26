@@ -1,6 +1,7 @@
 import type {
   PollingStateSource,
   SourceUpdateTarget,
+  StateSource,
   StateSourceUpdate,
 } from "@puppetflow/source-core";
 import { isPollingStateSource } from "@puppetflow/source-core";
@@ -256,8 +257,8 @@ describe("StateSourceScheduler", () => {
 
     scheduler.start([first, second]);
     await Promise.resolve();
-    scheduler.drainSource(second, target);
-    scheduler.drainSource(second, target);
+    expect(scheduler.drainSource(second, target)).toBe(true);
+    expect(scheduler.drainSource(second, target)).toBe(true);
 
     expect(applied).toEqual([{ id: "second", update: update("two"), target }]);
 
@@ -267,6 +268,64 @@ describe("StateSourceScheduler", () => {
       { id: "first", update: update("one"), target },
     ]);
     await scheduler.stop();
+  });
+
+  it("drains only updates captured at the tick boundary", async () => {
+    vi.useFakeTimers();
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const late = deferred<StateSourceUpdate | undefined>();
+    let pollCalls = 0;
+    const source = createPollingSource(
+      "source",
+      () => {
+        pollCalls += 1;
+        return pollCalls === 1 ? Promise.resolve(update("captured")) : late.promise;
+      },
+      applied,
+    );
+    const scheduler = new StateSourceScheduler();
+    const target = {} as SourceUpdateTarget;
+
+    scheduler.start([source]);
+    try {
+      await vi.advanceTimersByTimeAsync(10);
+      expect(pollCalls).toBe(2);
+
+      scheduler.capture();
+      late.resolve(update("late"));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(scheduler.drainSource(source, target)).toBe(true);
+      expect(applied).toEqual([{ id: "source", update: update("captured"), target }]);
+      expect(scheduler.drainSource(source, target)).toBe(true);
+      expect(applied).toEqual([{ id: "source", update: update("captured"), target }]);
+
+      scheduler.capture();
+      expect(scheduler.drainSource(source, target)).toBe(true);
+      expect(applied).toEqual([
+        { id: "source", update: update("captured"), target },
+        { id: "source", update: update("late"), target },
+      ]);
+    } finally {
+      late.resolve(undefined);
+      await scheduler.stop();
+    }
+  });
+
+  it("returns false when a source is not scheduler-managed", () => {
+    const source: StateSource = {
+      id: "legacy",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const scheduler = new StateSourceScheduler();
+
+    expect(scheduler.drainSource(source, {} as SourceUpdateTarget)).toBe(false);
   });
 
   it("deduplicates repeated polling source instances", async () => {

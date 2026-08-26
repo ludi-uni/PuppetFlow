@@ -16,6 +16,8 @@ interface PollingSourceState {
   readonly controller: AbortController;
   readonly generation: number;
   readonly source: PollingStateSource;
+  captureActive: boolean;
+  captured?: StateSourceUpdate;
   inFlight: boolean;
   latest?: StateSourceUpdate;
   loop?: Promise<void>;
@@ -80,6 +82,7 @@ export class StateSourceScheduler {
         controller: new AbortController(),
         generation,
         source,
+        captureActive: false,
         inFlight: false,
       });
     }
@@ -89,17 +92,29 @@ export class StateSourceScheduler {
     }
   }
 
+  capture(): void {
+    for (const state of this.states) {
+      state.captured = state.latest;
+      state.latest = undefined;
+      state.captureActive = true;
+    }
+  }
+
   drain(target: SourceUpdateTarget): void {
+    this.capture();
     for (const state of this.states) {
       this.drainState(state, target);
     }
   }
 
-  drainSource(source: StateSource, target: SourceUpdateTarget): void {
+  drainSource(source: StateSource, target: SourceUpdateTarget): boolean {
     const state = this.states.find((candidate) => candidate.source === source);
-    if (state) {
-      this.drainState(state, target);
+    if (!state) {
+      return false;
     }
+
+    this.drainState(state, target);
+    return true;
   }
 
   stop(): Promise<void> {
@@ -111,6 +126,8 @@ export class StateSourceScheduler {
     this.states = [];
     this.generation += 1;
     for (const state of states) {
+      state.captureActive = false;
+      state.captured = undefined;
       state.latest = undefined;
       state.controller.abort();
     }
@@ -146,12 +163,16 @@ export class StateSourceScheduler {
   }
 
   private drainState(state: PollingSourceState, target: SourceUpdateTarget): void {
-    const update = state.latest;
+    const update = state.captureActive ? state.captured : state.latest;
     if (!update) {
       return;
     }
 
-    state.latest = undefined;
+    if (state.captureActive) {
+      state.captured = undefined;
+    } else {
+      state.latest = undefined;
+    }
     try {
       state.source.apply(update, target);
     } catch (error) {
