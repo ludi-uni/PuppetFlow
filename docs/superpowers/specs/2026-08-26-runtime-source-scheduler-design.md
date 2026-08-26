@@ -1,7 +1,7 @@
 # Runtime State Source Scheduler Design
 
 **Date:** 2026-08-26
-**Status:** Draft for user review
+**Status:** Approved; implementation complete
 
 ## Context
 
