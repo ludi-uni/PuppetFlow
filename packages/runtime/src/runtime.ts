@@ -141,6 +141,15 @@ interface LifecyclePromiseSettlement {
   error?: unknown;
 }
 
+class RuntimeCleanupInProgressError extends Error {
+  constructor() {
+    super(
+      "Cannot start while runtime cleanup is in progress; await stop() before retrying",
+    );
+    this.name = "RuntimeCleanupInProgressError";
+  }
+}
+
 export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
@@ -195,8 +204,6 @@ export class PuppetFlowRuntime {
   private stopPromise: Promise<void> | undefined;
   private cleanupPromise: Promise<void> | undefined;
   private cleanupInProgress = false;
-  private cleanupHookDepth = 0;
-  private cleanupStartAcknowledgements = 0;
   private restartGate: Promise<void> | undefined;
   private startupGeneration: number | undefined;
   private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
@@ -431,15 +438,11 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
-    if (
-      this.cleanupInProgress &&
-      (this.cleanupHookDepth > 0 || this.cleanupStartAcknowledgements > 0)
-    ) {
-      if (this.cleanupHookDepth === 0) {
-        this.cleanupStartAcknowledgements -= 1;
-      }
-      this.queueCleanupHookStart();
-      return Promise.resolve();
+    if (this.cleanupInProgress) {
+      this.lifecycleRequest += 1;
+      this.desiredRunning = true;
+      this.requestedStartPromise = undefined;
+      return this.rejectStartDuringCleanup();
     }
 
     if (this.desiredRunning) {
@@ -464,19 +467,14 @@ export class PuppetFlowRuntime {
     return this.trackRequestedStart(requestedStart);
   }
 
-  private queueCleanupHookStart(): void {
-    if (this.desiredRunning && this.requestedStartPromise) {
-      return;
-    }
-
-    const request = ++this.lifecycleRequest;
-    this.desiredRunning = true;
-    const requestedStart = this.requestStart(request);
-    if (!this.isStartRequested(request)) {
-      return;
-    }
-
-    this.trackRequestedStart(requestedStart);
+  private rejectStartDuringCleanup(): Promise<void> {
+    const rejection = Promise.reject<void>(new RuntimeCleanupInProgressError());
+    void rejection.catch(() => {
+      // A teardown hook may invoke start() without awaiting it. The caller still
+      // receives the rejection, while this internal handler prevents an unhandled
+      // rejection from escaping the runtime lifecycle.
+    });
+    return rejection;
   }
 
   private trackRequestedStart(requestedStart: Promise<void>): Promise<void> {
@@ -563,9 +561,6 @@ export class PuppetFlowRuntime {
     this.requestedStartPromise = undefined;
 
     if (this.cleanupInProgress) {
-      if (this.cleanupHookDepth > 0) {
-        this.cleanupStartAcknowledgements += 1;
-      }
       return Promise.resolve();
     }
 
@@ -706,10 +701,21 @@ export class PuppetFlowRuntime {
     shouldDispose: boolean,
   ): Promise<void> {
     const schedulerStop = this.sourceScheduler.stop();
+    const startupPhase = this.startupPhase;
     const cleanupBeforePendingStart =
-      shouldDispose && pendingStart !== undefined && waitForStartup;
+      shouldDispose &&
+      pendingStart !== undefined &&
+      waitForStartup &&
+      startupPhase === "initializing";
+    const stopMotionSourcesBeforePendingStart =
+      shouldDispose &&
+      pendingStart !== undefined &&
+      waitForStartup &&
+      startupPhase === "motion-sources";
     if (cleanupBeforePendingStart) {
       await this.cleanupStoppedResources();
+    } else if (stopMotionSourcesBeforePendingStart) {
+      await this.stopMotionSourcesForCanceledStart();
     }
 
     const prerequisites = await this.waitForStopPrerequisites(
@@ -909,7 +915,6 @@ export class PuppetFlowRuntime {
     void this.performCleanup().then(
       () => {
         this.cleanupInProgress = false;
-        this.cleanupStartAcknowledgements = 0;
         if (this.cleanupPromise === cleanupPromise) {
           this.cleanupPromise = undefined;
         }
@@ -917,7 +922,6 @@ export class PuppetFlowRuntime {
       },
       (error) => {
         this.cleanupInProgress = false;
-        this.cleanupStartAcknowledgements = 0;
         if (this.cleanupPromise === cleanupPromise) {
           this.cleanupPromise = undefined;
         }
@@ -928,9 +932,9 @@ export class PuppetFlowRuntime {
   }
 
   private async performCleanup(): Promise<void> {
-    await this.invokeCleanupHook(() => this.disposeAdapters());
-    await this.invokeCleanupHook(() => this.disposeSources());
-    await this.invokeCleanupHook(() => this.stopMotionSources());
+    await this.disposeAdapters();
+    await this.disposeSources();
+    await this.stopMotionSources();
     this.resetMotionPipeline();
     this.resetMotionFrameGraph();
     this.motionMixerInspection = undefined;
@@ -942,15 +946,18 @@ export class PuppetFlowRuntime {
     this.frameNumber = 0;
   }
 
-  private async invokeCleanupHook(operation: () => Promise<void>): Promise<void> {
-    this.cleanupHookDepth += 1;
-    let operationPromise!: Promise<void>;
-    try {
-      operationPromise = operation();
-    } finally {
-      this.cleanupHookDepth -= 1;
+  private async stopMotionSourcesForCanceledStart(): Promise<void> {
+    const cleanupAlreadyInProgress = this.cleanupInProgress;
+    if (!cleanupAlreadyInProgress) {
+      this.cleanupInProgress = true;
     }
-    await operationPromise;
+    try {
+      await this.stopMotionSources();
+    } finally {
+      if (!cleanupAlreadyInProgress) {
+        this.cleanupInProgress = false;
+      }
+    }
   }
 
   private throwLifecycleError(

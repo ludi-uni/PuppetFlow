@@ -94,13 +94,11 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
-  it("lets an adapter dispose hook await stop without blocking cleanup or a later restart", async () => {
-    const escapeNestedStop = createDeferred<void>();
+  it("rejects yielded hook and external starts during adapter cleanup before a retry", async () => {
     const releaseCleanup = createDeferred<void>();
     let disposeCalls = 0;
     let nestedStopCompleted = false;
-    let nestedStartAcknowledged = false;
-    let nestedStop: Promise<void> | undefined;
+    let nestedStartError: unknown;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const adapter: Adapter = {
       id: "await-stop-dispose-adapter",
@@ -111,11 +109,14 @@ describe("PuppetFlowRuntime", () => {
         if (disposeCalls > 1) {
           return;
         }
-        nestedStop = runtimeRef.current!.stop();
-        await Promise.race([nestedStop, escapeNestedStop.promise]);
+        await runtimeRef.current!.stop();
         nestedStopCompleted = true;
-        await runtimeRef.current!.start();
-        nestedStartAcknowledged = true;
+        await Promise.resolve();
+        try {
+          await runtimeRef.current!.start();
+        } catch (error) {
+          nestedStartError = error;
+        }
         await releaseCleanup.promise;
       },
     };
@@ -123,43 +124,77 @@ describe("PuppetFlowRuntime", () => {
     runtimeRef.current = runtime;
     await runtime.start();
     const outerStop = runtime.stop();
-    let restart: Promise<void> | undefined;
 
     try {
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 30);
-      });
+      await flushMicrotasks(8);
       expect(nestedStopCompleted).toBe(true);
-      expect(nestedStartAcknowledged).toBe(true);
+      expect(nestedStartError).toBeInstanceOf(Error);
+      expect(nestedStartError).toMatchObject({
+        name: "RuntimeCleanupInProgressError",
+      });
+      expect((nestedStartError as Error).message).toContain("cleanup is in progress");
 
-      restart = runtime.start();
-      let restartCompleted = false;
-      void restart.then(() => {
-        restartCompleted = true;
-      });
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 30);
-      });
-      expect(restartCompleted).toBe(false);
+      const externalStart = runtime.start();
+      await expect(externalStart).rejects.toThrow("cleanup is in progress");
+      expect(runtime.isRunning()).toBe(false);
 
       releaseCleanup.resolve();
-      await Promise.all([outerStop, restart]);
+      await outerStop;
 
       expect(disposeCalls).toBe(1);
+      expect(runtime.isRunning()).toBe(false);
+
+      await runtime.start();
       expect(runtime.isRunning()).toBe(true);
     } finally {
-      escapeNestedStop.resolve();
       releaseCleanup.resolve();
-      await Promise.allSettled([outerStop, restart ?? runtime.stop()]);
+      await Promise.allSettled([outerStop]);
       await runtime.stop();
     }
   });
 
-  it("lets a StateSource dispose hook await stop without reentering cleanup", async () => {
-    const escapeNestedStop = createDeferred<void>();
+  it("rejects an external start during a stop-only cleanup hook before a retry", async () => {
+    const disposeEntered = createDeferred<void>();
+    const releaseCleanup = createDeferred<void>();
+    const adapter: Adapter = {
+      id: "external-cleanup-start-adapter",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        disposeEntered.resolve();
+        await releaseCleanup.promise;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachAdapter(adapter);
+    await runtime.start();
+    const outerStop = runtime.stop();
+
+    try {
+      await disposeEntered.promise;
+
+      const externalStart = runtime.start();
+      await expect(externalStart).rejects.toMatchObject({
+        name: "RuntimeCleanupInProgressError",
+      });
+      expect(runtime.isRunning()).toBe(false);
+
+      releaseCleanup.resolve();
+      await outerStop;
+      expect(runtime.isRunning()).toBe(false);
+
+      await runtime.start();
+      expect(runtime.isRunning()).toBe(true);
+    } finally {
+      releaseCleanup.resolve();
+      await Promise.allSettled([outerStop]);
+      await runtime.stop();
+    }
+  });
+
+  it("rejects a StateSource dispose hook start while preserving nested stop", async () => {
     let disposeCalls = 0;
     let nestedStopCompleted = false;
-    let nestedStartAcknowledged = false;
+    let nestedStartError: unknown;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const source: StateSource = {
       id: "await-stop-dispose-source",
@@ -170,10 +205,13 @@ describe("PuppetFlowRuntime", () => {
         if (disposeCalls > 1) {
           return;
         }
-        await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
+        await runtimeRef.current!.stop();
         nestedStopCompleted = true;
-        await runtimeRef.current!.start();
-        nestedStartAcknowledged = true;
+        try {
+          await runtimeRef.current!.start();
+        } catch (error) {
+          nestedStartError = error;
+        }
       },
     };
     const runtime = new PuppetFlowRuntime().attachSource(source);
@@ -182,26 +220,25 @@ describe("PuppetFlowRuntime", () => {
     const outerStop = runtime.stop();
 
     try {
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 30);
-      });
+      await flushMicrotasks(8);
       expect(nestedStopCompleted).toBe(true);
-      expect(nestedStartAcknowledged).toBe(true);
+      expect(nestedStartError).toBeInstanceOf(Error);
       await outerStop;
       expect(disposeCalls).toBe(1);
-      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
+      expect(runtime.isRunning()).toBe(false);
+
+      await runtime.start();
+      expect(runtime.isRunning()).toBe(true);
     } finally {
-      escapeNestedStop.resolve();
       await Promise.allSettled([outerStop]);
       await runtime.stop();
     }
   });
 
-  it("lets a MotionSource stop hook await stop without reentering cleanup", async () => {
-    const escapeNestedStop = createDeferred<void>();
+  it("rejects a MotionSource stop hook start while preserving nested stop", async () => {
     let stopCalls = 0;
     let nestedStopCompleted = false;
-    let nestedStartAcknowledged = false;
+    let nestedStartError: unknown;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const source: MotionSource = {
       id: "await-stop-motion-source",
@@ -211,10 +248,13 @@ describe("PuppetFlowRuntime", () => {
         if (stopCalls > 1) {
           return;
         }
-        await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
+        await runtimeRef.current!.stop();
         nestedStopCompleted = true;
-        await runtimeRef.current!.start();
-        nestedStartAcknowledged = true;
+        try {
+          await runtimeRef.current!.start();
+        } catch (error) {
+          nestedStartError = error;
+        }
       },
     };
     const runtime = new PuppetFlowRuntime().attachMotionSource(source);
@@ -223,16 +263,16 @@ describe("PuppetFlowRuntime", () => {
     const outerStop = runtime.stop();
 
     try {
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 30);
-      });
+      await flushMicrotasks(8);
       expect(nestedStopCompleted).toBe(true);
-      expect(nestedStartAcknowledged).toBe(true);
+      expect(nestedStartError).toBeInstanceOf(Error);
       await outerStop;
       expect(stopCalls).toBe(1);
-      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
+      expect(runtime.isRunning()).toBe(false);
+
+      await runtime.start();
+      expect(runtime.isRunning()).toBe(true);
     } finally {
-      escapeNestedStop.resolve();
       await Promise.allSettled([outerStop]);
       await runtime.stop();
     }
@@ -275,7 +315,7 @@ describe("PuppetFlowRuntime", () => {
     }
   }, 10_000);
 
-  it("keeps the runtime stopped when a later stop cancels a queued start", async () => {
+  it("keeps the runtime stopped when a later stop cancels a rejected cleanup start", async () => {
     vi.useFakeTimers();
     const initialization = createDeferred<void>();
     let initializeCalls = 0;
@@ -296,11 +336,12 @@ describe("PuppetFlowRuntime", () => {
       expect(initializeCalls).toBe(1);
 
       const firstStop = runtime.stop();
-      const queuedStart = runtime.start();
+      const cleanupStart = runtime.start();
+      await expect(cleanupStart).rejects.toThrow("cleanup is in progress");
       const finalStop = runtime.stop();
       initialization.resolve();
 
-      await Promise.all([initialStart, firstStop, queuedStart, finalStop]);
+      await Promise.all([initialStart, firstStop, finalStop]);
 
       expect(runtime.isRunning()).toBe(false);
       expect(
@@ -316,8 +357,7 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
-  it("coalesces starts queued behind a normal stop until the shared restart completes", async () => {
-    vi.useFakeTimers();
+  it("rejects concurrent starts during normal cleanup and permits a later retry", async () => {
     const firstInitialization = createDeferred<void>();
     const secondInitialization = createDeferred<void>();
     const secondStartEntered = createDeferred<void>();
@@ -344,21 +384,17 @@ describe("PuppetFlowRuntime", () => {
       const stop = runtime.stop();
       const firstQueuedStart = runtime.start();
       const secondQueuedStart = runtime.start();
-      expect(secondQueuedStart).toBe(firstQueuedStart);
+      await expect(firstQueuedStart).rejects.toThrow("cleanup is in progress");
+      await expect(secondQueuedStart).rejects.toThrow("cleanup is in progress");
 
       firstInitialization.resolve();
       await Promise.all([initialStart, stop]);
+
+      const retry = runtime.start();
       await secondStartEntered.promise;
 
-      let queuedStartFinished = false;
-      void firstQueuedStart.then(() => {
-        queuedStartFinished = true;
-      });
-      await Promise.resolve();
-      expect(queuedStartFinished).toBe(false);
-
       secondInitialization.resolve();
-      await Promise.all([firstQueuedStart, secondQueuedStart]);
+      await retry;
 
       expect(runtime.isRunning()).toBe(true);
       expect(initializeCalls).toBe(2);
@@ -367,7 +403,6 @@ describe("PuppetFlowRuntime", () => {
       secondInitialization.resolve();
       await Promise.allSettled([initialStart, runtime.stop()]);
       await runtime.stop();
-      vi.useRealTimers();
     }
   });
 
@@ -592,7 +627,7 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
-  it("waits for a pending motion-source start before stopping it", async () => {
+  it("stops a pending motion source before waiting for startup settlement", async () => {
     vi.useFakeTimers();
     const motionStart = createDeferred<void>();
     const startEntered = createDeferred<void>();
@@ -609,6 +644,7 @@ describe("PuppetFlowRuntime", () => {
       },
       stop: async () => {
         stopCalls += 1;
+        motionStart.resolve();
       },
     };
     const later: MotionSource = {
@@ -631,15 +667,8 @@ describe("PuppetFlowRuntime", () => {
       expect(startCalls).toBe(1);
 
       stop = runtime.stop();
-      let stopFinished = false;
-      void stop.then(() => {
-        stopFinished = true;
-      });
       await flushMicrotasks(8);
       expect(stopCalls).toBe(1);
-      expect(stopFinished).toBe(false);
-
-      motionStart.resolve();
       await Promise.all([start, stop]);
 
       expect(runtime.isRunning()).toBe(false);
@@ -709,6 +738,66 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
+  it("settles polling before disposing a source canceled during motion startup", async () => {
+    const poll = createDeferred<void>();
+    const pollEntered = createDeferred<void>();
+    const motionStart = createDeferred<void>();
+    const motionStartEntered = createDeferred<void>();
+    const order: string[] = [];
+    const polling: PollingStateSource = {
+      id: "ordering-polling-source",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        order.push("source-disposed");
+      },
+      pollIntervalMs: 100_000,
+      poll: async () => {
+        pollEntered.resolve();
+        await poll.promise;
+        order.push("poll-settled");
+        return undefined;
+      },
+      apply: () => {},
+    };
+    const motion: MotionSource = {
+      id: "ordering-motion-source",
+      start: async () => {
+        motionStartEntered.resolve();
+        await motionStart.promise;
+      },
+      stop: async () => {
+        order.push("motion-stopped");
+        motionStart.resolve();
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachSource(polling)
+      .attachMotionSource(motion);
+    const start = runtime.start();
+
+    try {
+      await Promise.all([pollEntered.promise, motionStartEntered.promise]);
+
+      const stop = runtime.stop();
+      await vi.waitFor(() => expect(order).toContain("motion-stopped"));
+      expect(order).not.toContain("source-disposed");
+
+      poll.resolve();
+      await Promise.all([start, stop]);
+
+      expect(order.indexOf("poll-settled")).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf("source-disposed")).toBeGreaterThan(
+        order.indexOf("poll-settled"),
+      );
+    } finally {
+      poll.resolve();
+      motionStart.resolve();
+      await Promise.allSettled([start, runtime.stop()]);
+      await runtime.stop();
+    }
+  });
+
   it("stops a MotionSource after a partially acquiring start rejects", async () => {
     const failure = new Error("motion acquisition failed");
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -735,7 +824,7 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
-  it("restarts when rollback cleanup requests start after a standalone failure", async () => {
+  it("rejects rollback cleanup starts and allows a later retry after standalone failure", async () => {
     const failure = new Error("rollback listener failed");
     let initializeCalls = 0;
     let disposeCalls = 0;
@@ -767,9 +856,12 @@ describe("PuppetFlowRuntime", () => {
     try {
       await expect(runtime.start()).rejects.toBe(failure);
       expect(reentrantStart).toBeDefined();
-      await expect(reentrantStart).resolves.toBeUndefined();
+      await expect(reentrantStart).rejects.toThrow("cleanup is in progress");
 
-      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
+      expect(runtime.isRunning()).toBe(false);
+
+      await runtime.start();
+      expect(runtime.isRunning()).toBe(true);
 
       expect(initializeCalls).toBe(2);
       expect(disposeCalls).toBe(1);
@@ -1085,7 +1177,7 @@ describe("PuppetFlowRuntime", () => {
         (runtime as unknown as { intervalId: ReturnType<typeof setInterval> | null })
           .intervalId,
       ).toBeNull();
-      expect(disposeCalls).toBe(1);
+      expect(disposeCalls).toBe(0);
 
       poll.resolve(undefined);
       await vi.advanceTimersByTimeAsync(0);
