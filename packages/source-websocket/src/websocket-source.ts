@@ -10,6 +10,10 @@ export interface WebSocketSourceConfig {
   fieldMapping?: Record<string, string>;
 }
 
+function isObjectPayload(value: unknown): value is object {
+  return typeof value === "object" && value !== null;
+}
+
 export class WebSocketSource implements PollingStateSource {
   readonly id = "websocket";
   readonly pollIntervalMs = 16;
@@ -35,7 +39,11 @@ export class WebSocketSource implements PollingStateSource {
       socket.onmessage = (event) => {
         try {
           const parsed: unknown = JSON.parse(String(event.data));
-          if (typeof parsed === "object" && parsed !== null && "type" in parsed) {
+          if (!isObjectPayload(parsed)) {
+            return;
+          }
+
+          if ("type" in parsed) {
             const envelope = parsed as {
               type?: string;
               state?: unknown;
@@ -46,14 +54,20 @@ export class WebSocketSource implements PollingStateSource {
               this.pendingPayload = parsed;
               return;
             }
-            if (envelope.type === "state" && envelope.state) {
-              this.pendingPayload = envelope.state;
+            if (envelope.type === "state") {
+              if (isObjectPayload(envelope.state)) {
+                this.pendingPayload = envelope.state;
+              }
               return;
             }
-            if (envelope.payload) {
+          }
+
+          const envelope = parsed as { payload?: unknown };
+          if ("payload" in parsed) {
+            if (isObjectPayload(envelope.payload)) {
               this.pendingPayload = envelope.payload;
-              return;
             }
+            return;
           }
 
           this.pendingPayload = parsed;

@@ -147,6 +147,37 @@ describe("WebSocketSource", () => {
     controller.abort();
 
     await expect(source.poll(controller.signal)).resolves.toBeUndefined();
+    await expect(source.poll(new AbortController().signal)).resolves.toEqual({
+      payload: { interest: 0.55 },
+      fieldMapping: {},
+    });
+    await source.dispose();
+  });
+
+  it.each([
+    ["null", "null"],
+    ["number", "0"],
+    ["string", '"state"'],
+  ])("ignores a top-level websocket %s payload", async (_kind, data) => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+
+    MockWebSocket.instances[0]?.onmessage?.({ data });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it.each([
+    ["state", { type: "state", state: 0 }],
+    ["payload", { payload: "state" }],
+  ])("ignores a websocket envelope with a scalar %s value", async (_key, message) => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+
+    MockWebSocket.instances[0]?.onmessage?.({ data: JSON.stringify(message) });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();
   });
 

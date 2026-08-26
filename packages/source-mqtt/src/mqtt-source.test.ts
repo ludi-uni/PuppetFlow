@@ -148,6 +148,10 @@ describe("MqttSource", () => {
     controller.abort();
 
     await expect(source.poll(controller.signal)).resolves.toBeUndefined();
+    await expect(source.poll(new AbortController().signal)).resolves.toEqual({
+      payload: { energy: 0.6 },
+      fieldMapping: {},
+    });
     await source.dispose();
   });
 
