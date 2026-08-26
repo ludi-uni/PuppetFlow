@@ -59,16 +59,8 @@ export function parseRhubarbJson(
       offsetMs,
       Math.round(start * 1000),
     );
-    const endMs = addOffset(
-      SOURCE_ID,
-      `${path}.end`,
-      offsetMs,
-      Math.round(end * 1000),
-    );
-    if (
-      endMs <= startMs ||
-      (previousEndMs !== undefined && startMs < previousEndMs)
-    ) {
+    const endMs = addOffset(SOURCE_ID, `${path}.end`, offsetMs, Math.round(end * 1000));
+    if (endMs <= startMs || (previousEndMs !== undefined && startMs < previousEndMs)) {
       throw new TimelineSourceParseError(
         SOURCE_ID,
         `${path}.end`,
