@@ -201,6 +201,8 @@ export class PuppetFlowRuntime {
   private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
   private tickPending = false;
   private tickInProgress = false;
+  private tickCompletion: Promise<void> | undefined;
+  private resolveTickCompletion: (() => void) | undefined;
   private lastTickTime: number | null = null;
   private adaptersInitialized = false;
   private readonly initializedAdapterObjects = new Set<Adapter | MotionFrameAdapter>();
@@ -428,6 +430,11 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
+    if (this.cleanupInProgress) {
+      this.queueCleanupHookStart();
+      return Promise.resolve();
+    }
+
     if (this.desiredRunning) {
       if (this.requestedStartPromise) {
         return this.requestedStartPromise;
@@ -447,6 +454,25 @@ export class PuppetFlowRuntime {
       return requestedStart;
     }
 
+    return this.trackRequestedStart(requestedStart);
+  }
+
+  private queueCleanupHookStart(): void {
+    if (this.desiredRunning && this.requestedStartPromise) {
+      return;
+    }
+
+    const request = ++this.lifecycleRequest;
+    this.desiredRunning = true;
+    const requestedStart = this.requestStart(request);
+    if (!this.isStartRequested(request)) {
+      return;
+    }
+
+    this.trackRequestedStart(requestedStart);
+  }
+
+  private trackRequestedStart(requestedStart: Promise<void>): Promise<void> {
     this.requestedStartPromise = requestedStart;
     void requestedStart.then(
       () => {
@@ -720,6 +746,10 @@ export class PuppetFlowRuntime {
   }
 
   private async waitForTickCompletion(): Promise<boolean> {
+    if (this.tickInProgress) {
+      this.ensureTickCompletion();
+    }
+
     let spinCount = 0;
     while (this.tickInProgress) {
       await new Promise<void>((resolve) => {
@@ -812,10 +842,9 @@ export class PuppetFlowRuntime {
     pendingStart: Promise<void> | undefined,
     schedulerStop?: Promise<void>,
   ): Promise<void> {
-    while (this.tickInProgress) {
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 0);
-      });
+    const tickCompletion = this.tickCompletion;
+    if (tickCompletion) {
+      await tickCompletion;
     }
 
     if (pendingStart) {
@@ -905,6 +934,27 @@ export class PuppetFlowRuntime {
 
   private isStartRequested(request: number): boolean {
     return this.lifecycleRequest === request && this.desiredRunning;
+  }
+
+  private ensureTickCompletion(): Promise<void> {
+    if (this.tickCompletion) {
+      return this.tickCompletion;
+    }
+
+    let resolveTick!: () => void;
+    const tickCompletion = new Promise<void>((resolve) => {
+      resolveTick = resolve;
+    });
+    this.tickCompletion = tickCompletion;
+    this.resolveTickCompletion = resolveTick;
+    return tickCompletion;
+  }
+
+  private completeTick(): void {
+    const resolveTick = this.resolveTickCompletion;
+    this.tickCompletion = undefined;
+    this.resolveTickCompletion = undefined;
+    resolveTick?.();
   }
 
   isRunning(): boolean {
@@ -1190,6 +1240,7 @@ export class PuppetFlowRuntime {
     }
 
     this.tickInProgress = true;
+    this.ensureTickCompletion();
 
     try {
       const sourceTarget = this.getSourceUpdateTarget();
@@ -1449,6 +1500,7 @@ export class PuppetFlowRuntime {
       }
     } finally {
       this.tickInProgress = false;
+      this.completeTick();
     }
   }
 

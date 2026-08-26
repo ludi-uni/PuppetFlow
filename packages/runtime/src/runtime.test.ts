@@ -93,6 +93,7 @@ describe("PuppetFlowRuntime", () => {
     const releaseCleanup = createDeferred<void>();
     let disposeCalls = 0;
     let nestedStopCompleted = false;
+    let nestedStartAcknowledged = false;
     let nestedStop: Promise<void> | undefined;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const adapter: Adapter = {
@@ -101,9 +102,14 @@ describe("PuppetFlowRuntime", () => {
       update: async () => {},
       dispose: async () => {
         disposeCalls += 1;
+        if (disposeCalls > 1) {
+          return;
+        }
         nestedStop = runtimeRef.current!.stop();
         await Promise.race([nestedStop, escapeNestedStop.promise]);
         nestedStopCompleted = true;
+        await runtimeRef.current!.start();
+        nestedStartAcknowledged = true;
         await releaseCleanup.promise;
       },
     };
@@ -118,6 +124,7 @@ describe("PuppetFlowRuntime", () => {
         setTimeout(resolve, 30);
       });
       expect(nestedStopCompleted).toBe(true);
+      expect(nestedStartAcknowledged).toBe(true);
 
       restart = runtime.start();
       let restartCompleted = false;
@@ -127,13 +134,14 @@ describe("PuppetFlowRuntime", () => {
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 30);
       });
-      expect(restartCompleted).toBe(false);
+      expect(restartCompleted).toBe(true);
+      expect(runtime.isRunning()).toBe(false);
 
       releaseCleanup.resolve();
       await Promise.all([outerStop, restart]);
+      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
 
       expect(disposeCalls).toBe(1);
-      expect(runtime.isRunning()).toBe(true);
     } finally {
       escapeNestedStop.resolve();
       releaseCleanup.resolve();
@@ -146,6 +154,7 @@ describe("PuppetFlowRuntime", () => {
     const escapeNestedStop = createDeferred<void>();
     let disposeCalls = 0;
     let nestedStopCompleted = false;
+    let nestedStartAcknowledged = false;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const source: StateSource = {
       id: "await-stop-dispose-source",
@@ -153,8 +162,13 @@ describe("PuppetFlowRuntime", () => {
       update: async () => {},
       dispose: async () => {
         disposeCalls += 1;
+        if (disposeCalls > 1) {
+          return;
+        }
         await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
         nestedStopCompleted = true;
+        await runtimeRef.current!.start();
+        nestedStartAcknowledged = true;
       },
     };
     const runtime = new PuppetFlowRuntime().attachSource(source);
@@ -167,8 +181,10 @@ describe("PuppetFlowRuntime", () => {
         setTimeout(resolve, 30);
       });
       expect(nestedStopCompleted).toBe(true);
+      expect(nestedStartAcknowledged).toBe(true);
       await outerStop;
       expect(disposeCalls).toBe(1);
+      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
     } finally {
       escapeNestedStop.resolve();
       await Promise.allSettled([outerStop]);
@@ -180,14 +196,20 @@ describe("PuppetFlowRuntime", () => {
     const escapeNestedStop = createDeferred<void>();
     let stopCalls = 0;
     let nestedStopCompleted = false;
+    let nestedStartAcknowledged = false;
     const runtimeRef: { current?: PuppetFlowRuntime } = {};
     const source: MotionSource = {
       id: "await-stop-motion-source",
       start: async () => {},
       stop: async () => {
         stopCalls += 1;
+        if (stopCalls > 1) {
+          return;
+        }
         await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
         nestedStopCompleted = true;
+        await runtimeRef.current!.start();
+        nestedStartAcknowledged = true;
       },
     };
     const runtime = new PuppetFlowRuntime().attachMotionSource(source);
@@ -200,8 +222,10 @@ describe("PuppetFlowRuntime", () => {
         setTimeout(resolve, 30);
       });
       expect(nestedStopCompleted).toBe(true);
+      expect(nestedStartAcknowledged).toBe(true);
       await outerStop;
       expect(stopCalls).toBe(1);
+      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
     } finally {
       escapeNestedStop.resolve();
       await Promise.allSettled([outerStop]);
@@ -705,7 +729,8 @@ describe("PuppetFlowRuntime", () => {
       expect(reentrantStart).toBeDefined();
       await expect(reentrantStart).resolves.toBeUndefined();
 
-      expect(runtime.isRunning()).toBe(true);
+      await vi.waitFor(() => expect(runtime.isRunning()).toBe(true));
+
       expect(initializeCalls).toBe(2);
       expect(disposeCalls).toBe(1);
     } finally {
@@ -838,16 +863,21 @@ describe("PuppetFlowRuntime", () => {
   it("keeps stopped when a later stop cancels a start queued behind a timeout gate", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PuppetFlowRuntime();
+    const tickControl = runtime as unknown as {
+      tickInProgress: boolean;
+      resolveTickCompletion?: () => void;
+    };
 
     try {
       await runtime.start();
-      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = true;
+      tickControl.tickInProgress = true;
 
       const firstStop = runtime.stop();
       await firstStop;
       const queuedStart = runtime.start();
       const finalStop = runtime.stop();
-      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+      tickControl.tickInProgress = false;
+      tickControl.resolveTickCompletion?.();
 
       await Promise.all([queuedStart, finalStop]);
 
@@ -857,9 +887,44 @@ describe("PuppetFlowRuntime", () => {
           .intervalId,
       ).toBeNull();
     } finally {
-      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+      tickControl.tickInProgress = false;
+      tickControl.resolveTickCompletion?.();
       await runtime.stop();
       warn.mockRestore();
+    }
+  });
+
+  it("keeps a timed-out restart gate free of recurring timers until tick completion", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PuppetFlowRuntime();
+    const tickControl = runtime as unknown as {
+      tickInProgress: boolean;
+      tickCompletion?: Promise<void>;
+      resolveTickCompletion?: () => void;
+    };
+
+    try {
+      await runtime.start();
+      tickControl.tickInProgress = true;
+      const stop = runtime.stop();
+      await vi.runAllTimersAsync();
+      await stop;
+
+      expect(tickControl.tickCompletion).toBeDefined();
+      expect(vi.getTimerCount()).toBe(0);
+
+      tickControl.tickInProgress = false;
+      tickControl.resolveTickCompletion?.();
+      await runtime.start();
+
+      expect(runtime.isRunning()).toBe(true);
+    } finally {
+      tickControl.tickInProgress = false;
+      tickControl.resolveTickCompletion?.();
+      await runtime.stop();
+      warn.mockRestore();
+      vi.useRealTimers();
     }
   });
 
@@ -1554,12 +1619,17 @@ describe("PuppetFlowRuntime", () => {
       await runtime.start();
       expect(runtime.getMotionFrameGraphState()?.stateId).toBe("tracking");
 
-      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = true;
+      const tickControl = runtime as unknown as {
+        tickInProgress: boolean;
+        resolveTickCompletion?: () => void;
+      };
+      tickControl.tickInProgress = true;
       await runtime.stop();
 
       expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
 
-      (runtime as unknown as { tickInProgress: boolean }).tickInProgress = false;
+      tickControl.tickInProgress = false;
+      tickControl.resolveTickCompletion?.();
       await runtime.start();
       expect(runtime.getMotionFrameGraphState()?.stateId).toBe("idle");
       await runtime.stop();
