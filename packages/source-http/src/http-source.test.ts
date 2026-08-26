@@ -71,6 +71,15 @@ describe("HttpSource", () => {
     expect(source.pollIntervalMs).toBe(1000);
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])(
+    "rejects an invalid polling interval of %s",
+    (intervalMs) => {
+      expect(
+        () => new HttpSource({ url: "http://example.com/state", intervalMs }),
+      ).toThrow(/intervalMs must be a finite, non-negative number/i);
+    },
+  );
+
   it("applies a polled payload through its field mapping", () => {
     const source = new HttpSource({
       url: "http://example.com/state",
@@ -187,6 +196,21 @@ describe("HttpSource", () => {
     const source = new HttpSource({ url: "http://example.com/state" });
 
     await expect(source.poll(new AbortController().signal)).rejects.toThrow(/503/i);
+    await source.dispose();
+  });
+
+  it("rejects a poll when response JSON parsing fails", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new Error("invalid JSON");
+      },
+    } as Response);
+    const source = new HttpSource({ url: "http://example.com/state" });
+
+    await expect(source.poll(new AbortController().signal)).rejects.toThrow(
+      /invalid JSON/i,
+    );
     await source.dispose();
   });
 });

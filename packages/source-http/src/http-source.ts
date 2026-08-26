@@ -25,8 +25,13 @@ export class HttpSource implements PollingStateSource {
   private inFlightPollAbort: AbortController | null = null;
 
   constructor(config: HttpSourceConfig) {
+    const intervalMs = config.intervalMs ?? 1000;
+    if (!Number.isFinite(intervalMs) || intervalMs < 0) {
+      throw new Error("HTTP source intervalMs must be a finite, non-negative number");
+    }
+
     this.url = config.url;
-    this.intervalMs = config.intervalMs ?? 1000;
+    this.intervalMs = intervalMs;
     this.pollIntervalMs = this.intervalMs;
     this.timeoutMs = config.timeoutMs ?? 10_000;
     this.fieldMapping = config.fieldMapping ?? {};
