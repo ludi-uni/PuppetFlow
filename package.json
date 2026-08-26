@@ -20,6 +20,7 @@
     "build": "pnpm -r --filter \"./packages/**\" run build && pnpm --filter @puppetflow/cli run build",
     "build:presets": "pnpm --filter @puppetflow/preset build && pnpm --filter @puppetflow/preset build:official-presets",
     "test": "vitest run",
+    "typecheck:apps": "pnpm --filter \"./apps/**\" exec tsc --noEmit --pretty false",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
