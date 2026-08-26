@@ -64,17 +64,14 @@ export class StateSourceScheduler {
 
   drain(target: SourceUpdateTarget): void {
     for (const state of this.states) {
-      const update = state.latest;
-      if (!update) {
-        continue;
-      }
+      this.drainState(state, target);
+    }
+  }
 
-      state.latest = undefined;
-      try {
-        state.source.apply(update, target);
-      } catch (error) {
-        this.options.onError?.(state.source, error);
-      }
+  drainSource(source: StateSource, target: SourceUpdateTarget): void {
+    const state = this.states.find((candidate) => candidate.source === source);
+    if (state) {
+      this.drainState(state, target);
     }
   }
 
@@ -118,6 +115,20 @@ export class StateSourceScheduler {
       }
 
       await waitForInterval(state.source.pollIntervalMs, state.controller.signal);
+    }
+  }
+
+  private drainState(state: PollingSourceState, target: SourceUpdateTarget): void {
+    const update = state.latest;
+    if (!update) {
+      return;
+    }
+
+    state.latest = undefined;
+    try {
+      state.source.apply(update, target);
+    } catch (error) {
+      this.options.onError?.(state.source, error);
     }
   }
 

@@ -202,6 +202,32 @@ describe("StateSourceScheduler", () => {
     await scheduler.stop();
   });
 
+  it("drains only the selected source and clears its slot", async () => {
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const first = createPollingSource("first", async () => update("one"), applied);
+    const second = createPollingSource("second", async () => update("two"), applied);
+    const scheduler = new StateSourceScheduler();
+    const target = {} as SourceUpdateTarget;
+
+    scheduler.start([first, second]);
+    await Promise.resolve();
+    scheduler.drainSource(second, target);
+    scheduler.drainSource(second, target);
+
+    expect(applied).toEqual([{ id: "second", update: update("two"), target }]);
+
+    scheduler.drain(target);
+    expect(applied).toEqual([
+      { id: "second", update: update("two"), target },
+      { id: "first", update: update("one"), target },
+    ]);
+    await scheduler.stop();
+  });
+
   it("isolates poll and apply errors so other sources continue", async () => {
     vi.useFakeTimers();
     const applied: Array<{
