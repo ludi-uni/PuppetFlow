@@ -15,9 +15,12 @@ export {
 } from "./parse-input-payload.js";
 export type {
   MicroBehaviorInputHandler,
+  PollingStateSource,
   SourceUpdateTarget,
   StateSource,
+  StateSourceUpdate,
 } from "./state-source.js";
+export { isPollingStateSource } from "./state-source.js";
 export type { MotionFrameEmitter, MotionSource } from "./motion-source.js";
 export {
   MotionStateFrameSource,

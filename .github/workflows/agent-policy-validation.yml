@@ -42,6 +42,6 @@ jobs:
             || test -s .github/ISSUE_TEMPLATE/feature_request.md
           test -s .github/PULL_REQUEST_TEMPLATE.md \
             || test -s .github/pull_request_template.md
-          grep -Fq 'Never push directly' AGENTS.md
+          grep -Fq 'An agent may push to the default branch, enable auto-merge, or merge a Pull Request only when the human explicitly authorizes' docs/agent-policy.md
           grep -Fq 'Draft Pull Request' AGENTS.md
           grep -Eq 'high[- ]risk' AGENTS.md

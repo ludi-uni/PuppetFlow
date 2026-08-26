@@ -5,6 +5,7 @@ import { WebSocketSource } from "./websocket-source.js";
 
 class MockWebSocket {
   static readonly instances: MockWebSocket[] = [];
+  static autoOpen = true;
 
   onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
@@ -12,19 +13,37 @@ class MockWebSocket {
 
   constructor(readonly url: string) {
     MockWebSocket.instances.push(this);
-    queueMicrotask(() => this.onopen?.());
+    if (MockWebSocket.autoOpen) {
+      queueMicrotask(() => this.onopen?.());
+    }
   }
 
   close(): void {}
 }
 
+async function initializationStatus(
+  promise: Promise<void>,
+): Promise<"pending" | "rejected" | "resolved"> {
+  return Promise.race([
+    promise.then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    ),
+    new Promise<"pending">((resolve) => {
+      setTimeout(() => resolve("pending"), 20);
+    }),
+  ]);
+}
+
 describe("WebSocketSource", () => {
   beforeEach(() => {
     MockWebSocket.instances.length = 0;
+    MockWebSocket.autoOpen = true;
     vi.stubGlobal("WebSocket", MockWebSocket);
   });
 
   afterEach(() => {
+    MockWebSocket.autoOpen = true;
     vi.unstubAllGlobals();
   });
 
@@ -87,12 +106,41 @@ describe("WebSocketSource", () => {
     await source.dispose();
   });
 
-  it("ignores malformed websocket payloads", async () => {
-    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+  it("returns only the latest buffered websocket payload when polled", async () => {
+    const source = new WebSocketSource({
+      url: "ws://127.0.0.1:9000",
+      fieldMapping: { interest: "mood" },
+    });
     await source.initialize();
 
-    MockWebSocket.instances[0]?.onmessage?.({ data: "not-json" });
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.2 }),
+    });
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.8 }),
+    });
 
+    const update = await source.poll(new AbortController().signal);
+
+    expect(source.pollIntervalMs).toBe(16);
+    expect(update).toEqual({
+      payload: { interest: 0.8 },
+      fieldMapping: { interest: "mood" },
+    });
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("applies a polled websocket payload through its field mapping", async () => {
+    const source = new WebSocketSource({
+      url: "ws://127.0.0.1:9000",
+      fieldMapping: { interest: "mood" },
+    });
+    await source.initialize();
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.55 }),
+    });
+    const update = await source.poll(new AbortController().signal);
     const target = {
       state: new StateStore(),
       channels: new ChannelStore(),
@@ -100,9 +148,111 @@ describe("WebSocketSource", () => {
       motion: new MotionOverrideStore(),
     };
 
-    await source.update(target);
+    expect(target.state.get("mood")).toBeUndefined();
+    expect(update).toBeDefined();
+    source.apply(update!, target);
 
-    expect(target.state.getAll()).toEqual({});
+    expect(target.state.get("mood")).toBe(0.55);
     await source.dispose();
+  });
+
+  it("does not publish a buffered websocket payload to an aborted poll", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.55 }),
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(source.poll(controller.signal)).resolves.toBeUndefined();
+    await expect(source.poll(new AbortController().signal)).resolves.toEqual({
+      payload: { interest: 0.55 },
+      fieldMapping: {},
+    });
+    await source.dispose();
+  });
+
+  it.each([
+    ["null", "null"],
+    ["number", "0"],
+    ["string", '"state"'],
+    ["array", "[]"],
+  ])("ignores a top-level websocket %s payload", async (_kind, data) => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+
+    MockWebSocket.instances[0]?.onmessage?.({ data });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it.each([
+    ["state", { type: "state", state: 0 }],
+    ["payload", { payload: "state" }],
+    ["state", { type: "state", state: [] }],
+    ["payload", { payload: [] }],
+  ])(
+    "ignores a websocket envelope with a malformed %s value",
+    async (_key, message) => {
+      const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+      await source.initialize();
+
+      MockWebSocket.instances[0]?.onmessage?.({ data: JSON.stringify(message) });
+
+      await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+      await source.dispose();
+    },
+  );
+
+  it("ignores malformed websocket payloads", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+
+    MockWebSocket.instances[0]?.onmessage?.({ data: "not-json" });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("clears a buffered websocket payload when disposed before reinitialization", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ interest: 0.55 }),
+    });
+
+    await source.dispose();
+    await source.initialize();
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("ignores a late message from a disposed websocket after reinitialization", async () => {
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    await source.initialize();
+    const oldSocket = MockWebSocket.instances[0];
+
+    await source.dispose();
+    await source.initialize();
+
+    oldSocket?.onmessage?.({ data: JSON.stringify({ interest: 0.2 }) });
+
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("settles a pending websocket initialization when disposed", async () => {
+    MockWebSocket.autoOpen = false;
+    const source = new WebSocketSource({ url: "ws://127.0.0.1:9000" });
+    const initialization = source.initialize();
+
+    expect(await initializationStatus(initialization)).toBe("pending");
+
+    await source.dispose();
+
+    expect(await initializationStatus(initialization)).toBe("resolved");
   });
 });

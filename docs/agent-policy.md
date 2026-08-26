@@ -32,7 +32,7 @@ A Draft Pull Request is the agent's delivery boundary. It links the Issue and pr
 
 ### Human: final approval and merge
 
-A human owns specification approval, high-risk authorization, review, readiness decisions, and the final merge. Agents must never push to the default branch, enable auto-merge, merge their own Pull Requests, operate production, or handle secrets.
+A human owns specification approval, high-risk authorization, review, and readiness decisions. An agent may push to the default branch, enable auto-merge, or merge a Pull Request only when the human explicitly authorizes that exact action and the required checks pass. Agents still must not operate production or handle secrets.
 
 ## Risk and approval gates
 
@@ -40,7 +40,7 @@ A human owns specification approval, high-risk authorization, review, readiness 
 - **Medium:** features, multi-module work, dependency changes, or new APIs require a concise Implementation Plan. Any explicit Issue approval gate must be honored.
 - **High:** breaking changes, migrations, authentication/authorization, secrets, deployment, infrastructure, and security-sensitive work require explicit, auditable human approval before implementation.
 
-Approval does not override absolute boundaries: an agent still does not deploy to production, manipulate secrets, push directly to the default branch, auto-merge, or merge.
+Approval does not override absolute boundaries: an agent still does not deploy to production or manipulate secrets.
 
 ## Stop rather than guess
 

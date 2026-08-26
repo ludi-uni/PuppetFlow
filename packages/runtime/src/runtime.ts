@@ -57,8 +57,12 @@ import {
   MicroBehaviorEngine,
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
-import type { MotionSource, StateSource } from "@puppetflow/source-core";
-import { MotionOverrideStore } from "@puppetflow/source-core";
+import {
+  MotionOverrideStore,
+  type MotionSource,
+  type SourceUpdateTarget,
+  type StateSource,
+} from "@puppetflow/source-core";
 import { applyMotionFailSafe, type MotionFailSafeOptions } from "./motion-failsafe.js";
 import {
   calculateRateHz,
@@ -66,6 +70,7 @@ import {
   type MotionInspectorSnapshot,
 } from "./motion-inspector.js";
 import { RuntimeChannelStore } from "./runtime-channel-store.js";
+import { StateSourceScheduler } from "./source-scheduler.js";
 import { RuntimeStateStore } from "./state-store.js";
 
 const TICK_INTERVAL_MS = 1000 / 60;
@@ -130,6 +135,21 @@ interface MotionOutputHealth {
   error?: string;
 }
 
+interface LifecyclePromiseSettlement {
+  settled: boolean;
+  failed: boolean;
+  error?: unknown;
+}
+
+class RuntimeCleanupInProgressError extends Error {
+  constructor() {
+    super(
+      "Cannot start while runtime cleanup is in progress; await stop() before retrying",
+    );
+    this.name = "RuntimeCleanupInProgressError";
+  }
+}
+
 export class PuppetFlowRuntime {
   readonly state: StateStore = new RuntimeStateStore(() => this.scheduleTick());
   readonly channels: ChannelStore = new RuntimeChannelStore(() => this.scheduleTick());
@@ -141,6 +161,12 @@ export class PuppetFlowRuntime {
   private readonly motionFrameAdapters: MotionFrameAdapter[] = [];
   private readonly modifiers: MotionModifier[] = [];
   private readonly sources: StateSource[] = [];
+  private readonly sourceLifecycleObjects = new Set<StateSource>();
+  private readonly sourceScheduler = new StateSourceScheduler({
+    onError: (source, error) => {
+      console.error(`[PuppetFlowRuntime] source "${source.id}" update failed`, error);
+    },
+  });
   private readonly motionSources: MotionSource[] = [];
   private readonly latestMotionFrames = new Map<string, MotionFrame>();
   private readonly motionSourceHealth = new Map<string, MotionSourceHealth>();
@@ -170,13 +196,26 @@ export class PuppetFlowRuntime {
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  private lifecycleGeneration = 0;
+  private lifecycleRequest = 0;
+  private desiredRunning = false;
+  private requestedStartPromise: Promise<void> | undefined;
+  private startPromise: Promise<void> | undefined;
+  private stopPromise: Promise<void> | undefined;
+  private cleanupPromise: Promise<void> | undefined;
+  private cleanupInProgress = false;
+  private restartGate: Promise<void> | undefined;
+  private startupGeneration: number | undefined;
+  private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
   private tickPending = false;
   private tickInProgress = false;
+  private tickCompletion: Promise<void> | undefined;
+  private resolveTickCompletion: (() => void) | undefined;
   private lastTickTime: number | null = null;
   private adaptersInitialized = false;
   private readonly initializedAdapterObjects = new Set<Adapter | MotionFrameAdapter>();
   private sourcesInitialized = false;
-  private motionSourcesStarted = false;
+  private readonly startedMotionSources = new Set<MotionSource>();
   private readonly motionOverride = new MotionOverrideStore();
 
   use(plugin: BehaviorPlugin): this {
@@ -273,7 +312,7 @@ export class PuppetFlowRuntime {
 
   getMotionInspectorSnapshot(): MotionInspectorSnapshot {
     const timestamp = now();
-    const sources = this.motionSources.map((source) => {
+    const sources = this.uniqueMotionSources().map((source) => {
       const health = this.motionSourceHealth.get(source.id) ?? {
         connected: false,
         stale: false,
@@ -398,39 +437,341 @@ export class PuppetFlowRuntime {
     return this;
   }
 
-  async start(): Promise<void> {
-    if (this.running) {
-      return;
+  start(): Promise<void> {
+    if (this.cleanupInProgress) {
+      this.lifecycleRequest += 1;
+      this.desiredRunning = true;
+      this.requestedStartPromise = undefined;
+      return this.rejectStartDuringCleanup();
     }
 
-    if (!this.adaptersInitialized) {
-      await this.initializeAdapters();
+    if (this.desiredRunning) {
+      if (this.requestedStartPromise) {
+        return this.requestedStartPromise;
+      }
+      if (this.startPromise) {
+        return this.startPromise;
+      }
+      if (this.running) {
+        return Promise.resolve();
+      }
     }
 
-    if (!this.sourcesInitialized) {
-      await this.initializeSources();
+    const request = ++this.lifecycleRequest;
+    this.desiredRunning = true;
+    const requestedStart = this.requestStart(request);
+    if (!this.isStartRequested(request)) {
+      return requestedStart;
     }
 
-    this.running = true;
-    this.lastTickTime = null;
-    await this.startMotionSources();
-    await this.tick();
-    this.intervalId = setInterval(() => {
-      void this.tick();
-    }, TICK_INTERVAL_MS);
+    return this.trackRequestedStart(requestedStart);
   }
 
-  async stop(): Promise<void> {
-    if (!this.running) {
-      this.resetMotionFrameGraph();
-      return;
+  private rejectStartDuringCleanup(): Promise<void> {
+    const rejection = Promise.reject<void>(new RuntimeCleanupInProgressError());
+    void rejection.catch(() => {
+      // A teardown hook may invoke start() without awaiting it. The caller still
+      // receives the rejection, while this internal handler prevents an unhandled
+      // rejection from escaping the runtime lifecycle.
+    });
+    return rejection;
+  }
+
+  private trackRequestedStart(requestedStart: Promise<void>): Promise<void> {
+    this.requestedStartPromise = requestedStart;
+    void requestedStart.then(
+      () => {
+        if (this.requestedStartPromise === requestedStart) {
+          this.requestedStartPromise = undefined;
+        }
+      },
+      () => {
+        if (this.requestedStartPromise === requestedStart) {
+          this.requestedStartPromise = undefined;
+        }
+      },
+    );
+    return requestedStart;
+  }
+
+  private requestStart(request: number): Promise<void> {
+    if (!this.isStartRequested(request)) {
+      return Promise.resolve();
     }
 
+    if (this.cleanupPromise) {
+      return this.cleanupPromise.then(() => this.requestStart(request));
+    }
+
+    if (this.restartGate) {
+      return this.restartGate.then(() => this.requestStart(request));
+    }
+
+    if (this.stopPromise) {
+      return this.stopPromise.then(() => this.requestStart(request));
+    }
+
+    if (this.startPromise) {
+      if (this.startupGeneration !== this.lifecycleGeneration) {
+        return this.startPromise.then(
+          () => this.requestStart(request),
+          () => this.requestStart(request),
+        );
+      }
+      return this.startPromise;
+    }
+
+    if (this.running) {
+      return Promise.resolve();
+    }
+
+    return this.beginStart();
+  }
+
+  private beginStart(): Promise<void> {
+    const generation = ++this.lifecycleGeneration;
+    let resolveStart!: () => void;
+    let rejectStart!: (reason?: unknown) => void;
+    const startPromise = new Promise<void>((resolve, reject) => {
+      resolveStart = resolve;
+      rejectStart = reject;
+    });
+    this.startPromise = startPromise;
+
+    void this.performStart(generation).then(
+      () => {
+        if (this.startPromise === startPromise) {
+          this.startPromise = undefined;
+        }
+        resolveStart();
+      },
+      (error) => {
+        if (this.startPromise === startPromise) {
+          this.startPromise = undefined;
+        }
+        rejectStart(error);
+      },
+    );
+    return startPromise;
+  }
+
+  stop(): Promise<void> {
+    this.lifecycleRequest += 1;
+    this.desiredRunning = false;
+    this.requestedStartPromise = undefined;
+
+    if (this.cleanupInProgress) {
+      return Promise.resolve();
+    }
+
+    if (this.stopPromise) {
+      return this.stopPromise;
+    }
+
+    if (this.restartGate) {
+      return this.restartGate;
+    }
+
+    const pendingStart = this.startPromise;
+    const waitForStartup =
+      pendingStart !== undefined && this.startupPhase !== "initial-tick";
+    const shouldDispose = this.running || pendingStart !== undefined;
+    this.lifecycleGeneration += 1;
     this.running = false;
     this.tickPending = false;
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+
+    let resolveStop!: () => void;
+    let rejectStop!: (reason?: unknown) => void;
+    const stopPromise = new Promise<void>((resolve, reject) => {
+      resolveStop = resolve;
+      rejectStop = reject;
+    });
+    this.stopPromise = stopPromise;
+
+    void this.performStop(pendingStart, waitForStartup, shouldDispose).then(
+      () => {
+        if (this.stopPromise === stopPromise) {
+          this.stopPromise = undefined;
+        }
+        resolveStop();
+      },
+      (error) => {
+        if (this.stopPromise === stopPromise) {
+          this.stopPromise = undefined;
+        }
+        rejectStop(error);
+      },
+    );
+    return stopPromise;
+  }
+
+  private async performStart(generation: number): Promise<void> {
+    this.startupGeneration = generation;
+    this.startupPhase = "initializing";
+    const isCurrent = () => this.isStartCurrent(generation);
+
+    try {
+      if (!this.adaptersInitialized) {
+        await this.initializeAdapters(isCurrent);
+      }
+      if (!isCurrent()) {
+        return;
+      }
+
+      if (!this.sourcesInitialized) {
+        await this.initializeSources(isCurrent);
+      }
+      if (!isCurrent()) {
+        return;
+      }
+
+      this.running = true;
+      this.lastTickTime = null;
+      this.startupPhase = "motion-sources";
+      this.sourceScheduler.start(this.sources);
+      if (!isCurrent()) {
+        return;
+      }
+
+      await this.startMotionSources(isCurrent);
+      if (!isCurrent()) {
+        return;
+      }
+
+      this.startupPhase = "initial-tick";
+      await this.tick();
+      if (!isCurrent()) {
+        return;
+      }
+
+      this.intervalId = setInterval(() => {
+        void this.tick();
+      }, TICK_INTERVAL_MS);
+    } catch (error) {
+      if (isCurrent()) {
+        await this.rollbackFailedStart();
+      }
+      throw error;
+    } finally {
+      if (this.startupGeneration === generation) {
+        this.startupGeneration = undefined;
+        this.startupPhase = undefined;
+      }
+    }
+  }
+
+  private async rollbackFailedStart(): Promise<void> {
+    this.lifecycleGeneration += 1;
+    this.lifecycleRequest += 1;
+    this.desiredRunning = false;
+    this.requestedStartPromise = undefined;
+    this.running = false;
+    this.tickPending = false;
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    const schedulerStop = this.sourceScheduler.stop();
+    try {
+      await schedulerStop;
+    } catch {
+      // The original startup error remains authoritative.
+    }
+
+    if (!(await this.waitForTickCompletion())) {
+      this.beginRestartGate(undefined);
+      return;
+    }
+
+    try {
+      await this.cleanupStoppedResources();
+    } catch {
+      // The original startup error remains authoritative.
+    }
+  }
+
+  private async performStop(
+    pendingStart: Promise<void> | undefined,
+    waitForStartup: boolean,
+    shouldDispose: boolean,
+  ): Promise<void> {
+    const schedulerStop = this.sourceScheduler.stop();
+    const startupPhase = this.startupPhase;
+    const cleanupBeforePendingStart =
+      shouldDispose &&
+      pendingStart !== undefined &&
+      waitForStartup &&
+      startupPhase === "initializing";
+    const stopMotionSourcesBeforePendingStart =
+      shouldDispose &&
+      pendingStart !== undefined &&
+      waitForStartup &&
+      startupPhase === "motion-sources";
+    if (cleanupBeforePendingStart) {
+      await this.cleanupStoppedResources();
+    } else if (stopMotionSourcesBeforePendingStart) {
+      await this.stopMotionSourcesForCanceledStart();
+    }
+
+    const prerequisites = await this.waitForStopPrerequisites(
+      waitForStartup ? pendingStart : undefined,
+      schedulerStop,
+    );
+
+    if (!prerequisites.startup.settled || !prerequisites.scheduler.settled) {
+      this.beginRestartGate(pendingStart, schedulerStop, cleanupBeforePendingStart);
+      return;
+    }
+
+    let startupError = prerequisites.startup.error;
+    const schedulerError = prerequisites.scheduler.error;
+    let startupFailed = prerequisites.startup.failed;
+    const schedulerFailed = prerequisites.scheduler.failed;
+
+    if (!shouldDispose) {
+      this.resetMotionFrameGraph();
+      this.throwLifecycleError(
+        startupFailed,
+        startupError,
+        schedulerFailed,
+        schedulerError,
+      );
+      return;
+    }
+
+    if (!(await this.waitForTickCompletion())) {
+      this.beginRestartGate(pendingStart, schedulerStop, cleanupBeforePendingStart);
+      return;
+    }
+
+    if (pendingStart && !waitForStartup) {
+      try {
+        await pendingStart;
+      } catch (error) {
+        startupFailed = true;
+        startupError = error;
+      }
+    }
+
+    if (!cleanupBeforePendingStart) {
+      await this.cleanupStoppedResources();
+    }
+    this.throwLifecycleError(
+      startupFailed,
+      startupError,
+      schedulerFailed,
+      schedulerError,
+    );
+  }
+
+  private async waitForTickCompletion(): Promise<boolean> {
+    if (this.tickInProgress) {
+      this.ensureTickCompletion();
     }
 
     let spinCount = 0;
@@ -443,10 +784,154 @@ export class PuppetFlowRuntime {
           "[PuppetFlowRuntime] stop() timed out waiting for tick; skipping dispose to avoid races",
         );
         this.resetMotionFrameGraph();
-        return;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private async waitForStopPrerequisites(
+    pendingStart: Promise<void> | undefined,
+    schedulerStop: Promise<void>,
+  ): Promise<{
+    startup: LifecyclePromiseSettlement;
+    scheduler: LifecyclePromiseSettlement;
+  }> {
+    const startup: LifecyclePromiseSettlement = {
+      settled: pendingStart === undefined,
+      failed: false,
+    };
+    const scheduler: LifecyclePromiseSettlement = {
+      settled: false,
+      failed: false,
+    };
+
+    if (pendingStart) {
+      void pendingStart.then(
+        () => {
+          startup.settled = true;
+        },
+        (error) => {
+          startup.settled = true;
+          startup.failed = true;
+          startup.error = error;
+        },
+      );
+    }
+
+    void schedulerStop.then(
+      () => {
+        scheduler.settled = true;
+      },
+      (error) => {
+        scheduler.settled = true;
+        scheduler.failed = true;
+        scheduler.error = error;
+      },
+    );
+
+    let spinCount = 0;
+    while ((!startup.settled || !scheduler.settled) && spinCount < 200) {
+      if (spinCount < 8) {
+        await Promise.resolve();
+      } else {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      }
+      spinCount += 1;
+    }
+
+    return { startup, scheduler };
+  }
+
+  private beginRestartGate(
+    pendingStart: Promise<void> | undefined,
+    schedulerStop?: Promise<void>,
+    cleanupCompleted = false,
+  ): void {
+    if (this.restartGate) {
+      return;
+    }
+
+    const restartGate = this.finishQuiescing(
+      pendingStart,
+      schedulerStop,
+      cleanupCompleted,
+    );
+    this.restartGate = restartGate;
+    void restartGate.then(() => {
+      if (this.restartGate === restartGate) {
+        this.restartGate = undefined;
+      }
+    });
+  }
+
+  private async finishQuiescing(
+    pendingStart: Promise<void> | undefined,
+    schedulerStop?: Promise<void>,
+    cleanupCompleted = false,
+  ): Promise<void> {
+    const tickCompletion = this.tickCompletion;
+    if (tickCompletion) {
+      await tickCompletion;
+    }
+
+    if (pendingStart) {
+      try {
+        await pendingStart;
+      } catch {
+        // The original stop already surfaced this startup error when appropriate.
       }
     }
 
+    if (schedulerStop) {
+      try {
+        await schedulerStop;
+      } catch {
+        // The stop path already observed this scheduler error when appropriate.
+      }
+    }
+
+    if (!cleanupCompleted) {
+      await this.cleanupStoppedResources();
+    }
+  }
+
+  private cleanupStoppedResources(): Promise<void> {
+    if (this.cleanupPromise) {
+      return this.cleanupPromise;
+    }
+
+    let resolveCleanup!: () => void;
+    let rejectCleanup!: (reason?: unknown) => void;
+    const cleanupPromise = new Promise<void>((resolve, reject) => {
+      resolveCleanup = resolve;
+      rejectCleanup = reject;
+    });
+    this.cleanupPromise = cleanupPromise;
+    this.cleanupInProgress = true;
+
+    void this.performCleanup().then(
+      () => {
+        this.cleanupInProgress = false;
+        if (this.cleanupPromise === cleanupPromise) {
+          this.cleanupPromise = undefined;
+        }
+        resolveCleanup();
+      },
+      (error) => {
+        this.cleanupInProgress = false;
+        if (this.cleanupPromise === cleanupPromise) {
+          this.cleanupPromise = undefined;
+        }
+        rejectCleanup(error);
+      },
+    );
+    return cleanupPromise;
+  }
+
+  private async performCleanup(): Promise<void> {
     await this.disposeAdapters();
     await this.disposeSources();
     await this.stopMotionSources();
@@ -459,6 +944,63 @@ export class PuppetFlowRuntime {
     this.statefulStore.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
+  }
+
+  private async stopMotionSourcesForCanceledStart(): Promise<void> {
+    const cleanupAlreadyInProgress = this.cleanupInProgress;
+    if (!cleanupAlreadyInProgress) {
+      this.cleanupInProgress = true;
+    }
+    try {
+      await this.stopMotionSources();
+    } finally {
+      if (!cleanupAlreadyInProgress) {
+        this.cleanupInProgress = false;
+      }
+    }
+  }
+
+  private throwLifecycleError(
+    startupFailed: boolean,
+    startupError: unknown,
+    schedulerFailed: boolean,
+    schedulerError: unknown,
+  ): void {
+    if (startupFailed) {
+      throw startupError;
+    }
+    if (schedulerFailed) {
+      throw schedulerError;
+    }
+  }
+
+  private isStartCurrent(generation: number): boolean {
+    return this.lifecycleGeneration === generation;
+  }
+
+  private isStartRequested(request: number): boolean {
+    return this.lifecycleRequest === request && this.desiredRunning;
+  }
+
+  private ensureTickCompletion(): Promise<void> {
+    if (this.tickCompletion) {
+      return this.tickCompletion;
+    }
+
+    let resolveTick!: () => void;
+    const tickCompletion = new Promise<void>((resolve) => {
+      resolveTick = resolve;
+    });
+    this.tickCompletion = tickCompletion;
+    this.resolveTickCompletion = resolveTick;
+    return tickCompletion;
+  }
+
+  private completeTick(): void {
+    const resolveTick = this.resolveTickCompletion;
+    this.tickCompletion = undefined;
+    this.resolveTickCompletion = undefined;
+    resolveTick?.();
   }
 
   isRunning(): boolean {
@@ -485,6 +1027,20 @@ export class PuppetFlowRuntime {
     return {
       state: this.state,
       channels: this.channels,
+    };
+  }
+
+  private getSourceUpdateTarget(): SourceUpdateTarget {
+    return {
+      state: this.state,
+      channels: this.channels,
+      timeline: this.timeline,
+      motion: this.motionOverride,
+      microBehavior: {
+        applyFromInputRecord: (record: Record<string, unknown>) => {
+          this.microBehavior.applyFromInputRecord(record);
+        },
+      },
     };
   }
 
@@ -533,12 +1089,16 @@ export class PuppetFlowRuntime {
     });
   }
 
-  private async initializeAdapters(): Promise<void> {
+  private async initializeAdapters(isCurrent: () => boolean): Promise<void> {
     const adapters: Array<Adapter | MotionFrameAdapter> = [
       ...this.adapters,
       ...this.motionFrameAdapters,
     ];
     for (const adapter of adapters) {
+      if (!isCurrent()) {
+        return;
+      }
+
       this.ensureMotionOutputHealth(adapter.id);
       if (this.initializedAdapterObjects.has(adapter)) {
         continue;
@@ -556,9 +1116,15 @@ export class PuppetFlowRuntime {
           error,
         );
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
 
-    this.adaptersInitialized = true;
+    if (isCurrent()) {
+      this.adaptersInitialized = true;
+    }
   }
 
   private async disposeAdapters(): Promise<void> {
@@ -578,8 +1144,18 @@ export class PuppetFlowRuntime {
     this.resetMotionOutputHealth();
   }
 
-  private async initializeSources(): Promise<void> {
+  private async initializeSources(isCurrent: () => boolean): Promise<void> {
+    const initializedSources = new Set<StateSource>();
     for (const source of this.sources) {
+      if (!isCurrent()) {
+        return;
+      }
+
+      if (initializedSources.has(source)) {
+        continue;
+      }
+      initializedSources.add(source);
+      this.sourceLifecycleObjects.add(source);
       try {
         await source.initialize();
       } catch (error) {
@@ -588,13 +1164,19 @@ export class PuppetFlowRuntime {
           error,
         );
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
 
-    this.sourcesInitialized = true;
+    if (isCurrent()) {
+      this.sourcesInitialized = true;
+    }
   }
 
   private async disposeSources(): Promise<void> {
-    for (const source of this.sources) {
+    for (const source of this.sourceLifecycleObjects) {
       try {
         await source.dispose();
       } catch (error) {
@@ -606,15 +1188,21 @@ export class PuppetFlowRuntime {
     }
 
     this.sourcesInitialized = false;
+    this.sourceLifecycleObjects.clear();
   }
 
-  private async startMotionSources(): Promise<void> {
-    for (const source of this.motionSources) {
+  private async startMotionSources(isCurrent: () => boolean): Promise<void> {
+    for (const source of this.uniqueMotionSources()) {
+      if (!isCurrent()) {
+        return;
+      }
+
       const health = this.motionSourceHealth.get(source.id);
       if (health) {
         health.connected = false;
         health.stale = false;
       }
+      this.startedMotionSources.add(source);
       try {
         await source.start((frame) => {
           this.acceptMotionFrame(source, frame);
@@ -631,16 +1219,20 @@ export class PuppetFlowRuntime {
           health.connected = false;
         }
       }
+
+      if (!isCurrent()) {
+        return;
+      }
     }
-    this.motionSourcesStarted = true;
   }
 
   private async stopMotionSources(): Promise<void> {
-    if (!this.motionSourcesStarted) {
+    if (this.startedMotionSources.size === 0) {
+      this.latestMotionFrames.clear();
       return;
     }
 
-    for (const source of this.motionSources) {
+    for (const source of this.startedMotionSources) {
       try {
         await source.stop();
       } catch (error) {
@@ -658,7 +1250,7 @@ export class PuppetFlowRuntime {
         health.receiptTimes.length = 0;
       }
     }
-    this.motionSourcesStarted = false;
+    this.startedMotionSources.clear();
     this.latestMotionFrames.clear();
   }
 
@@ -694,8 +1286,12 @@ export class PuppetFlowRuntime {
     }
 
     this.tickInProgress = true;
+    this.ensureTickCompletion();
 
     try {
+      const sourceTarget = this.getSourceUpdateTarget();
+      this.sourceScheduler.capture();
+
       const currentTime = now();
       const deltaTime =
         this.lastTickTime === null
@@ -711,23 +1307,16 @@ export class PuppetFlowRuntime {
       this.timelineCurrentMs = Math.floor(this.elapsedTime * 1000);
       this.activeTimelineEvents = this.timeline.getActiveEvents(this.timelineCurrentMs);
 
-      const sourceTarget = {
-        state: this.state,
-        channels: this.channels,
-        timeline: this.timeline,
-        motion: this.motionOverride,
-        microBehavior: {
-          applyFromInputRecord: (record: Record<string, unknown>) => {
-            this.microBehavior.applyFromInputRecord(record);
-          },
-        },
-      };
-
       for (const source of this.sources) {
         if (!this.running) {
           return;
         }
 
+        if (this.sourceScheduler.drainSource(source, sourceTarget)) {
+          continue;
+        }
+
+        this.sourceLifecycleObjects.add(source);
         try {
           await source.update(sourceTarget);
         } catch (error) {
@@ -954,13 +1543,14 @@ export class PuppetFlowRuntime {
       }
     } finally {
       this.tickInProgress = false;
+      this.completeTick();
     }
   }
 
   private async dispatchMotionFrames(deltaTime: number): Promise<void> {
     const inputs: MotionFrameInput[] = [];
     const currentTime = now();
-    for (const source of this.motionSources) {
+    for (const source of this.uniqueMotionSources()) {
       const latestFrame = this.latestMotionFrames.get(source.id);
       if (latestFrame) {
         const health = this.motionSourceHealth.get(source.id);
@@ -983,7 +1573,7 @@ export class PuppetFlowRuntime {
     let policy: MotionLayerPolicy | undefined;
     if (this.motionFrameGraph) {
       const sources = Object.fromEntries(
-        this.motionSources.map((source) => {
+        this.uniqueMotionSources().map((source) => {
           const health = this.motionSourceHealth.get(source.id);
           return [
             source.id,
@@ -1060,6 +1650,14 @@ export class PuppetFlowRuntime {
         );
       }
     }
+  }
+
+  private uniqueMotionSources(): MotionSource[] {
+    const uniqueSources = new Set<MotionSource>();
+    for (const source of this.motionSources) {
+      uniqueSources.add(source);
+    }
+    return [...uniqueSources];
   }
 
   private resetMotionPipeline(): void {
