@@ -184,6 +184,7 @@ export class PuppetFlowRuntime {
   private lifecycleGeneration = 0;
   private lifecycleRequest = 0;
   private desiredRunning = false;
+  private requestedStartPromise: Promise<void> | undefined;
   private startPromise: Promise<void> | undefined;
   private stopPromise: Promise<void> | undefined;
   private restartGate: Promise<void> | undefined;
@@ -418,9 +419,39 @@ export class PuppetFlowRuntime {
   }
 
   start(): Promise<void> {
+    if (this.desiredRunning) {
+      if (this.requestedStartPromise) {
+        return this.requestedStartPromise;
+      }
+      if (this.startPromise) {
+        return this.startPromise;
+      }
+      if (this.running) {
+        return Promise.resolve();
+      }
+    }
+
     const request = ++this.lifecycleRequest;
     this.desiredRunning = true;
-    return this.requestStart(request);
+    const requestedStart = this.requestStart(request);
+    if (!this.isStartRequested(request)) {
+      return requestedStart;
+    }
+
+    this.requestedStartPromise = requestedStart;
+    void requestedStart.then(
+      () => {
+        if (this.requestedStartPromise === requestedStart) {
+          this.requestedStartPromise = undefined;
+        }
+      },
+      () => {
+        if (this.requestedStartPromise === requestedStart) {
+          this.requestedStartPromise = undefined;
+        }
+      },
+    );
+    return requestedStart;
   }
 
   private requestStart(request: number): Promise<void> {
@@ -477,6 +508,7 @@ export class PuppetFlowRuntime {
   stop(): Promise<void> {
     this.lifecycleRequest += 1;
     this.desiredRunning = false;
+    this.requestedStartPromise = undefined;
 
     if (this.stopPromise) {
       return this.stopPromise;
@@ -582,6 +614,7 @@ export class PuppetFlowRuntime {
     this.lifecycleGeneration += 1;
     this.lifecycleRequest += 1;
     this.desiredRunning = false;
+    this.requestedStartPromise = undefined;
     this.running = false;
     this.tickPending = false;
     if (this.intervalId !== null) {
@@ -949,10 +982,16 @@ export class PuppetFlowRuntime {
   }
 
   private async startMotionSources(isCurrent: () => boolean): Promise<void> {
+    const attemptedMotionSources = new Set<MotionSource>();
     for (const source of this.motionSources) {
       if (!isCurrent()) {
         return;
       }
+
+      if (attemptedMotionSources.has(source)) {
+        continue;
+      }
+      attemptedMotionSources.add(source);
 
       const health = this.motionSourceHealth.get(source.id);
       if (health) {

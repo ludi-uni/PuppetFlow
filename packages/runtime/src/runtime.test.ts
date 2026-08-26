@@ -129,6 +129,61 @@ describe("PuppetFlowRuntime", () => {
     }
   });
 
+  it("coalesces starts queued behind a normal stop until the shared restart completes", async () => {
+    vi.useFakeTimers();
+    const firstInitialization = createDeferred<void>();
+    const secondInitialization = createDeferred<void>();
+    const secondStartEntered = createDeferred<void>();
+    let initializeCalls = 0;
+    const source: StateSource = {
+      id: "coalesced-normal-start",
+      initialize: async () => {
+        initializeCalls += 1;
+        if (initializeCalls === 1) {
+          await firstInitialization.promise;
+          return;
+        }
+        secondStartEntered.resolve();
+        await secondInitialization.promise;
+      },
+      update: async () => {},
+      dispose: async () => {},
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    const initialStart = runtime.start();
+
+    try {
+      await Promise.resolve();
+      const stop = runtime.stop();
+      const firstQueuedStart = runtime.start();
+      const secondQueuedStart = runtime.start();
+      expect(secondQueuedStart).toBe(firstQueuedStart);
+
+      firstInitialization.resolve();
+      await Promise.all([initialStart, stop]);
+      await secondStartEntered.promise;
+
+      let queuedStartFinished = false;
+      void firstQueuedStart.then(() => {
+        queuedStartFinished = true;
+      });
+      await Promise.resolve();
+      expect(queuedStartFinished).toBe(false);
+
+      secondInitialization.resolve();
+      await Promise.all([firstQueuedStart, secondQueuedStart]);
+
+      expect(runtime.isRunning()).toBe(true);
+      expect(initializeCalls).toBe(2);
+    } finally {
+      firstInitialization.resolve();
+      secondInitialization.resolve();
+      await Promise.allSettled([initialStart, runtime.stop()]);
+      await runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
   it("rolls back a standalone initial-tick listener failure before a later start", async () => {
     const failure = new Error("standalone initial listener failed");
     let adapterInitializeCalls = 0;
@@ -513,12 +568,15 @@ describe("PuppetFlowRuntime", () => {
     await vi.waitFor(() => expect(blocked).toBe(true));
     const stop = runtime.stop();
     let restart: Promise<void> | undefined;
+    let secondRestart: Promise<void> | undefined;
 
     try {
       await stop;
       expect(disposeCalls).toBe(0);
 
       restart = runtime.start();
+      secondRestart = runtime.start();
+      expect(secondRestart).toBe(restart);
       let restartFinished = false;
       void restart.then(() => {
         restartFinished = true;
@@ -532,13 +590,17 @@ describe("PuppetFlowRuntime", () => {
       expect(updateCalls).toBe(2);
 
       releaseBlockedUpdate.resolve();
-      await restart;
+      await Promise.all([restart, secondRestart]);
 
       expect(disposeCalls).toBe(1);
       expect(initializeCalls).toBe(2);
     } finally {
       releaseBlockedUpdate.resolve();
-      await Promise.allSettled([stop, restart ?? runtime.stop()]);
+      await Promise.allSettled([
+        stop,
+        restart ?? runtime.stop(),
+        secondRestart ?? runtime.stop(),
+      ]);
       await runtime.stop();
     }
   });
@@ -1705,6 +1767,45 @@ describe("PuppetFlowRuntime", () => {
       (runtime as unknown as { latestMotionFrames: Map<string, MotionFrame> })
         .latestMotionFrames.size,
     ).toBe(0);
+  });
+
+  it("starts and stops repeated MotionSource objects once by identity", async () => {
+    let sharedStartCalls = 0;
+    let sharedStopCalls = 0;
+    let distinctStartCalls = 0;
+    let distinctStopCalls = 0;
+    const shared: MotionSource = {
+      id: "duplicate-motion-id",
+      start: async () => {
+        sharedStartCalls += 1;
+      },
+      stop: async () => {
+        sharedStopCalls += 1;
+      },
+    };
+    const distinctSameId: MotionSource = {
+      id: "duplicate-motion-id",
+      start: async () => {
+        distinctStartCalls += 1;
+      },
+      stop: async () => {
+        distinctStopCalls += 1;
+      },
+    };
+    const runtime = new PuppetFlowRuntime()
+      .attachMotionSource(shared)
+      .attachMotionSource(shared)
+      .attachMotionSource(distinctSameId);
+
+    await runtime.start();
+
+    expect(sharedStartCalls).toBe(1);
+    expect(distinctStartCalls).toBe(1);
+
+    await runtime.stop();
+
+    expect(sharedStopCalls).toBe(1);
+    expect(distinctStopCalls).toBe(1);
   });
 
   it("initializes and disposes one object once when it is both legacy and frame-capable", async () => {
