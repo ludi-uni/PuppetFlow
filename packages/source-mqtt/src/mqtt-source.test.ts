@@ -76,6 +76,81 @@ describe("MqttSource", () => {
     await source.dispose();
   });
 
+  it("returns only the latest buffered mqtt payload when polled", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+      fieldMapping: { energy: "mood" },
+    });
+    await source.initialize();
+    mockClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.2 })),
+    );
+    mockClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.8 })),
+    );
+
+    const update = await source.poll(new AbortController().signal);
+
+    expect(source.pollIntervalMs).toBe(16);
+    expect(update).toEqual({
+      payload: { energy: 0.8 },
+      fieldMapping: { energy: "mood" },
+    });
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
+  it("applies a polled mqtt payload through its field mapping", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+      fieldMapping: { energy: "mood" },
+    });
+    await source.initialize();
+    mockClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.6 })),
+    );
+    const update = await source.poll(new AbortController().signal);
+    const target = {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      timeline: new TimelineStore(),
+      motion: new MotionOverrideStore(),
+    };
+
+    expect(target.state.get("mood")).toBeUndefined();
+    expect(update).toBeDefined();
+    source.apply(update!, target);
+
+    expect(target.state.get("mood")).toBe(0.6);
+    await source.dispose();
+  });
+
+  it("does not publish a buffered mqtt payload to an aborted poll", async () => {
+    const source = new MqttSource({
+      brokerUrl: "mqtt://127.0.0.1:1883",
+      topic: "puppetflow/state",
+    });
+    await source.initialize();
+    mockClient.emit(
+      "message",
+      "puppetflow/state",
+      Buffer.from(JSON.stringify({ energy: 0.6 })),
+    );
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(source.poll(controller.signal)).resolves.toBeUndefined();
+    await source.dispose();
+  });
+
   it("ignores malformed mqtt payloads", async () => {
     const source = new MqttSource({
       brokerUrl: "mqtt://127.0.0.1:1883",
@@ -86,16 +161,7 @@ describe("MqttSource", () => {
 
     mockClient.emit("message", "puppetflow/state", Buffer.from("not-json"));
 
-    const target = {
-      state: new StateStore(),
-      channels: new ChannelStore(),
-      timeline: new TimelineStore(),
-      motion: new MotionOverrideStore(),
-    };
-
-    await source.update(target);
-
-    expect(target.state.getAll()).toEqual({});
+    await expect(source.poll(new AbortController().signal)).resolves.toBeUndefined();
     await source.dispose();
   });
 });

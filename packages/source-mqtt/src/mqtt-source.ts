@@ -1,5 +1,9 @@
 import { applyInputPayload } from "@puppetflow/source-core";
-import type { SourceUpdateTarget, StateSource } from "@puppetflow/source-core";
+import type {
+  PollingStateSource,
+  SourceUpdateTarget,
+  StateSourceUpdate,
+} from "@puppetflow/source-core";
 import mqtt, { type MqttClient } from "mqtt";
 
 export interface MqttSourceConfig {
@@ -8,14 +12,15 @@ export interface MqttSourceConfig {
   fieldMapping?: Record<string, string>;
 }
 
-export class MqttSource implements StateSource {
+export class MqttSource implements PollingStateSource {
   readonly id = "mqtt";
+  readonly pollIntervalMs = 16;
 
   private readonly brokerUrl: string;
   private readonly topic: string;
-  private readonly fieldMapping: Record<string, string>;
+  private readonly fieldMapping: Readonly<Record<string, string>>;
   private client: MqttClient | null = null;
-  private pendingPayload: unknown = null;
+  private pendingPayload: unknown | undefined;
 
   constructor(config: MqttSourceConfig) {
     this.brokerUrl = config.brokerUrl;
@@ -64,13 +69,30 @@ export class MqttSource implements StateSource {
   }
 
   async update(target: SourceUpdateTarget): Promise<void> {
-    if (!this.pendingPayload) {
+    const update = await this.poll(new AbortController().signal);
+    if (!update) {
       return;
     }
 
-    applyInputPayload(target, this.pendingPayload, this.fieldMapping);
+    this.apply(update, target);
+  }
 
-    this.pendingPayload = null;
+  async poll(signal: AbortSignal): Promise<StateSourceUpdate | undefined> {
+    if (signal.aborted) {
+      return undefined;
+    }
+
+    const payload = this.pendingPayload;
+    this.pendingPayload = undefined;
+    if (payload === undefined) {
+      return undefined;
+    }
+
+    return { payload, fieldMapping: this.fieldMapping };
+  }
+
+  apply(update: StateSourceUpdate, target: SourceUpdateTarget): void {
+    applyInputPayload(target, update.payload, update.fieldMapping ?? this.fieldMapping);
   }
 
   async dispose(): Promise<void> {
