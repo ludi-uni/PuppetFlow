@@ -26,7 +26,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix": "pnpm format && pnpm lint:fix",
-    "verify": "pnpm lint && pnpm format:check && pnpm build && pnpm test && pnpm build:presets && git diff --exit-code -- packages/behavior-packs/presets presets",
+    "verify": "pnpm lint && pnpm format:check && pnpm build && pnpm test && pnpm build:presets && git -c safe.directory=. diff --exit-code -- packages/behavior-packs/presets presets",
     "prepare": "node scripts/install-git-hooks.mjs",
     "dev": "pnpm --filter @puppetflow/playground dev",
     "dev:editor": "pnpm --filter @puppetflow/editor dev",
