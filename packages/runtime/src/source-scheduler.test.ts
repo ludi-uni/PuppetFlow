@@ -228,6 +228,62 @@ describe("StateSourceScheduler", () => {
     await scheduler.stop();
   });
 
+  it("deduplicates repeated polling source instances", async () => {
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const pending = deferred<StateSourceUpdate | undefined>();
+    let pollCalls = 0;
+    const source = createPollingSource(
+      "duplicate",
+      () => {
+        pollCalls += 1;
+        return pending.promise;
+      },
+      applied,
+    );
+    const scheduler = new StateSourceScheduler();
+    const target = {} as SourceUpdateTarget;
+
+    try {
+      scheduler.start([source, source]);
+      expect(pollCalls).toBe(1);
+
+      pending.resolve(update("only"));
+      await Promise.resolve();
+      scheduler.drain(target);
+
+      expect(applied).toEqual([{ id: "duplicate", update: update("only"), target }]);
+    } finally {
+      pending.resolve(undefined);
+      await scheduler.stop();
+    }
+  });
+
+  it("keeps distinct polling source objects independent when their ids match", async () => {
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const first = createPollingSource("same-id", async () => update("one"), applied);
+    const second = createPollingSource("same-id", async () => update("two"), applied);
+    const scheduler = new StateSourceScheduler();
+    const target = {} as SourceUpdateTarget;
+
+    scheduler.start([first, second]);
+    await Promise.resolve();
+    scheduler.drain(target);
+
+    expect(applied).toEqual([
+      { id: "same-id", update: update("one"), target },
+      { id: "same-id", update: update("two"), target },
+    ]);
+    await scheduler.stop();
+  });
+
   it("isolates poll and apply errors so other sources continue", async () => {
     vi.useFakeTimers();
     const applied: Array<{

@@ -50,12 +50,21 @@ export class StateSourceScheduler {
     }
 
     const generation = ++this.generation;
-    this.states = sources.filter(isPollingStateSource).map((source) => ({
-      controller: new AbortController(),
-      generation,
-      source,
-      inFlight: false,
-    }));
+    const pollingSources = new Set<PollingStateSource>();
+    this.states = [];
+    for (const source of sources) {
+      if (!isPollingStateSource(source) || pollingSources.has(source)) {
+        continue;
+      }
+
+      pollingSources.add(source);
+      this.states.push({
+        controller: new AbortController(),
+        generation,
+        source,
+        inFlight: false,
+      });
+    }
 
     for (const state of this.states) {
       state.loop = this.run(state);
