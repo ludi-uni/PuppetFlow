@@ -192,8 +192,10 @@ Keep initializeSources() source-setup semantics, with the approved lifecycle
 hardening: check cancellation before and after each awaited initialization,
 deduplicate by object identity, and track attempted objects for teardown. After
 running becomes true, start the scheduler
-before the first tick. At tick start, drain polling updates. Skip update() for sources
-recognized by isPollingStateSource; await it for all other sources. Stop and await the
+before the first tick. At tick start, call `sourceScheduler.drainSource(source, target)`
+for each attached source. Skip `update()` only when it returns true for a
+scheduler-owned source; otherwise await it, including dynamic or unmanaged
+polling-shaped sources. Stop and await the
 scheduler before disposeSources() in normal, already-stopped, and timeout paths. Route
 scheduler errors through the existing source log format.
 
