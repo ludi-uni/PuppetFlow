@@ -194,6 +194,8 @@ export class PuppetFlowRuntime {
   private requestedStartPromise: Promise<void> | undefined;
   private startPromise: Promise<void> | undefined;
   private stopPromise: Promise<void> | undefined;
+  private cleanupPromise: Promise<void> | undefined;
+  private cleanupInProgress = false;
   private restartGate: Promise<void> | undefined;
   private startupGeneration: number | undefined;
   private startupPhase: "initializing" | "motion-sources" | "initial-tick" | undefined;
@@ -466,6 +468,10 @@ export class PuppetFlowRuntime {
       return Promise.resolve();
     }
 
+    if (this.cleanupPromise) {
+      return this.cleanupPromise.then(() => this.requestStart(request));
+    }
+
     if (this.restartGate) {
       return this.restartGate.then(() => this.requestStart(request));
     }
@@ -522,6 +528,10 @@ export class PuppetFlowRuntime {
     this.lifecycleRequest += 1;
     this.desiredRunning = false;
     this.requestedStartPromise = undefined;
+
+    if (this.cleanupInProgress) {
+      return Promise.resolve();
+    }
 
     if (this.stopPromise) {
       return this.stopPromise;
@@ -827,7 +837,40 @@ export class PuppetFlowRuntime {
     await this.cleanupStoppedResources();
   }
 
-  private async cleanupStoppedResources(): Promise<void> {
+  private cleanupStoppedResources(): Promise<void> {
+    if (this.cleanupPromise) {
+      return this.cleanupPromise;
+    }
+
+    let resolveCleanup!: () => void;
+    let rejectCleanup!: (reason?: unknown) => void;
+    const cleanupPromise = new Promise<void>((resolve, reject) => {
+      resolveCleanup = resolve;
+      rejectCleanup = reject;
+    });
+    this.cleanupPromise = cleanupPromise;
+    this.cleanupInProgress = true;
+
+    void this.performCleanup().then(
+      () => {
+        this.cleanupInProgress = false;
+        if (this.cleanupPromise === cleanupPromise) {
+          this.cleanupPromise = undefined;
+        }
+        resolveCleanup();
+      },
+      (error) => {
+        this.cleanupInProgress = false;
+        if (this.cleanupPromise === cleanupPromise) {
+          this.cleanupPromise = undefined;
+        }
+        rejectCleanup(error);
+      },
+    );
+    return cleanupPromise;
+  }
+
+  private async performCleanup(): Promise<void> {
     await this.disposeAdapters();
     await this.disposeSources();
     await this.stopMotionSources();

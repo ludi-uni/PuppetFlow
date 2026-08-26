@@ -88,6 +88,127 @@ const motionFrameGraph: MotionFrameGraphDocument = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("lets an adapter dispose hook await stop without blocking cleanup or a later restart", async () => {
+    const escapeNestedStop = createDeferred<void>();
+    const releaseCleanup = createDeferred<void>();
+    let disposeCalls = 0;
+    let nestedStopCompleted = false;
+    let nestedStop: Promise<void> | undefined;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const adapter: Adapter = {
+      id: "await-stop-dispose-adapter",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+        nestedStop = runtimeRef.current!.stop();
+        await Promise.race([nestedStop, escapeNestedStop.promise]);
+        nestedStopCompleted = true;
+        await releaseCleanup.promise;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachAdapter(adapter);
+    runtimeRef.current = runtime;
+    await runtime.start();
+    const outerStop = runtime.stop();
+    let restart: Promise<void> | undefined;
+
+    try {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(nestedStopCompleted).toBe(true);
+
+      restart = runtime.start();
+      let restartCompleted = false;
+      void restart.then(() => {
+        restartCompleted = true;
+      });
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(restartCompleted).toBe(false);
+
+      releaseCleanup.resolve();
+      await Promise.all([outerStop, restart]);
+
+      expect(disposeCalls).toBe(1);
+      expect(runtime.isRunning()).toBe(true);
+    } finally {
+      escapeNestedStop.resolve();
+      releaseCleanup.resolve();
+      await Promise.allSettled([outerStop, restart ?? runtime.stop()]);
+      await runtime.stop();
+    }
+  });
+
+  it("lets a StateSource dispose hook await stop without reentering cleanup", async () => {
+    const escapeNestedStop = createDeferred<void>();
+    let disposeCalls = 0;
+    let nestedStopCompleted = false;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const source: StateSource = {
+      id: "await-stop-dispose-source",
+      initialize: async () => {},
+      update: async () => {},
+      dispose: async () => {
+        disposeCalls += 1;
+        await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
+        nestedStopCompleted = true;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachSource(source);
+    runtimeRef.current = runtime;
+    await runtime.start();
+    const outerStop = runtime.stop();
+
+    try {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(nestedStopCompleted).toBe(true);
+      await outerStop;
+      expect(disposeCalls).toBe(1);
+    } finally {
+      escapeNestedStop.resolve();
+      await Promise.allSettled([outerStop]);
+      await runtime.stop();
+    }
+  });
+
+  it("lets a MotionSource stop hook await stop without reentering cleanup", async () => {
+    const escapeNestedStop = createDeferred<void>();
+    let stopCalls = 0;
+    let nestedStopCompleted = false;
+    const runtimeRef: { current?: PuppetFlowRuntime } = {};
+    const source: MotionSource = {
+      id: "await-stop-motion-source",
+      start: async () => {},
+      stop: async () => {
+        stopCalls += 1;
+        await Promise.race([runtimeRef.current!.stop(), escapeNestedStop.promise]);
+        nestedStopCompleted = true;
+      },
+    };
+    const runtime = new PuppetFlowRuntime().attachMotionSource(source);
+    runtimeRef.current = runtime;
+    await runtime.start();
+    const outerStop = runtime.stop();
+
+    try {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(nestedStopCompleted).toBe(true);
+      await outerStop;
+      expect(stopCalls).toBe(1);
+    } finally {
+      escapeNestedStop.resolve();
+      await Promise.allSettled([outerStop]);
+      await runtime.stop();
+    }
+  });
+
   it("releases an initialization hook that awaits stop after bounded quiescence", async () => {
     const escapeHook = createDeferred<void>();
     const hookEntered = createDeferred<void>();
