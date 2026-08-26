@@ -72,7 +72,7 @@ export interface InputPayloadTarget {
 export function applyInputPayload(
   target: InputPayloadTarget,
   payload: unknown,
-  fieldMapping: Record<string, string> = {},
+  fieldMapping: Readonly<Record<string, string>> = {},
 ): void {
   if (typeof payload !== "object" || payload === null) {
     throw new Error("Input payload must be a JSON object");
