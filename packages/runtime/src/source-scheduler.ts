@@ -20,7 +20,9 @@ interface PollingSourceState {
   captured?: StateSourceUpdate;
   inFlight: boolean;
   latest?: StateSourceUpdate;
-  loop?: Promise<void>;
+  readonly loop: Promise<void>;
+  readonly rejectLoop: (reason?: unknown) => void;
+  readonly resolveLoop: () => void;
 }
 
 function waitForInterval(intervalMs: number, signal: AbortSignal): Promise<void> {
@@ -78,17 +80,26 @@ export class StateSourceScheduler {
       }
 
       pollingSources.add(source);
+      let resolveLoop!: () => void;
+      let rejectLoop!: (reason?: unknown) => void;
+      const loop = new Promise<void>((resolve, reject) => {
+        resolveLoop = resolve;
+        rejectLoop = reject;
+      });
       this.states.push({
         controller: new AbortController(),
         generation,
         source,
         captureActive: false,
         inFlight: false,
+        loop,
+        rejectLoop,
+        resolveLoop,
       });
     }
 
     for (const state of this.states) {
-      state.loop = this.run(state);
+      void this.run(state).then(state.resolveLoop, state.rejectLoop);
     }
   }
 

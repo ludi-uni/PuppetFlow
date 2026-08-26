@@ -222,6 +222,44 @@ describe("StateSourceScheduler", () => {
     expect(applied).toEqual([]);
   });
 
+  it("waits for a poll that synchronously requests stop during startup", async () => {
+    vi.useFakeTimers();
+    const applied: Array<{
+      id: string;
+      update: StateSourceUpdate;
+      target: SourceUpdateTarget;
+    }> = [];
+    const pending = deferred<StateSourceUpdate | undefined>();
+    const scheduler = new StateSourceScheduler();
+    let stopped!: Promise<void>;
+    const source = createPollingSource(
+      "reentrant-stop",
+      () => {
+        stopped = scheduler.stop();
+        return pending.promise;
+      },
+      applied,
+    );
+
+    scheduler.start([source]);
+    let stopResolved = false;
+    void stopped.then(() => {
+      stopResolved = true;
+    });
+
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(stopResolved).toBe(false);
+
+      pending.resolve(undefined);
+      await stopped;
+      expect(stopResolved).toBe(true);
+    } finally {
+      pending.resolve(undefined);
+      await scheduler.stop();
+    }
+  });
+
   it("drains each source's update synchronously in attachment order", async () => {
     const applied: Array<{
       id: string;
