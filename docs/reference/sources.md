@@ -17,6 +17,8 @@ interface StateSource {
 Polling 用の `pollIntervalMs`、`poll(signal)`、`apply(update, target)` をすべて実装し、
 `pollIntervalMs` が有限かつ 0 以上であるソースは `PollingStateSource` として、ランタイムの
 tick から I/O を分離できます。
+Polling capability の判定と登録は Runtime の start 時に行われます。start 後に追加した Source は
+次の start/restart まで、従来どおり await される `update(target)` 経路で処理されます。
 
 ### PollingStateSource のライフサイクル
 
