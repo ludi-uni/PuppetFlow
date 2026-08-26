@@ -63,8 +63,9 @@ legacy source continues through the existing `update(target)` path, preserving
 compatibility for custom implementations.
 
 The scheduler owns one loop and one `AbortController` per polling source. It invokes
-`poll()` only after the source's interval has elapsed, never starts a second poll
-while the previous one is pending, and stores only the newest completed update. The
+the first `poll()` immediately, then waits the source's configured interval between
+subsequent attempts; it never starts a second poll while the previous one is pending,
+and stores only the newest completed update. The
 source's `poll()` method performs I/O but never receives mutable Runtime stores.
 
 Built-in source behavior:
