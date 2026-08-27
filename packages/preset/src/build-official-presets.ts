@@ -80,7 +80,7 @@ faceYaw = oscillator(id = "curious-face-yaw", frequency = 0.12) * 0.045 + 0.5
 headTilt = oscillator(id = "curious-head-tilt", frequency = 0.17) * 0.035 + 0.5
 bodyYaw = interest * -0.3 + 0.5
 mouthY = volume
-eyeYaw = clamp(1 - (1 - energy) * (1 - energy), 0.4, 1)
+eyeYaw = clamp(1 - (1 - energy) * (1 - energy) * (1 - energy), 0.4, 1)
 breath = breath(0.1)`,
     mouthGain: 0.5,
     behaviorPlugins: [

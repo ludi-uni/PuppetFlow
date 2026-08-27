@@ -253,7 +253,7 @@ end`,
     const preset = readPreset(PACKAGE_PRESETS_DIR, "Curious");
 
     expect(preset.behaviorPfScript).toContain(
-      "eyeYaw = clamp(1 - (1 - energy) * (1 - energy), 0.4, 1)",
+      "eyeYaw = clamp(1 - (1 - energy) * (1 - energy) * (1 - energy), 0.4, 1)",
     );
   });
 

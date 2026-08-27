@@ -17,7 +17,7 @@
 
 再生成: `pnpm build:presets`（`packages/preset/src/build-official-presets.ts`）
 
-Curious の `eyeYaw` は Energy の単純比例ではなく、`clamp(1 - (1 - energy) * (1 - energy), 0.4, 1)` の上に凸なカーブを使用します。Energy=0.5 のとき `eyeYaw` は 0.75 となり、通常時の目の開きを確保します。
+Curious の `eyeYaw` は Energy の単純比例ではなく、`clamp(1 - (1 - energy) * (1 - energy) * (1 - energy), 0.4, 1)` の上に凸なカーブを使用します。Energy=0.5 のとき `eyeYaw` は 0.875 となり、通常時の目の開きを確保します。
 
 ## ファイル形式（v3）
 
