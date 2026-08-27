@@ -31,6 +31,17 @@ mouthOpen = volume
     expect(behavior.statements.length).toBeGreaterThan(0);
   });
 
+  it("rejects let declarations instead of dropping local bindings", () => {
+    expect(() => compilePfScript("let target = 0.5\nsmile = target")).toThrow(
+      "PFScript let declarations are not supported by compilation",
+    );
+    expect(() =>
+      compilePfScript(`if true then
+  let target = 0.5
+end`),
+    ).toThrow("PFScript let declarations are not supported by compilation");
+  });
+
   it("executes phoneme lip-sync branches", () => {
     const behavior = compilePfScript(`
 if currentPhoneme == "A" then

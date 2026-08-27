@@ -96,6 +96,28 @@ describe("pfscript parser", () => {
     ]);
   });
 
+  it("parses let in an if then block", () => {
+    const program = parsePfScript(`if true then
+  let target = interest * 0.5
+end`);
+
+    expect(program.body[0]).toMatchObject({
+      type: "If",
+      then: [
+        {
+          type: "Let",
+          name: "target",
+          value: {
+            type: "Binary",
+            op: "*",
+            left: { type: "Identifier", name: "interest" },
+            right: { type: "Number", value: 0.5 },
+          },
+        },
+      ],
+    });
+  });
+
   it("rejects special runtime context names as locals", () => {
     for (const name of ["time", "deltaTime", "currentPhoneme"]) {
       expect(() => parsePfScript(`let ${name} = 1`)).toThrow(PfScriptParseError);
