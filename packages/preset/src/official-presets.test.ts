@@ -249,6 +249,14 @@ end`,
     expect(graphGain(preset)).toBe(contract.mouthXGain);
   });
 
+  it("uses the stronger concave Energy curve for Curious eye openness", () => {
+    const preset = readPreset(PACKAGE_PRESETS_DIR, "Curious");
+
+    expect(preset.behaviorPfScript).toContain(
+      "eyeYaw = clamp(1 - (1 - energy) * (1 - energy), 0.4, 1)",
+    );
+  });
+
   it.each(OFFICIAL_PRESETS)("keeps both generated copies of %s identical", (name) => {
     const filename = `${name}.pfpreset`;
     expect(readFileSync(join(PACKAGE_PRESETS_DIR, filename), "utf8")).toBe(
