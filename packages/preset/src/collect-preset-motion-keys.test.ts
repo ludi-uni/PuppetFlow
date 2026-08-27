@@ -88,6 +88,29 @@ end
     expect(overlaps).toEqual([{ motionKey: "mouthX", sources: ["graph", "behavior"] }]);
   });
 
+  it("does not report local declarations or updates as Motion keys", () => {
+    const warnings = detectPresetMotionOverlaps({
+      behavior: {
+        type: "Block",
+        statements: [
+          { type: "LocalLet", name: "smile", value: { type: "Number", value: 0.2 } },
+          {
+            type: "LocalAssign",
+            name: "smile",
+            value: { type: "Number", value: 0.4 },
+          },
+        ],
+      },
+      graph: {
+        nodes: [{ id: "out", type: "output", data: { key: "mouthX" } }],
+        edges: [],
+      },
+      behaviorPlugins: [],
+    });
+
+    expect(warnings).toEqual([]);
+  });
+
   it("detectPresetMotionOverlaps warns when multiple plugins share lookX", () => {
     const overlaps = detectPresetMotionOverlaps({
       behavior: { type: "Block", statements: [] },

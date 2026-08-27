@@ -7,7 +7,7 @@ import {
 
 describe("materializePresetBehavior", () => {
   it("recompiles behavior cache from behaviorPfScript", () => {
-    const source = "mouthY = volume\nbreath = breath(0.1)";
+    const source = "let intensity = interest * 0.5\nthinking(intensity = intensity)";
     const stale = compilePfScript("mouthX = 1");
     const materialized = materializePresetBehavior({
       name: "Test",
@@ -18,8 +18,14 @@ describe("materializePresetBehavior", () => {
     });
 
     const compiled = compilePresetBehavior(materialized);
+    const parsedCache = compilePresetBehavior({ behavior: materialized.behavior });
     expect(compiled.behaviorPfScript).toBe(source);
     expect(compiled.behavior.statements.length).toBeGreaterThan(0);
+    expect(parsedCache.behavior.statements[0]).toMatchObject({ type: "LocalLet" });
+    expect(parsedCache.behavior.statements[1]).toMatchObject({
+      type: "MotionPack",
+      configExpressions: { intensity: { type: "Identifier", name: "intensity" } },
+    });
     expect(JSON.stringify(materialized.behavior)).not.toEqual(JSON.stringify(stale));
   });
 });

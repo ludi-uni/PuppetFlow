@@ -44,6 +44,10 @@ function collectFromStatements(
       case "ExprAssign":
         keys.add(formatBehaviorMotionKey(statement.target));
         break;
+      case "LocalLet":
+      case "LocalAssign":
+      case "MotionPack":
+        break;
       default:
         break;
     }

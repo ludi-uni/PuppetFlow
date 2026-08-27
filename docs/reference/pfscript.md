@@ -132,7 +132,7 @@ end
 
 ---
 
-Plugin / Extension 関数（`thinking()` 等）は **文としての呼び出し**（`CallStmt`）を使います。式中の任意関数呼び出しは Phase 1 非対応です。
+Motion Pack 関数（`thinking()` 等）は **文としての呼び出し**（`CallStmt`）を使います。数値 Extension 関数は式の中でも使えます。
 
 ---
 
@@ -160,7 +160,6 @@ PFScript では Live2D 向けなどの **読みやすい名前** を使えます
 | `while` / `for` / `goto`    | 無限ループ防止 |
 | `require` / `function`      | モジュール禁止 |
 | `os.*` / `io.*` / `debug.*` | I/O 禁止       |
-| ローカル変数 `let`          | Phase 1 非対応 |
 
 ---
 
@@ -199,6 +198,32 @@ Node.js のファイル読込: `import { readPfScriptFile } from "@puppetflow/pr
 
 ---
 
+## Phase 2
+
+### Local variables
+
+`let name = expression` creates a temporary block-local value. It is recreated
+each tick and is not written to StateStore, ChannelStore, MotionState, or the
+Preset. A branch-local value disappears when the branch ends; assigning an
+outer local from a branch updates that outer binding.
+
+### Expression functions and Pack arguments
+
+Numeric extension functions such as
+`heartbeat(amplitude = interest * 0.2)` may be used in expressions. Motion Packs
+such as `thinking()` remain statements, but their named configuration values may
+be expressions. Pack expressions are evaluated once when the statement executes.
+
+### Compatibility rules
+
+Aliases remain case-sensitive (`smile` -> `mouthX`, `mouthOpen` -> `mouthY`).
+Unknown names, including `MouthA`, remain custom keys. Runtime composition and
+duplicate-output warnings are unchanged; no PFScript-over-Graph priority is
+introduced. `behaviorPfScript` is the Preset source and `behavior` is its
+version-3 compiled cache.
+
+---
+
 ## Studio での編集
 
 1. **エキスパート** モードに切り替え
@@ -224,13 +249,11 @@ Node.js のファイル読込: `import { readPfScriptFile } from "@puppetflow/pr
 
 ---
 
-## Phase 1 で未実装の仕様項目
+## 未実装の仕様項目
 
 [追加仕様.md](../追加仕様.md) に記載があるが Phase 1 では **未対応または部分対応** の例:
 
-- ローカル変数・`targetSmile` のような中間状態
 - 式中の Plugin 関数呼び出し（`lerp(smile, targetSmile, 0.1)` 等）
-- Pack 引数の式（`thinking(intensity = interest * 0.5)` — 数値リテラルのみ lower）
 - PFScript → Graph への自動変換
 
 詳細: [追加仕様.md — 実装メモ](../追加仕様.md#実装メモphase-1)

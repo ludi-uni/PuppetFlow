@@ -149,6 +149,39 @@ describe("loadPreset", () => {
     });
   });
 
+  it("round-trips Phase 2 source as the canonical Preset field", () => {
+    const source = "let target = interest * 0.5\nsmile = target";
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "Phase2Preset",
+        version: 3,
+        behaviorPfScript: source,
+        behavior: { type: "Block", statements: [] },
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+
+    expect(loaded.behaviorPfScript).toBe(source);
+    expect(loaded.behavior.statements[0]).toMatchObject({ type: "LocalLet" });
+  });
+
+  it("does not use stale behavior when Phase 2 source is invalid", () => {
+    expect(() =>
+      loadPreset(
+        JSON.stringify({
+          name: "BrokenPhase2",
+          version: 3,
+          behaviorPfScript: "let target =",
+          behavior: {
+            type: "Block",
+            statements: [{ type: "Assign", key: "mouthX", op: "set", value: 0.1 }],
+          },
+          graph: { nodes: [], edges: [] },
+        }),
+      ),
+    ).toThrow(/\(1:/);
+  });
+
   it("rejects presets without behavior or behaviorPfScript", () => {
     expect(() =>
       loadPreset(
