@@ -14,6 +14,11 @@ export interface BehaviorExecutionContext {
   currentPhoneme?: string;
   /** Active timeline events for `eventActive()` and phoneme resolution. */
   activeTimelineEvents?: readonly TimelineEvent[];
+  /** Extension registry scalar functions available to PFScript expressions. */
+  evaluateExtensionFunction?: (
+    name: string,
+    args: Record<string, number>,
+  ) => number | undefined;
   statefulStore?: import("@puppetflow/stateful-core").StatefulStore;
   statefulRegistry?: import("@puppetflow/stateful-core").StatefulRegistry;
   frame?: import("@puppetflow/stateful-core").FrameContext;

@@ -259,15 +259,21 @@ export function executeExtensions(
   };
 }
 
+export function tryExecutePfScriptFunction(
+  registry: MotionRegistryImpl,
+  ctx: ExtensionContext,
+  name: string,
+  args: Record<string, number>,
+): number | undefined {
+  const fn = registry.functions.get(name);
+  return fn ? fn.execute(ctx, args) : undefined;
+}
+
 export function executePfScriptFunction(
   registry: MotionRegistryImpl,
   ctx: ExtensionContext,
   name: string,
   args: Record<string, number>,
 ): number {
-  const fn = registry.functions.get(name);
-  if (!fn) {
-    return 0;
-  }
-  return fn.execute(ctx, args);
+  return tryExecutePfScriptFunction(registry, ctx, name, args) ?? 0;
 }

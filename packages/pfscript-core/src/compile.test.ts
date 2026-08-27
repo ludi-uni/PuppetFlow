@@ -1,6 +1,6 @@
 import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
-import { executeBehavior } from "@puppetflow/behavior";
-import { describe, expect, it } from "vitest";
+import { executeBehavior, executeBehaviorWithInvocations } from "@puppetflow/behavior";
+import { describe, expect, it, vi } from "vitest";
 import { compilePfScript } from "./compile.js";
 import { SPEC_SAMPLE_PFSCRIPT } from "./samples.js";
 
@@ -31,15 +31,38 @@ mouthOpen = volume
     expect(behavior.statements.length).toBeGreaterThan(0);
   });
 
-  it("rejects let declarations instead of dropping local bindings", () => {
-    expect(() => compilePfScript("let target = 0.5\nsmile = target")).toThrow(
-      "PFScript let declarations are not supported by compilation",
+  it("compiles and executes let declarations without dropping local bindings", () => {
+    const behavior = compilePfScript(`
+let pulse = heartbeat(amplitude = interest * 0.2)
+bodyLean = pulse
+if interest > 0.5 then
+  thinking(intensity = interest * 0.5)
+end
+`);
+    const state = new StateStore();
+    state.set("interest", 0.8);
+
+    const evaluateExtensionFunction = vi.fn(() => 0.7);
+    const result = executeBehaviorWithInvocations(behavior, {
+      state,
+      channels: new ChannelStore(),
+      renderedMotion: DEFAULT_MOTION_STATE,
+      deltaTime: 0.016,
+      evaluateExtensionFunction,
+    });
+
+    expect(result.motion.bodyLean).toBeCloseTo(0.7, 3);
+    expect(evaluateExtensionFunction).toHaveBeenCalledWith(
+      "heartbeat",
+      expect.objectContaining({ amplitude: expect.any(Number) }),
     );
-    expect(() =>
-      compilePfScript(`if true then
-  let target = 0.5
-end`),
-    ).toThrow("PFScript let declarations are not supported by compilation");
+    expect(
+      (evaluateExtensionFunction.mock.calls[0]?.[1] as Record<string, number>)
+        .amplitude,
+    ).toBeCloseTo(0.16, 3);
+    expect(result.packInvocations).toEqual([
+      { packId: "thinking", config: { intensity: 0.4 } },
+    ]);
   });
 
   it("executes phoneme lip-sync branches", () => {

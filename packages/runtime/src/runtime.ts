@@ -34,6 +34,7 @@ import {
 import {
   executeExtensions,
   executePfScriptFunction,
+  tryExecutePfScriptFunction,
   type PresetExtensions,
 } from "@puppetflow/extension-core";
 import { getBundledMotionRegistry } from "@puppetflow/extension-bundled";
@@ -1397,6 +1398,25 @@ export class PuppetFlowRuntime {
           statefulStore: this.statefulStore,
           statefulRegistry: this.statefulRegistry,
           activeTimelineEvents: this.activeTimelineEvents,
+          evaluateExtensionFunction: (functionName, args) =>
+            tryExecutePfScriptFunction(
+              getBundledMotionRegistry(),
+              {
+                state: this.state,
+                channels: this.channels,
+                deltaTime,
+                time: this.elapsedTime,
+                timelineCurrentMs: this.timelineCurrentMs,
+                activeTimelineEvents: this.activeTimelineEvents,
+                motion: this.renderedMotion,
+                custom: this.renderedMotion.custom ?? {},
+                statefulStore: this.statefulStore,
+                statefulRegistry: this.statefulRegistry,
+                frame,
+              },
+              functionName,
+              args,
+            ),
         });
         behaviorPackInvocations = behaviorResult.packInvocations.map((invocation) => ({
           kind: "pack" as const,

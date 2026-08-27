@@ -4,7 +4,9 @@ import {
   collectExtensionInvocations,
   createMotionRegistry,
   executeExtensions,
+  executePfScriptFunction,
   registerExtensionPlugins,
+  tryExecutePfScriptFunction,
   type ExtensionPlugin,
 } from "./index.js";
 
@@ -71,6 +73,31 @@ function baseMotion(): MotionState {
 }
 
 describe("extension-core", () => {
+  it("returns registered PFScript scalar function values and preserves unknown names", () => {
+    const registry = createMotionRegistry();
+    registry.addFunction({
+      name: "heartbeat",
+      label: "Heartbeat",
+      execute: (_ctx, args) => args.amplitude ?? 0,
+    });
+    const ctx = {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      deltaTime: 0.016,
+      time: 1,
+      timelineCurrentMs: 0,
+      activeTimelineEvents: [],
+      motion: baseMotion(),
+      custom: {},
+    };
+
+    expect(
+      tryExecutePfScriptFunction(registry, ctx, "heartbeat", { amplitude: 0.7 }),
+    ).toBe(0.7);
+    expect(tryExecutePfScriptFunction(registry, ctx, "unknown", {})).toBeUndefined();
+    expect(executePfScriptFunction(registry, ctx, "unknown", {})).toBe(0);
+  });
+
   it("preserves motion.custom from upstream behavior when merging extension output", () => {
     const registry = createMotionRegistry();
     registerExtensionPlugins(registry, [mockTailPlugin]);

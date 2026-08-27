@@ -2628,6 +2628,32 @@ end
     await runtime.stop();
   });
 
+  it("wires bundled scalar functions into PFScript behavior", async () => {
+    const loaded = loadPreset(
+      JSON.stringify({
+        name: "PfScriptScalarRuntime",
+        version: 3,
+        behaviorPfScript: `
+let pulse = heartbeat(amplitude = interest * 0.2)
+bodyLean = pulse
+if interest > 0.5 then
+  thinking(intensity = interest * 0.5)
+end
+`,
+        graph: { nodes: [], edges: [] },
+      }),
+    );
+    const runtime = new PuppetFlowRuntime().loadPreset(loaded);
+    runtime.state.set("interest", 0.8);
+
+    await runtime.start();
+
+    expect(runtime.getTargetMotion().bodyLean).toBeGreaterThanOrEqual(0);
+    expect(runtime.getTargetMotion().bodyLean).toBeLessThanOrEqual(1);
+
+    await runtime.stop();
+  });
+
   it("resolves currentPhoneme from phoneme channel for PFScript lip-sync", async () => {
     const loaded = loadPreset(
       JSON.stringify({

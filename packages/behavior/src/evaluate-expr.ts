@@ -6,6 +6,7 @@ import type {
   BehaviorValue,
 } from "./expr.js";
 import { callBuiltinFunction } from "./builtin-functions.js";
+import { isPfScriptBuiltinFunction } from "./pfscript-function-catalog.js";
 import { callStatefulFunction } from "@puppetflow/stateful-core";
 import {
   resolveActiveTimelineEventIds,
@@ -118,11 +119,15 @@ function evaluateCall(
     value: evaluateExpression(arg.value, ctx, locals),
   }));
   const namedRecord: Record<string, BehaviorValue> = {};
+  const extensionArgs: Record<string, number> = {};
   let inputValue = 0;
 
   for (const arg of evaluatedArgs) {
     if (!arg.name) {
       continue;
+    }
+    if (typeof arg.value === "number" && Number.isFinite(arg.value)) {
+      extensionArgs[arg.name] = arg.value;
     }
     if (arg.name === "value" || arg.name === "target") {
       inputValue = typeof arg.value === "number" ? arg.value : Number(arg.value) || 0;
@@ -162,6 +167,15 @@ function evaluateCall(
     }
     const activeIds = resolveActiveTimelineEventIds(ctx.activeTimelineEvents);
     return activeIds.includes(eventName);
+  }
+
+  if (isPfScriptBuiltinFunction(callee)) {
+    return callBuiltinFunction(callee, builtinArgs);
+  }
+
+  const extensionResult = ctx.evaluateExtensionFunction?.(callee, extensionArgs);
+  if (extensionResult !== undefined) {
+    return extensionResult;
   }
 
   return callBuiltinFunction(callee, builtinArgs);

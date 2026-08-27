@@ -27,6 +27,7 @@ export {
   collectExtensionInvocations,
   executeExtensions,
   executePfScriptFunction,
+  tryExecutePfScriptFunction,
 } from "./execute-extensions.js";
 export {
   createMotionRuntimeRegistry,

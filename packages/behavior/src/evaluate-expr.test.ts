@@ -1,5 +1,5 @@
 import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { executeBehavior } from "./execute.js";
 import { evaluateExpressionAsNumber } from "./evaluate-expr.js";
 import type { BehaviorExecutionContext } from "./context.js";
@@ -85,6 +85,41 @@ describe("evaluateExpressionAsNumber", () => {
         new Map([["value", 0.2]]),
       ),
     ).toBe(0.2);
+  });
+
+  it("resolves a scalar extension function after builtins", () => {
+    const callback = vi.fn((name: string, args: Record<string, number>) => {
+      expect(name).toBe("heartbeat");
+      expect(args).toEqual({ amplitude: 0.2 });
+      return 0.7;
+    });
+
+    const value = evaluateExpressionAsNumber(
+      {
+        type: "Call",
+        callee: "heartbeat",
+        args: [{ name: "amplitude", value: { type: "Number", value: 0.2 } }],
+      },
+      createContext({ evaluateExtensionFunction: callback }),
+    );
+
+    expect(value).toBeCloseTo(0.7, 3);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let an extension callback shadow a builtin", () => {
+    const callback = vi.fn(() => 0.2);
+    const value = evaluateExpressionAsNumber(
+      {
+        type: "Call",
+        callee: "sin",
+        args: [{ value: { type: "Number", value: 0 } }],
+      },
+      createContext({ evaluateExtensionFunction: callback }),
+    );
+
+    expect(value).toBe(0);
+    expect(callback).not.toHaveBeenCalled();
   });
 });
 
