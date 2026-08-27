@@ -104,9 +104,9 @@ export function callBuiltinFunction(
   name: string,
   args: Array<number | string | boolean>,
 ): number | string | boolean {
-  const builtin = PFSCRIPT_BUILTIN_FUNCTIONS[name];
-  if (!builtin) {
+  if (!Object.hasOwn(PFSCRIPT_BUILTIN_FUNCTIONS, name)) {
     throw new Error(`unknown function: ${name}()`);
   }
+  const builtin = PFSCRIPT_BUILTIN_FUNCTIONS[name]!;
   return builtin(args);
 }

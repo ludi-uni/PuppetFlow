@@ -21,7 +21,7 @@ export const PFSCRIPT_EXPRESSION_CALLEES = [
 ].sort();
 
 export function isPfScriptBuiltinFunction(name: string): boolean {
-  return name in PFSCRIPT_BUILTIN_FUNCTIONS;
+  return Object.hasOwn(PFSCRIPT_BUILTIN_FUNCTIONS, name);
 }
 
 export function isPfScriptStatefulFunction(name: string): boolean {

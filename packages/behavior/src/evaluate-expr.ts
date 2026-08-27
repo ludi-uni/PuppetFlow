@@ -118,8 +118,8 @@ function evaluateCall(
     name: arg.name,
     value: evaluateExpression(arg.value, ctx, locals),
   }));
-  const namedRecord: Record<string, BehaviorValue> = {};
-  const extensionArgs: Record<string, number> = {};
+  const namedRecord = Object.create(null) as Record<string, BehaviorValue>;
+  const extensionArgs = Object.create(null) as Record<string, number>;
   let inputValue = 0;
 
   for (const arg of evaluatedArgs) {

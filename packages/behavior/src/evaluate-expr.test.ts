@@ -121,6 +121,51 @@ describe("evaluateExpressionAsNumber", () => {
     expect(value).toBe(0);
     expect(callback).not.toHaveBeenCalled();
   });
+
+  it("resolves extension functions named like inherited object properties", () => {
+    const callback = vi.fn((name: string, args: Record<string, number>) => {
+      expect(name).toBe("constructor");
+      expect(Object.getPrototypeOf(args)).toBeNull();
+      return 0.7;
+    });
+
+    expect(
+      evaluateExpressionAsNumber(
+        { type: "Call", callee: "constructor", args: [] },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toBeCloseTo(0.7, 3);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects unregistered names that match inherited object properties", () => {
+    expect(() =>
+      evaluateExpressionAsNumber(
+        { type: "Call", callee: "constructor", args: [] },
+        createContext(),
+      ),
+    ).toThrow("unknown function: constructor()");
+  });
+
+  it("preserves __proto__ as an extension callback argument", () => {
+    const callback = vi.fn((name: string, args: Record<string, number>) => {
+      expect(name).toBe("heartbeat");
+      expect(Object.hasOwn(args, "__proto__")).toBe(true);
+      expect(args.__proto__).toBeCloseTo(0.2, 3);
+      return 0.7;
+    });
+
+    expect(
+      evaluateExpressionAsNumber(
+        {
+          type: "Call",
+          callee: "heartbeat",
+          args: [{ name: "__proto__", value: { type: "Number", value: 0.2 } }],
+        },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toBeCloseTo(0.7, 3);
+  });
 });
 
 describe("executeBehavior PFScript outputs", () => {

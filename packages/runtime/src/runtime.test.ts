@@ -2648,8 +2648,12 @@ end
 
     await runtime.start();
 
-    expect(runtime.getTargetMotion().bodyLean).toBeGreaterThanOrEqual(0);
-    expect(runtime.getTargetMotion().bodyLean).toBeLessThanOrEqual(1);
+    const expectedHeartbeat = 0.5 + Math.sin((Math.PI * 2) / 60) * (0.8 * 0.2);
+    const behaviorOutput = runtime
+      .getPluginOutputs()
+      .find((entry) => entry.pluginId === "behavior")?.output;
+    expect(behaviorOutput?.bodyLean).toBeCloseTo(expectedHeartbeat, 3);
+    expect(runtime.getTargetMotion().bodyLean).toBeCloseTo(expectedHeartbeat, 3);
 
     await runtime.stop();
   });
