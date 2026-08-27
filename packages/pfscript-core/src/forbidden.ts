@@ -42,3 +42,15 @@ export function assertIdentifierAllowed(
     }
   }
 }
+
+export function assertLocalIdentifierAllowed(
+  name: string,
+  line: number,
+  column: number,
+): void {
+  assertIdentifierAllowed(name, line, column);
+
+  if (name === "time" || name === "deltaTime" || name === "currentPhoneme") {
+    throw new PfScriptParseError(`Reserved local identifier: ${name}`, line, column);
+  }
+}

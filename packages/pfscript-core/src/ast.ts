@@ -3,11 +3,21 @@ export type PfScriptProgram = {
   body: PfScriptStatement[];
 };
 
-export type PfScriptStatement = PfScriptAssign | PfScriptIf | PfScriptCallStmt;
+export type PfScriptStatement =
+  | PfScriptAssign
+  | PfScriptLet
+  | PfScriptIf
+  | PfScriptCallStmt;
 
 export interface PfScriptAssign {
   type: "Assign";
   target: string;
+  value: PfScriptExpression;
+}
+
+export interface PfScriptLet {
+  type: "Let";
+  name: string;
   value: PfScriptExpression;
 }
 

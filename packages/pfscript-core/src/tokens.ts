@@ -4,6 +4,7 @@ export type TokenType =
   | "string"
   | "true"
   | "false"
+  | "let"
   | "if"
   | "then"
   | "elseif"

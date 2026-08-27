@@ -9,6 +9,7 @@ export type {
   PfScriptExpression,
   PfScriptIdentifier,
   PfScriptIf,
+  PfScriptLet,
   PfScriptNamedArg,
   PfScriptNumberLiteral,
   PfScriptProgram,
@@ -16,7 +17,11 @@ export type {
   PfScriptStringLiteral,
   PfScriptUnary,
 } from "./ast.js";
-export { PfScriptForbiddenError, assertIdentifierAllowed } from "./forbidden.js";
+export {
+  PfScriptForbiddenError,
+  assertIdentifierAllowed,
+  assertLocalIdentifierAllowed,
+} from "./forbidden.js";
 export { PfScriptParseError } from "./errors.js";
 export { tokenize } from "./lexer.js";
 export { parsePfScript } from "./parser.js";

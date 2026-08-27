@@ -17,6 +17,18 @@ describe("pfscript lexer", () => {
     ]);
   });
 
+  it("tokenizes let as a declaration keyword", () => {
+    expect(tokenize("let target = interest * 0.5").map((token) => token.type)).toEqual([
+      "let",
+      "identifier",
+      "eq",
+      "identifier",
+      "star",
+      "number",
+      "eof",
+    ]);
+  });
+
   it("skips line comments", () => {
     const tokens = tokenize("-- comment\nsmile = 1").filter(
       (token) => token.type !== "newline",
@@ -57,6 +69,44 @@ function containsCallStmt(statements: PfScriptStatement[]): boolean {
 }
 
 describe("pfscript parser", () => {
+  it("parses let and keeps later assignment as an assignment node", () => {
+    expect(
+      parsePfScript("let target = interest * 0.5\ntarget = target + 0.1").body,
+    ).toEqual([
+      {
+        type: "Let",
+        name: "target",
+        value: {
+          type: "Binary",
+          op: "*",
+          left: { type: "Identifier", name: "interest" },
+          right: { type: "Number", value: 0.5 },
+        },
+      },
+      {
+        type: "Assign",
+        target: "target",
+        value: {
+          type: "Binary",
+          op: "+",
+          left: { type: "Identifier", name: "target" },
+          right: { type: "Number", value: 0.1 },
+        },
+      },
+    ]);
+  });
+
+  it("rejects special runtime context names as locals", () => {
+    for (const name of ["time", "deltaTime", "currentPhoneme"]) {
+      expect(() => parsePfScript(`let ${name} = 1`)).toThrow(PfScriptParseError);
+    }
+  });
+
+  it("rejects missing let names or initializers", () => {
+    expect(() => parsePfScript("let = 1")).toThrow(PfScriptParseError);
+    expect(() => parsePfScript("let target")).toThrow(PfScriptParseError);
+  });
+
   it("parses simple assignment", () => {
     const program = parsePfScript("smile = interest * 0.5");
     expect(program.body).toHaveLength(1);

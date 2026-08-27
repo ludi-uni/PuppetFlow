@@ -3,6 +3,7 @@ import { FORBIDDEN_KEYWORDS } from "./forbidden.js";
 import type { Token, TokenType } from "./tokens.js";
 
 const KEYWORDS: Record<string, TokenType> = {
+  let: "let",
   if: "if",
   then: "then",
   elseif: "elseif",

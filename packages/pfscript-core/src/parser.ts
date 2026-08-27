@@ -2,12 +2,17 @@ import type {
   PfScriptBinaryOp,
   PfScriptExpression,
   PfScriptIf,
+  PfScriptLet,
   PfScriptNamedArg,
   PfScriptProgram,
   PfScriptStatement,
 } from "./ast.js";
 import { PfScriptParseError } from "./errors.js";
-import { assertIdentifierAllowed, FORBIDDEN_IDENTIFIER_PREFIXES } from "./forbidden.js";
+import {
+  assertIdentifierAllowed,
+  assertLocalIdentifierAllowed,
+  FORBIDDEN_IDENTIFIER_PREFIXES,
+} from "./forbidden.js";
 import { tokenize } from "./lexer.js";
 import type { Token } from "./tokens.js";
 
@@ -57,6 +62,10 @@ class Parser {
       return this.parseIf();
     }
 
+    if (token.type === "let") {
+      return this.parseLet();
+    }
+
     if (token.type === "identifier") {
       const next = this.tokens[this.index + 1];
       if (next?.type === "eq") {
@@ -85,6 +94,16 @@ class Parser {
       target: targetToken.value,
       value,
     };
+  }
+
+  private parseLet(): PfScriptLet {
+    this.expect("let");
+    const nameToken = this.expect("identifier");
+    assertLocalIdentifierAllowed(nameToken.value, nameToken.line, nameToken.column);
+    this.expect("eq");
+    const value = this.parseExpression();
+    this.skipExtraNewlines();
+    return { type: "Let", name: nameToken.value, value };
   }
 
   private parseCallStatement(): PfScriptStatement {
@@ -310,7 +329,10 @@ class Parser {
       return false;
     }
     return (
-      token.type === "if" || token.type === "identifier" || token.type === "forbidden"
+      token.type === "if" ||
+      token.type === "let" ||
+      token.type === "identifier" ||
+      token.type === "forbidden"
     );
   }
 
