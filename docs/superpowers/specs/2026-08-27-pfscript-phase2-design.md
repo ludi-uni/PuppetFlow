@@ -181,6 +181,9 @@ thinking(intensity = interest * 0.5)
 
 becomes a `MotionPack` with `configExpressions.intensity` containing the lowered
 binary expression for `interest * 0.5`.
+If a call mixes literal and non-literal named arguments, all named arguments
+are represented in `configExpressions` (literal values become `Number`
+expressions) so `config` and `configExpressions` remain mutually exclusive.
 At execution time the expression is evaluated once, converted to a finite
 number using the existing numeric-expression policy, and placed in the
 `BehaviorMotionPackInvocation.config` record. The Extension Layer then applies
