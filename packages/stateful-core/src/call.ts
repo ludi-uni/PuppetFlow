@@ -14,7 +14,7 @@ export function callStatefulFunction(
   }
 
   let input = inputValue;
-  const config: Record<string, number | string> = {};
+  const config = Object.create(null) as Record<string, number | string>;
 
   for (const [key, raw] of Object.entries(namedArgs)) {
     if (key === "id") {

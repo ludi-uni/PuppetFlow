@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  callStatefulFunction,
   createDefaultStatefulRegistry,
   createRuntimeStatefulRegistry,
+  createStatefulRegistry,
   runStatefulNumber,
 } from "./index.js";
 import { StatefulStore } from "./store.js";
@@ -82,6 +84,39 @@ describe("StatefulStore", () => {
     expect(typeof snapshot[0].lastValue).toBe("number");
     expect(snapshot[0].state).toMatchObject({ phase: expect.any(Number) });
     expect(snapshot[1].functionName).toBe("smooth");
+  });
+});
+
+describe("callStatefulFunction", () => {
+  it("preserves __proto__ named values as own config properties", () => {
+    let receivedConfig: Record<string, number | string> | undefined;
+    const registry = createStatefulRegistry([
+      {
+        name: "capture",
+        createState: (config) => {
+          receivedConfig = config;
+          return undefined;
+        },
+        update: (_frame, state, config) => {
+          receivedConfig = config;
+          return { value: 0, state };
+        },
+      },
+    ]);
+    const namedArgs = Object.create(null) as Record<string, number>;
+    namedArgs.__proto__ = 0.2;
+
+    callStatefulFunction(
+      registry,
+      new StatefulStore(),
+      frame(0.016, 0),
+      "capture",
+      namedArgs,
+    );
+
+    expect(receivedConfig).toBeDefined();
+    expect(Object.hasOwn(receivedConfig!, "__proto__")).toBe(true);
+    expect(receivedConfig!.__proto__).toBeCloseTo(0.2, 3);
   });
 });
 
