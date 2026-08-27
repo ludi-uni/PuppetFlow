@@ -1,3 +1,5 @@
+export type BehaviorValue = number | string | boolean;
+
 export type BehaviorExpression =
   | BehaviorNumberExpr
   | BehaviorStringExpr

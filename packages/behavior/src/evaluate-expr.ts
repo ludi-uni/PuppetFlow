@@ -1,6 +1,10 @@
 import type { ChannelStore, StateStore } from "@puppetflow/core";
 import type { BehaviorExecutionContext } from "./context.js";
-import type { BehaviorExpression, BehaviorNamedArgExpr } from "./expr.js";
+import type {
+  BehaviorExpression,
+  BehaviorNamedArgExpr,
+  BehaviorValue,
+} from "./expr.js";
 import { callBuiltinFunction } from "./builtin-functions.js";
 import { callStatefulFunction } from "@puppetflow/stateful-core";
 import {
@@ -12,7 +16,8 @@ import {
 export function evaluateExpression(
   expression: BehaviorExpression,
   ctx: BehaviorExecutionContext,
-): number | string | boolean {
+  locals?: ReadonlyMap<string, BehaviorValue>,
+): BehaviorValue {
   switch (expression.type) {
     case "Number":
       return expression.value;
@@ -21,9 +26,9 @@ export function evaluateExpression(
     case "Boolean":
       return expression.value;
     case "Identifier":
-      return resolveIdentifier(expression.name, ctx);
+      return resolveIdentifier(expression.name, ctx, locals);
     case "Unary": {
-      const value = evaluateExpression(expression.argument, ctx);
+      const value = evaluateExpression(expression.argument, ctx, locals);
       if (expression.op === "not") {
         return !value;
       }
@@ -33,12 +38,12 @@ export function evaluateExpression(
       return -value;
     }
     case "Binary": {
-      const left = evaluateExpression(expression.left, ctx);
-      const right = evaluateExpression(expression.right, ctx);
+      const left = evaluateExpression(expression.left, ctx, locals);
+      const right = evaluateExpression(expression.right, ctx, locals);
       return evaluateBinary(expression.op, left, right);
     }
     case "Call":
-      return evaluateCall(expression.callee, expression.args, ctx);
+      return evaluateCall(expression.callee, expression.args, ctx, locals);
     default:
       return 0;
   }
@@ -47,7 +52,12 @@ export function evaluateExpression(
 function resolveIdentifier(
   name: string,
   ctx: BehaviorExecutionContext,
-): number | string | boolean {
+  locals?: ReadonlyMap<string, BehaviorValue>,
+): BehaviorValue {
+  const local = locals?.get(name);
+  if (local !== undefined) {
+    return local;
+  }
   if (name === "currentPhoneme") {
     return resolveCurrentPhoneme(ctx);
   }
@@ -56,8 +66,8 @@ function resolveIdentifier(
 
 function evaluateBinary(
   op: string,
-  left: number | string | boolean,
-  right: number | string | boolean,
+  left: BehaviorValue,
+  right: BehaviorValue,
 ): number | boolean {
   if (op === "and") {
     return Boolean(left) && Boolean(right);
@@ -101,12 +111,13 @@ function evaluateCall(
   callee: string,
   args: BehaviorNamedArgExpr[],
   ctx: BehaviorExecutionContext,
-): number | string | boolean {
-  const namedRecord: Record<string, number | string | boolean> = {};
+  locals?: ReadonlyMap<string, BehaviorValue>,
+): BehaviorValue {
+  const namedRecord: Record<string, BehaviorValue> = {};
   let inputValue = 0;
 
   for (const arg of args) {
-    const value = evaluateExpression(arg.value, ctx);
+    const value = evaluateExpression(arg.value, ctx, locals);
     if (!arg.name) {
       continue;
     }
@@ -139,12 +150,12 @@ function evaluateCall(
 
   const positional = args
     .filter((arg) => !arg.name)
-    .map((arg) => evaluateExpression(arg.value, ctx));
+    .map((arg) => evaluateExpression(arg.value, ctx, locals));
   const named = args.filter((arg) => arg.name);
   const evaluatedArgs =
     named.length === 0
       ? positional
-      : named.map((arg) => evaluateExpression(arg.value, ctx));
+      : named.map((arg) => evaluateExpression(arg.value, ctx, locals));
 
   if (callee === "eventActive") {
     const eventName = evaluatedArgs[0];
@@ -161,8 +172,9 @@ function evaluateCall(
 export function evaluateExpressionAsNumber(
   expression: BehaviorExpression,
   ctx: BehaviorExecutionContext,
+  locals?: ReadonlyMap<string, BehaviorValue>,
 ): number {
-  const value = evaluateExpression(expression, ctx);
+  const value = evaluateExpression(expression, ctx, locals);
   if (typeof value === "number") {
     return value;
   }

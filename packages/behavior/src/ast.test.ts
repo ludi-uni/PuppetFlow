@@ -71,4 +71,30 @@ describe("parseBehaviorRoot", () => {
       }),
     ).toThrow(/invalid Assign statement/i);
   });
+
+  it("parses local Behavior statements from serialized JSON", () => {
+    expect(
+      parseBehaviorRoot({
+        type: "Block",
+        statements: [
+          { type: "LocalLet", name: "target", value: { type: "Number", value: 0.2 } },
+          {
+            type: "LocalAssign",
+            name: "target",
+            value: { type: "Identifier", name: "volume" },
+          },
+        ],
+      }),
+    ).toEqual({
+      type: "Block",
+      statements: [
+        { type: "LocalLet", name: "target", value: { type: "Number", value: 0.2 } },
+        {
+          type: "LocalAssign",
+          name: "target",
+          value: { type: "Identifier", name: "volume" },
+        },
+      ],
+    });
+  });
 });

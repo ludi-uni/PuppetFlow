@@ -71,6 +71,21 @@ describe("evaluateExpressionAsNumber", () => {
       2,
     );
   });
+
+  it("prefers local values over State and Channel identifiers", () => {
+    const state = new StateStore();
+    state.set("value", 0.7);
+    const channels = new ChannelStore();
+    channels.set("value", 0.6);
+
+    expect(
+      evaluateExpressionAsNumber(
+        { type: "Identifier", name: "value" },
+        createContext({ state, channels }),
+        new Map([["value", 0.2]]),
+      ),
+    ).toBe(0.2);
+  });
 });
 
 describe("executeBehavior PFScript outputs", () => {

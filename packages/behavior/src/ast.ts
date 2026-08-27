@@ -82,11 +82,25 @@ export interface BehaviorExprAssign {
   value: BehaviorExpression;
 }
 
+export interface BehaviorLocalLet {
+  type: "LocalLet";
+  name: string;
+  value: BehaviorExpression;
+}
+
+export interface BehaviorLocalAssign {
+  type: "LocalAssign";
+  name: string;
+  value: BehaviorExpression;
+}
+
 export type BehaviorStatement =
   | BehaviorBlock
   | BehaviorIf
   | BehaviorAssign
   | BehaviorExprAssign
+  | BehaviorLocalLet
+  | BehaviorLocalAssign
   | BehaviorMotionPack;
 
 export function isBehaviorCondition(value: unknown): value is BehaviorCondition {
@@ -276,6 +290,21 @@ function parseBehaviorStatement(
         type: "ExprAssign",
         target: exprAssign.target,
         value: exprAssign.value as BehaviorExpression,
+      };
+    }
+    case "LocalLet":
+    case "LocalAssign": {
+      const local = statement as Partial<BehaviorLocalLet | BehaviorLocalAssign>;
+      if (typeof local.name !== "string" || local.name.length === 0) {
+        throw new Error(`${statement.type} requires a non-empty name at ${path}`);
+      }
+      if (typeof local.value !== "object" || local.value === null) {
+        throw new Error(`${statement.type} requires a value expression at ${path}`);
+      }
+      return {
+        type: statement.type,
+        name: local.name,
+        value: local.value as BehaviorExpression,
       };
     }
     case "Assign": {

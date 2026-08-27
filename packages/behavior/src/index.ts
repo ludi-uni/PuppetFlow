@@ -6,6 +6,8 @@ export {
   type BehaviorExprAssign,
   type BehaviorExprCondition,
   type BehaviorIf,
+  type BehaviorLocalAssign,
+  type BehaviorLocalLet,
   type BehaviorMotionPack,
   type BehaviorStatement,
   type CompareCondition,
@@ -27,6 +29,7 @@ export {
   type BehaviorNumberExpr,
   type BehaviorStringExpr,
   type BehaviorUnaryExpr,
+  type BehaviorValue,
 } from "./expr.js";
 export {
   PFSCRIPT_MOTION_ALIASES,
