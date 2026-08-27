@@ -113,24 +113,27 @@ function evaluateCall(
   ctx: BehaviorExecutionContext,
   locals?: ReadonlyMap<string, BehaviorValue>,
 ): BehaviorValue {
+  const evaluatedArgs = args.map((arg) => ({
+    name: arg.name,
+    value: evaluateExpression(arg.value, ctx, locals),
+  }));
   const namedRecord: Record<string, BehaviorValue> = {};
   let inputValue = 0;
 
-  for (const arg of args) {
-    const value = evaluateExpression(arg.value, ctx, locals);
+  for (const arg of evaluatedArgs) {
     if (!arg.name) {
       continue;
     }
     if (arg.name === "value" || arg.name === "target") {
-      inputValue = typeof value === "number" ? value : Number(value) || 0;
+      inputValue = typeof arg.value === "number" ? arg.value : Number(arg.value) || 0;
       continue;
     }
     if (
-      typeof value === "number" ||
-      typeof value === "string" ||
-      typeof value === "boolean"
+      typeof arg.value === "number" ||
+      typeof arg.value === "string" ||
+      typeof arg.value === "boolean"
     ) {
-      namedRecord[arg.name] = value;
+      namedRecord[arg.name] = arg.value;
     }
   }
 
@@ -148,17 +151,12 @@ function evaluateCall(
     }
   }
 
-  const positional = args
-    .filter((arg) => !arg.name)
-    .map((arg) => evaluateExpression(arg.value, ctx, locals));
-  const named = args.filter((arg) => arg.name);
-  const evaluatedArgs =
-    named.length === 0
-      ? positional
-      : named.map((arg) => evaluateExpression(arg.value, ctx, locals));
+  const positional = evaluatedArgs.filter((arg) => !arg.name).map((arg) => arg.value);
+  const named = evaluatedArgs.filter((arg) => arg.name).map((arg) => arg.value);
+  const builtinArgs = named.length === 0 ? positional : named;
 
   if (callee === "eventActive") {
-    const eventName = evaluatedArgs[0];
+    const eventName = builtinArgs[0];
     if (typeof eventName !== "string") {
       return false;
     }
@@ -166,7 +164,7 @@ function evaluateCall(
     return activeIds.includes(eventName);
   }
 
-  return callBuiltinFunction(callee, evaluatedArgs);
+  return callBuiltinFunction(callee, builtinArgs);
 }
 
 export function evaluateExpressionAsNumber(

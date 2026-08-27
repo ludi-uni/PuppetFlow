@@ -1,6 +1,7 @@
 import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core";
 import {
   createDefaultStatefulRegistry,
+  createStatefulRegistry,
   StatefulStore,
 } from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
@@ -130,6 +131,50 @@ describe("executeBehavior", () => {
 
     expect(result.packInvocations).toEqual([
       { packId: "thinking", config: { intensity: 0.6 } },
+    ]);
+  });
+
+  it("evaluates nested stateful Pack config call arguments once", () => {
+    let updates = 0;
+    const statefulRegistry = createStatefulRegistry();
+    statefulRegistry.register({
+      name: "counter",
+      createState: () => 0,
+      update: (_frame, state) => {
+        updates += 1;
+        const value = state + 1;
+        return { value, state: value };
+      },
+    });
+
+    const result = executeBehaviorWithInvocations(
+      {
+        type: "Block",
+        statements: [
+          {
+            type: "MotionPack",
+            packId: "thinking",
+            configExpressions: {
+              intensity: {
+                type: "Call",
+                callee: "abs",
+                args: [
+                  {
+                    name: "value",
+                    value: { type: "Call", callee: "counter", args: [] },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      createCtx({ statefulRegistry }),
+    );
+
+    expect(updates).toBe(1);
+    expect(result.packInvocations).toEqual([
+      { packId: "thinking", config: { intensity: 1 } },
     ]);
   });
 
