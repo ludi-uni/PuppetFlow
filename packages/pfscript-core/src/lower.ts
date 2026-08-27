@@ -3,6 +3,8 @@ import type {
   BehaviorCondition,
   BehaviorExprAssign,
   BehaviorIf,
+  BehaviorLocalAssign,
+  BehaviorLocalLet,
   BehaviorMotionPack,
   BehaviorStatement,
   BehaviorExprCondition,
@@ -18,35 +20,64 @@ import type {
   PfScriptCallStmt,
   PfScriptExpression,
   PfScriptIf,
+  PfScriptLet,
   PfScriptNamedArg,
   PfScriptProgram,
   PfScriptStatement,
 } from "./ast.js";
-import { assertNoLetDeclarations } from "./validation.js";
 
 const COMPARE_OPS = new Set<PfScriptBinaryOp>([">", ">=", "<", "<=", "==", "!="]);
 
 export function lowerPfScriptToBehavior(program: PfScriptProgram): BehaviorBlock {
-  assertNoLetDeclarations(program.body);
   return {
     type: "Block",
-    statements: lowerStatements(program.body),
+    statements: lowerStatements(program.body, { names: new Set() }),
   };
 }
 
-function lowerStatements(statements: PfScriptStatement[]): BehaviorStatement[] {
+interface LoweringScope {
+  readonly names: Set<string>;
+  readonly parent?: LoweringScope;
+}
+
+function hasLocal(scope: LoweringScope, name: string): boolean {
+  for (
+    let current: LoweringScope | undefined = scope;
+    current;
+    current = current.parent
+  ) {
+    if (current.names.has(name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function createChildScope(parent: LoweringScope): LoweringScope {
+  return { names: new Set(), parent };
+}
+
+function lowerStatements(
+  statements: PfScriptStatement[],
+  scope: LoweringScope,
+): BehaviorStatement[] {
   return statements.flatMap((statement) => {
-    const lowered = lowerStatement(statement);
+    const lowered = lowerStatement(statement, scope);
     return lowered ? [lowered] : [];
   });
 }
 
-function lowerStatement(statement: PfScriptStatement): BehaviorStatement | undefined {
+function lowerStatement(
+  statement: PfScriptStatement,
+  scope: LoweringScope,
+): BehaviorStatement | undefined {
   switch (statement.type) {
     case "Assign":
-      return lowerAssign(statement.target, statement.value);
+      return lowerAssign(statement.target, statement.value, scope);
+    case "Let":
+      return lowerLet(statement, scope);
     case "If":
-      return lowerIf(statement);
+      return lowerIf(statement, scope);
     case "CallStmt":
       return lowerCallStmt(statement);
     default:
@@ -54,7 +85,28 @@ function lowerStatement(statement: PfScriptStatement): BehaviorStatement | undef
   }
 }
 
-function lowerAssign(target: string, value: PfScriptExpression): BehaviorExprAssign {
+function lowerLet(statement: PfScriptLet, scope: LoweringScope): BehaviorLocalLet {
+  scope.names.add(statement.name);
+  return {
+    type: "LocalLet",
+    name: statement.name,
+    value: lowerExpression(statement.value),
+  };
+}
+
+function lowerAssign(
+  target: string,
+  value: PfScriptExpression,
+  scope: LoweringScope,
+): BehaviorExprAssign | BehaviorLocalAssign {
+  if (hasLocal(scope, target)) {
+    return {
+      type: "LocalAssign",
+      name: target,
+      value: lowerExpression(value),
+    };
+  }
+
   return {
     type: "ExprAssign",
     target: formatAssignTarget(target),
@@ -62,9 +114,9 @@ function lowerAssign(target: string, value: PfScriptExpression): BehaviorExprAss
   };
 }
 
-function lowerIf(statement: PfScriptIf): BehaviorIf {
+function lowerIf(statement: PfScriptIf, scope: LoweringScope): BehaviorIf {
   let elseBranch: BehaviorStatement[] | undefined = statement.else
-    ? lowerStatements(statement.else)
+    ? lowerStatements(statement.else, createChildScope(scope))
     : undefined;
 
   for (let index = statement.elseif.length - 1; index >= 0; index -= 1) {
@@ -76,7 +128,7 @@ function lowerIf(statement: PfScriptIf): BehaviorIf {
       {
         type: "If",
         condition: lowerCondition(clause.condition),
-        then: lowerStatements(clause.body),
+        then: lowerStatements(clause.body, createChildScope(scope)),
         else: elseBranch,
       },
     ];
@@ -85,13 +137,22 @@ function lowerIf(statement: PfScriptIf): BehaviorIf {
   return {
     type: "If",
     condition: lowerCondition(statement.condition),
-    then: lowerStatements(statement.then),
+    then: lowerStatements(statement.then, createChildScope(scope)),
     else: elseBranch,
   };
 }
 
 function lowerCallStmt(statement: PfScriptCallStmt): BehaviorMotionPack {
-  const config = lowerCallConfig(statement.args);
+  const namedArgs = statement.args.filter((arg) => arg.name);
+  if (namedArgs.some((arg) => arg.value.type !== "Number")) {
+    return {
+      type: "MotionPack",
+      packId: statement.callee,
+      configExpressions: lowerCallConfigExpressions(namedArgs),
+    };
+  }
+
+  const config = lowerCallConfig(namedArgs);
   return {
     type: "MotionPack",
     packId: statement.callee,
@@ -110,6 +171,19 @@ function lowerCallConfig(args: PfScriptNamedArg[]): Record<string, number> {
     }
   }
   return config;
+}
+
+function lowerCallConfigExpressions(
+  args: PfScriptNamedArg[],
+): Record<string, BehaviorExpression> {
+  const configExpressions: Record<string, BehaviorExpression> = {};
+  for (const arg of args) {
+    if (!arg.name) {
+      continue;
+    }
+    configExpressions[arg.name] = lowerExpression(arg.value);
+  }
+  return configExpressions;
 }
 
 function lowerCondition(expression: PfScriptExpression): BehaviorCondition {

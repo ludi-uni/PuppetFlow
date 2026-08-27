@@ -156,8 +156,20 @@ function applyExprAssign(
 
 function recordMotionPack(
   statement: BehaviorMotionPack,
+  ctx: BehaviorExecutionContext,
   packInvocations: BehaviorMotionPackInvocation[],
+  locals: LocalScopeStack,
 ): void {
+  if (statement.configExpressions) {
+    const config: Record<string, number> = {};
+    const localValues = locals.snapshot();
+    for (const [key, expression] of Object.entries(statement.configExpressions)) {
+      config[key] = evaluateExpressionAsNumber(expression, ctx, localValues);
+    }
+    packInvocations.push({ packId: statement.packId, config });
+    return;
+  }
+
   packInvocations.push({
     packId: statement.packId,
     config: statement.config,
@@ -234,7 +246,7 @@ function executeStatement(
       return {};
     }
     case "MotionPack":
-      recordMotionPack(statement, packInvocations);
+      recordMotionPack(statement, ctx, packInvocations, locals);
       return {};
     default:
       return {};

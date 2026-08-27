@@ -1,7 +1,22 @@
 import { MOTION_STATE_KEYS, type MotionStateKey } from "@puppetflow/core";
-import type { BehaviorExpression } from "./expr.js";
+import type { BehaviorExpression, BehaviorNamedArgExpr } from "./expr.js";
 
 const COMPARE_OPS = new Set<CompareOp>([">", ">=", "<", "<=", "==", "!="]);
+const BINARY_OPERATORS = new Set([
+  "+",
+  "-",
+  "*",
+  "/",
+  "%",
+  "==",
+  "!=",
+  ">",
+  ">=",
+  "<",
+  "<=",
+  "and",
+  "or",
+]);
 const ASSIGN_OPS = new Set<AssignOp>(["set", "add"]);
 const MAX_BEHAVIOR_DEPTH = 32;
 const MAX_STATEMENTS_PER_BLOCK = 500;
@@ -74,6 +89,7 @@ export interface BehaviorMotionPack {
   type: "MotionPack";
   packId: string;
   config?: Record<string, number>;
+  configExpressions?: Record<string, BehaviorExpression>;
 }
 
 export interface BehaviorExprAssign {
@@ -175,7 +191,10 @@ function parseBehaviorCondition(value: unknown, path: string): BehaviorCondition
     }
     return {
       kind: "Expr",
-      expression: exprCondition.expression as BehaviorExpression,
+      expression: parseBehaviorExpression(
+        exprCondition.expression,
+        `${path}.expression`,
+      ),
     };
   }
 
@@ -289,7 +308,7 @@ function parseBehaviorStatement(
       return {
         type: "ExprAssign",
         target: exprAssign.target,
-        value: exprAssign.value as BehaviorExpression,
+        value: parseBehaviorExpression(exprAssign.value, `${path}.value`),
       };
     }
     case "LocalLet":
@@ -304,7 +323,7 @@ function parseBehaviorStatement(
       return {
         type: statement.type,
         name: local.name,
-        value: local.value as BehaviorExpression,
+        value: parseBehaviorExpression(local.value, `${path}.value`),
       };
     }
     case "Assign": {
@@ -330,11 +349,25 @@ function parseBehaviorStatement(
         throw new Error(`MotionPack requires a non-empty packId at ${path}`);
       }
       const config = pack.config;
+      const configExpressions = pack.configExpressions;
+      if (config !== undefined && configExpressions !== undefined) {
+        throw new Error(
+          `MotionPack cannot contain both config and configExpressions at ${path}`,
+        );
+      }
       if (
         config !== undefined &&
         (typeof config !== "object" || config === null || Array.isArray(config))
       ) {
         throw new Error(`MotionPack config must be an object at ${path}`);
+      }
+      if (
+        configExpressions !== undefined &&
+        (typeof configExpressions !== "object" ||
+          configExpressions === null ||
+          Array.isArray(configExpressions))
+      ) {
+        throw new Error(`MotionPack configExpressions must be an object at ${path}`);
       }
       const normalized: Record<string, number> = {};
       if (config) {
@@ -344,14 +377,104 @@ function parseBehaviorStatement(
           }
         }
       }
+      const normalizedExpressions: Record<string, BehaviorExpression> = {};
+      if (configExpressions) {
+        for (const [key, expression] of Object.entries(configExpressions)) {
+          normalizedExpressions[key] = parseBehaviorExpression(
+            expression,
+            `${path}.configExpressions.${key}`,
+          );
+        }
+      }
       return {
         type: "MotionPack",
         packId: pack.packId,
-        config: Object.keys(normalized).length > 0 ? normalized : undefined,
+        ...(configExpressions === undefined
+          ? { config: Object.keys(normalized).length > 0 ? normalized : undefined }
+          : { configExpressions: normalizedExpressions }),
       };
     }
     default:
       throw new Error(`unsupported behavior statement at ${path}`);
+  }
+}
+
+function parseBehaviorNamedArg(value: unknown, path: string): BehaviorNamedArgExpr {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`invalid call argument at ${path}`);
+  }
+  const arg = value as Record<string, unknown>;
+  if (arg.name !== undefined && typeof arg.name !== "string") {
+    throw new Error(`invalid call argument name at ${path}`);
+  }
+  return {
+    ...(arg.name === undefined ? {} : { name: arg.name }),
+    value: parseBehaviorExpression(arg.value, `${path}.value`),
+  };
+}
+
+function parseBehaviorExpression(value: unknown, path: string): BehaviorExpression {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`invalid expression at ${path}`);
+  }
+  const expression = value as Record<string, unknown>;
+  switch (expression.type) {
+    case "Number":
+      if (typeof expression.value !== "number" || !Number.isFinite(expression.value)) {
+        throw new Error(`invalid Number expression at ${path}`);
+      }
+      return { type: "Number", value: expression.value };
+    case "String":
+      if (typeof expression.value !== "string") {
+        throw new Error(`invalid String expression at ${path}`);
+      }
+      return { type: "String", value: expression.value };
+    case "Boolean":
+      if (typeof expression.value !== "boolean") {
+        throw new Error(`invalid Boolean expression at ${path}`);
+      }
+      return { type: "Boolean", value: expression.value };
+    case "Identifier":
+      if (typeof expression.name !== "string" || expression.name.length === 0) {
+        throw new Error(`invalid Identifier expression at ${path}`);
+      }
+      return { type: "Identifier", name: expression.name };
+    case "Unary":
+      if (expression.op !== "not" && expression.op !== "-") {
+        throw new Error(`invalid Unary operator at ${path}`);
+      }
+      return {
+        type: "Unary",
+        op: expression.op,
+        argument: parseBehaviorExpression(expression.argument, `${path}.argument`),
+      };
+    case "Binary":
+      if (typeof expression.op !== "string" || !BINARY_OPERATORS.has(expression.op)) {
+        throw new Error(`invalid Binary operator at ${path}`);
+      }
+      return {
+        type: "Binary",
+        op: expression.op,
+        left: parseBehaviorExpression(expression.left, `${path}.left`),
+        right: parseBehaviorExpression(expression.right, `${path}.right`),
+      };
+    case "Call":
+      if (
+        typeof expression.callee !== "string" ||
+        expression.callee.length === 0 ||
+        !Array.isArray(expression.args)
+      ) {
+        throw new Error(`invalid Call expression at ${path}`);
+      }
+      return {
+        type: "Call",
+        callee: expression.callee,
+        args: expression.args.map((arg, index) =>
+          parseBehaviorNamedArg(arg, `${path}.args[${index}]`),
+        ),
+      };
+    default:
+      throw new Error(`unsupported expression at ${path}`);
   }
 }
 

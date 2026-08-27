@@ -106,6 +106,33 @@ describe("executeBehavior", () => {
     ]);
   });
 
+  it("evaluates dynamic Pack config expressions in the executed branch", () => {
+    const result = executeBehaviorWithInvocations(
+      {
+        type: "Block",
+        statements: [
+          {
+            type: "LocalLet",
+            name: "intensity",
+            value: { type: "Number", value: 0.6 },
+          },
+          {
+            type: "MotionPack",
+            packId: "thinking",
+            configExpressions: {
+              intensity: { type: "Identifier", name: "intensity" },
+            },
+          },
+        ],
+      },
+      createCtx(),
+    );
+
+    expect(result.packInvocations).toEqual([
+      { packId: "thinking", config: { intensity: 0.6 } },
+    ]);
+  });
+
   it("uses the last assignment when the same key is assigned multiple times", () => {
     const root: BehaviorBlock = {
       type: "Block",

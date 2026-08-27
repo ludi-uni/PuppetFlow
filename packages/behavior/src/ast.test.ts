@@ -97,4 +97,22 @@ describe("parseBehaviorRoot", () => {
       ],
     });
   });
+
+  it("rejects a serialized Pack that contains both config forms", () => {
+    expect(() =>
+      parseBehaviorRoot({
+        type: "Block",
+        statements: [
+          {
+            type: "MotionPack",
+            packId: "thinking",
+            config: { intensity: 0.8 },
+            configExpressions: {
+              intensity: { type: "Number", value: 0.8 },
+            },
+          },
+        ],
+      }),
+    ).toThrow(/config.*configExpressions/i);
+  });
 });

@@ -4,27 +4,83 @@ import { SPEC_SAMPLE_PFSCRIPT } from "./samples.js";
 import { lowerPfScriptToBehavior } from "./lower.js";
 
 describe("lowerPfScriptToBehavior", () => {
-  it("rejects let declarations instead of dropping local bindings", () => {
-    for (const source of [
-      "let target = 0.5\nsmile = target",
-      `if true then
-  let target = 0.5
-end`,
-      `if false then
-  smile = 0.5
-elseif true then
-  let target = 0.5
-end`,
-      `if false then
-  smile = 0.5
-else
-  let target = 0.5
-end`,
-    ]) {
-      expect(() => lowerPfScriptToBehavior(parsePfScript(source))).toThrow(
-        "PFScript let declarations are not supported by compilation",
-      );
-    }
+  it("lowers let and later assignment to local Behavior nodes", () => {
+    const behavior = lowerPfScriptToBehavior(
+      parsePfScript(
+        "let target = interest * 0.5\ntarget = target + 0.1\nsmile = target",
+      ),
+    );
+
+    expect(behavior.statements).toEqual([
+      {
+        type: "LocalLet",
+        name: "target",
+        value: {
+          type: "Binary",
+          op: "*",
+          left: { type: "Identifier", name: "interest" },
+          right: { type: "Number", value: 0.5 },
+        },
+      },
+      {
+        type: "LocalAssign",
+        name: "target",
+        value: {
+          type: "Binary",
+          op: "+",
+          left: { type: "Identifier", name: "target" },
+          right: { type: "Number", value: 0.1 },
+        },
+      },
+      {
+        type: "ExprAssign",
+        target: "mouthX",
+        value: { type: "Identifier", name: "target" },
+      },
+    ]);
+  });
+
+  it("uses child scopes for branch declarations and inherited scopes for updates", () => {
+    const behavior = lowerPfScriptToBehavior(
+      parsePfScript(
+        "let value = 0.2\nif interest > 0.5 then\n  let branchValue = 0.4\n  value = branchValue\nend\nsmile = value",
+      ),
+    );
+
+    expect(behavior.statements[1]).toMatchObject({
+      type: "If",
+      then: [
+        { type: "LocalLet", name: "branchValue" },
+        { type: "LocalAssign", name: "value" },
+      ],
+    });
+    expect(behavior.statements[2]).toMatchObject({
+      type: "ExprAssign",
+      target: "mouthX",
+    });
+  });
+
+  it("keeps literal-only Pack config and wraps mixed config as expressions", () => {
+    const behavior = lowerPfScriptToBehavior(
+      parsePfScript(
+        "thinking(intensity = 0.8)\nthinking(intensity = interest * 0.5, damping = 0.2)",
+      ),
+    );
+
+    expect(behavior.statements[0]).toEqual({
+      type: "MotionPack",
+      packId: "thinking",
+      config: { intensity: 0.8 },
+    });
+    expect(behavior.statements[1]).toMatchObject({
+      type: "MotionPack",
+      packId: "thinking",
+      configExpressions: {
+        intensity: { type: "Binary", op: "*" },
+        damping: { type: "Number", value: 0.2 },
+      },
+    });
+    expect((behavior.statements[1] as { config?: unknown }).config).toBeUndefined();
   });
 
   it("lowers the spec sample to a behavior block", () => {
