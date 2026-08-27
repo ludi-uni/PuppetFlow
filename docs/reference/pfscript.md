@@ -253,7 +253,7 @@ version-3 compiled cache.
 
 [追加仕様.md](../追加仕様.md) に記載があるが Phase 1 では **未対応または部分対応** の例:
 
-- 式中の Plugin 関数呼び出し（`lerp(smile, targetSmile, 0.1)` 等）
+- Pack / Generator の副作用呼び出しを式中で使うこと（`thinking()` 等は文としてのみ使用可）
 - PFScript → Graph への自動変換
 
 詳細: [追加仕様.md — 実装メモ](../追加仕様.md#実装メモphase-1)
