@@ -1,0 +1,4 @@
+-- Tail and animal-ear physics using the bundled Stateful registry
+
+tailWag = tailPhysics(id = "demo-tail", frequency = 1.2, amplitude = 0.35, stiffness = 160, damping = 16)
+earAngle = earPhysics(id = "demo-ears", intensity = 0.4, holdInterval = 0.8, stiffness = 120, damping = 14)

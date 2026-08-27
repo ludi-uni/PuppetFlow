@@ -1,6 +1,7 @@
 # 実装計画 — Stateful Node System
 
 > **ステータス: 完了（2026-06）** — M0–M5 + gaze/blink 移行 + Scratch Natural Motion  
+> **Phase 4 補完: I4-1〜I4-3 完了（2026-08-27）** — I4-4（gaze / blink の移行検討）は保留
 > 仕様ソース: [追加仕様.md](追加仕様.md)（Stateful Node System 章）  
 > 関連: [behavior-and-graph.md](reference/behavior-and-graph.md) / [pfscript.md](reference/pfscript.md) / [motion-extension.md](reference/motion-extension.md)
 
@@ -247,12 +248,14 @@ interface StatefulNodePlugin {
 
 **Objective:** 尻尾・耳・髪等を `StatefulNodePlugin` として拡張。
 
-| ID   | Issue                                         | Size | Priority | 受け入れ条件                     |
-| ---- | --------------------------------------------- | ---- | -------- | -------------------------------- |
-| I4-1 | `StatefulNodePlugin` 公開 API                 | S    | P0       | `extension-bundled` と同様の登録 |
-| I4-2 | `TailPhysics` / `EarPhysics` サンプル         | L    | P1       | Spring チェーン or 単 Spring     |
-| I4-3 | `plugin-tail` / `plugin-animal-ears` 内部刷新 | M    | P1       | 位相維持・慣性付き               |
-| I4-4 | `gaze` / `blink` behaviorPlugin 移行検討      | L    | P2       | 設定互換 or deprecation 告知     |
+`StatefulNodePlugin` の公開API、TailPhysics / EarPhysics のRuntime登録、公式PFScriptサンプル、`plugin-tail` / `plugin-animal-ears` のStateful経路は実装済みです。既存の `gaze` / `blink` 移行は互換性評価が必要なため I4-4 として保留します。
+
+| ID   | Issue                                                 | Size | Priority | 受け入れ条件                     |
+| ---- | ----------------------------------------------------- | ---- | -------- | -------------------------------- |
+| I4-1 | `StatefulNodePlugin` 公開 API（完了）                 | S    | P0       | `extension-bundled` と同様の登録 |
+| I4-2 | `TailPhysics` / `EarPhysics` サンプル（完了）         | L    | P1       | Spring チェーン or 単 Spring     |
+| I4-3 | `plugin-tail` / `plugin-animal-ears` 内部刷新（完了） | M    | P1       | 位相維持・慣性付き               |
+| I4-4 | `gaze` / `blink` behaviorPlugin 移行検討              | L    | P2       | 設定互換 or deprecation 告知     |
 
 ---
 

@@ -4,6 +4,10 @@ import {
   registerExtensionPlugins,
 } from "@puppetflow/extension-core";
 import { ChannelStore, StateStore, type MotionState } from "@puppetflow/core";
+import {
+  createRuntimeStatefulRegistry,
+  StatefulStore,
+} from "@puppetflow/stateful-core";
 import { animalEarsExtensionPlugin } from "./index.js";
 
 function baseMotion(): MotionState {
@@ -48,5 +52,37 @@ describe("plugin-animal-ears", () => {
     expect(output.custom?.earAngle).toBeDefined();
     expect(output.custom!.earAngle).toBeGreaterThanOrEqual(0);
     expect(output.custom!.earAngle).toBeLessThanOrEqual(1);
+  });
+
+  it("uses earPhysics when a runtime Stateful context is provided", () => {
+    const registry = createMotionRegistry();
+    registerExtensionPlugins(registry, [animalEarsExtensionPlugin]);
+    const pack = registry.packs.get("earTwitch");
+    const statefulStore = new StatefulStore();
+    const statefulRegistry = createRuntimeStatefulRegistry();
+
+    pack!.execute(
+      {
+        state: new StateStore(),
+        channels: new ChannelStore(),
+        deltaTime: 1 / 60,
+        time: 0,
+        timelineCurrentMs: 0,
+        activeTimelineEvents: [],
+        motion: baseMotion(),
+        custom: {},
+        statefulStore,
+        statefulRegistry,
+        frame: { deltaTime: 1 / 60, frameNumber: 0, elapsedTime: 0 },
+      },
+      { intensity: 0.4 },
+    );
+
+    expect(statefulStore.snapshot()).toEqual([
+      expect.objectContaining({
+        functionName: "earPhysics",
+        instanceId: "earTwitch",
+      }),
+    ]);
   });
 });

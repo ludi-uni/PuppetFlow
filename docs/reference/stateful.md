@@ -137,6 +137,7 @@ registerStatefulPlugins(registry, [myPlugin]);
 | [stateful-breathing.pfscript](../../examples/pfscript/stateful-breathing.pfscript)     | `breath` + `oscillator`           |
 | [stateful-spring-look.pfscript](../../examples/pfscript/stateful-spring-look.pfscript) | `spring` + `smooth`               |
 | [stateful-idle.pfscript](../../examples/pfscript/stateful-idle.pfscript)               | 待機（blink / wander / cooldown） |
+| [stateful-physics.pfscript](../../examples/pfscript/stateful-physics.pfscript)         | TailPhysics / EarPhysics          |
 
 ---
 

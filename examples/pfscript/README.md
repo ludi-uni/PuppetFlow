@@ -9,6 +9,7 @@ PuppetFlow PFScript（Behavior DSL）の公式サンプルです。
 | `basic-smile.pfscript`      | State / Channel から mouth へマッピングする最小例                               |
 | `lipsync-thinking.pfscript` | リップシンク + 体のゆらぎ（単体 `.pfscript` では `smile` も含む）               |
 | `stateful-*.pfscript`       | Stateful 関数（呼吸・視線スプリング等）の断片例                                 |
+| `stateful-physics.pfscript` | TailPhysics / EarPhysics の公式 Stateful サンプル                               |
 | `pfscript-demo.pfpreset`    | **Standard モデル**準拠の Preset v3（PFScript + Graph + blink/idle + thinking） |
 
 ### `pfscript-demo.pfpreset` の役割分担
@@ -44,6 +45,7 @@ console.log(compileToBehaviorJson(src));
 ## 関連ドキュメント
 
 - [docs/reference/pfscript.md](../../docs/reference/pfscript.md)
+- [docs/reference/stateful.md](../../docs/reference/stateful.md)
 - [docs/reference/presets.md](../../docs/reference/presets.md)
 - [docs/adr/preset-canonical-model.md](../../docs/adr/preset-canonical-model.md)
 - [docs/implementation-plan-pfscript.md](../../docs/implementation-plan-pfscript.md)

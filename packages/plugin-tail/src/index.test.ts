@@ -4,6 +4,10 @@ import {
   registerExtensionPlugins,
 } from "@puppetflow/extension-core";
 import { ChannelStore, StateStore, type MotionState } from "@puppetflow/core";
+import {
+  createRuntimeStatefulRegistry,
+  StatefulStore,
+} from "@puppetflow/stateful-core";
 import { tailExtensionPlugin } from "./index.js";
 
 function baseMotion(): MotionState {
@@ -48,5 +52,37 @@ describe("plugin-tail", () => {
     expect(output.custom?.tailWag).toBeDefined();
     expect(output.custom!.tailWag).toBeGreaterThanOrEqual(0);
     expect(output.custom!.tailWag).toBeLessThanOrEqual(1);
+  });
+
+  it("uses tailPhysics when a runtime Stateful context is provided", () => {
+    const registry = createMotionRegistry();
+    registerExtensionPlugins(registry, [tailExtensionPlugin]);
+    const pack = registry.packs.get("tailWag");
+    const statefulStore = new StatefulStore();
+    const statefulRegistry = createRuntimeStatefulRegistry();
+
+    pack!.execute(
+      {
+        state: new StateStore(),
+        channels: new ChannelStore(),
+        deltaTime: 1 / 60,
+        time: 0,
+        timelineCurrentMs: 0,
+        activeTimelineEvents: [],
+        motion: baseMotion(),
+        custom: {},
+        statefulStore,
+        statefulRegistry,
+        frame: { deltaTime: 1 / 60, frameNumber: 0, elapsedTime: 0 },
+      },
+      { intensity: 0.7 },
+    );
+
+    expect(statefulStore.snapshot()).toEqual([
+      expect.objectContaining({
+        functionName: "tailPhysics",
+        instanceId: "tailWag",
+      }),
+    ]);
   });
 });

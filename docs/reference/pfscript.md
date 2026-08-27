@@ -246,6 +246,7 @@ version-3 compiled cache.
 | [examples/pfscript/stateful-breathing.pfscript](../../examples/pfscript/stateful-breathing.pfscript)     | Stateful 呼吸                     |
 | [examples/pfscript/stateful-spring-look.pfscript](../../examples/pfscript/stateful-spring-look.pfscript) | Spring + smooth                   |
 | [examples/pfscript/stateful-idle.pfscript](../../examples/pfscript/stateful-idle.pfscript)               | 待機（blink / wander / cooldown） |
+| [examples/pfscript/stateful-physics.pfscript](../../examples/pfscript/stateful-physics.pfscript)         | TailPhysics / EarPhysics          |
 
 ---
 

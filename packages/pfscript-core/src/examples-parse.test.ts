@@ -26,4 +26,20 @@ describe("official PFScript examples", () => {
     const behavior = compilePfScript(readExample("random-toggle.pfscript"));
     expect(behavior.statements.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("compiles stateful-physics.pfscript", () => {
+    const behavior = compilePfScript(readExample("stateful-physics.pfscript"));
+
+    expect(behavior.statements).toHaveLength(2);
+    expect(behavior.statements[0]).toMatchObject({
+      type: "ExprAssign",
+      target: "custom:tailWag",
+      value: { type: "Call", callee: "tailPhysics" },
+    });
+    expect(behavior.statements[1]).toMatchObject({
+      type: "ExprAssign",
+      target: "custom:earAngle",
+      value: { type: "Call", callee: "earPhysics" },
+    });
+  });
 });

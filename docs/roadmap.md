@@ -123,12 +123,12 @@ Phase 1 を完了したうえで、OSS として段階的に拡張する計画�
 
 [implementation-plan-stateful.md](implementation-plan-stateful.md) / [stateful.md](reference/stateful.md)
 
-| 項目                                      | 状況    |
-| ----------------------------------------- | ------- |
-| oscillator / smooth / spring / randomHold | ✅      |
-| blink / breath / wander / cooldown        | ✅      |
-| Graph + PFScript + Scratch 統合           | ✅      |
-| TailPhysics / EarPhysics サンプル         | ⬜ 将来 |
+| 項目                                      | 状況 |
+| ----------------------------------------- | ---- |
+| oscillator / smooth / spring / randomHold | ✅   |
+| blink / breath / wander / cooldown        | ✅   |
+| Graph + PFScript + Scratch 統合           | ✅   |
+| TailPhysics / EarPhysics サンプル         | ✅   |
 
 ---
 

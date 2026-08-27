@@ -2,6 +2,7 @@ import { ChannelStore, DEFAULT_MOTION_STATE, StateStore } from "@puppetflow/core
 import {
   createDefaultStatefulRegistry,
   createStatefulRegistry,
+  createRuntimeStatefulRegistry,
   StatefulStore,
 } from "@puppetflow/stateful-core";
 import { describe, expect, it } from "vitest";
@@ -248,6 +249,57 @@ describe("executeBehavior", () => {
 
     expect(allowed.eyeYaw).toBeCloseTo(0.2, 3);
     expect(blocked.eyeYaw).toBeUndefined();
+  });
+
+  it("executes tail and ear physics expressions with the runtime registry", () => {
+    const statefulStore = new StatefulStore();
+    const frame = { deltaTime: 1 / 60, frameNumber: 0, elapsedTime: 0 };
+    const output = executeBehavior(
+      {
+        type: "Block",
+        statements: [
+          {
+            type: "ExprAssign",
+            target: "custom:tailWag",
+            value: {
+              type: "Call",
+              callee: "tailPhysics",
+              args: [
+                { name: "id", value: { type: "String", value: "demo-tail" } },
+                { name: "frequency", value: { type: "Number", value: 1.2 } },
+                { name: "amplitude", value: { type: "Number", value: 0.35 } },
+              ],
+            },
+          },
+          {
+            type: "ExprAssign",
+            target: "custom:earAngle",
+            value: {
+              type: "Call",
+              callee: "earPhysics",
+              args: [
+                { name: "id", value: { type: "String", value: "demo-ears" } },
+                { name: "intensity", value: { type: "Number", value: 0.4 } },
+                { name: "holdInterval", value: { type: "Number", value: 0.8 } },
+              ],
+            },
+          },
+        ],
+      },
+      createCtx({
+        statefulStore,
+        statefulRegistry: createRuntimeStatefulRegistry(),
+        frame,
+        time: frame.elapsedTime,
+      }),
+    );
+
+    expect(output.custom?.tailWag).toBeDefined();
+    expect(output.custom?.earAngle).toBeDefined();
+    expect(statefulStore.snapshot().map((entry) => entry.functionName)).toEqual([
+      "earPhysics",
+      "tailPhysics",
+    ]);
   });
 
   it("uses a local value without emitting a custom key", () => {
