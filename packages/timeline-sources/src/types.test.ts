@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TimelineSourceParseError } from "./errors.js";
-import { isRecord, parseOffsetMs } from "./validation.js";
+import { addOffset, isRecord, parseOffsetMs } from "./validation.js";
 
 describe("timeline source contract", () => {
   it("recognizes plain records but not null or arrays", () => {
@@ -20,6 +20,15 @@ describe("timeline source contract", () => {
       expect(() => parseOffsetMs("test", options)).toThrow(TimelineSourceParseError);
     },
   );
+
+  it.each([
+    [Number.MAX_VALUE, Number.MAX_VALUE],
+    [-1, 0],
+  ])("rejects computed boundary outside the timeline %#", (offsetMs, boundaryMs) => {
+    expect(() => addOffset("test", "computed", offsetMs, boundaryMs)).toThrow(
+      TimelineSourceParseError,
+    );
+  });
 
   it("keeps source ID, path, name, and message on parse errors", () => {
     const error = new TimelineSourceParseError(

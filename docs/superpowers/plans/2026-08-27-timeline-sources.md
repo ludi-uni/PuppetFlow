@@ -115,7 +115,7 @@ Create the package metadata using the existing workspace package convention:
   "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "test": "vitest run --dir ."
+    "test": "vitest run --root ../.. packages/timeline-sources/src"
   },
   "dependencies": {
     "@puppetflow/core": "workspace:*"
