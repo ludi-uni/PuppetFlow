@@ -96,9 +96,13 @@ describe("pfscript parser", () => {
     ]);
   });
 
-  it("parses let in an if then block", () => {
+  it("parses let in if then, elseif, and else blocks", () => {
     const program = parsePfScript(`if true then
-  let target = interest * 0.5
+  let thenTarget = interest * 0.5
+elseif false then
+  let elseifTarget = interest * 0.25
+else
+  let elseTarget = interest * 0.1
 end`);
 
     expect(program.body[0]).toMatchObject({
@@ -106,12 +110,40 @@ end`);
       then: [
         {
           type: "Let",
-          name: "target",
+          name: "thenTarget",
           value: {
             type: "Binary",
             op: "*",
             left: { type: "Identifier", name: "interest" },
             right: { type: "Number", value: 0.5 },
+          },
+        },
+      ],
+      elseif: [
+        {
+          body: [
+            {
+              type: "Let",
+              name: "elseifTarget",
+              value: {
+                type: "Binary",
+                op: "*",
+                left: { type: "Identifier", name: "interest" },
+                right: { type: "Number", value: 0.25 },
+              },
+            },
+          ],
+        },
+      ],
+      else: [
+        {
+          type: "Let",
+          name: "elseTarget",
+          value: {
+            type: "Binary",
+            op: "*",
+            left: { type: "Identifier", name: "interest" },
+            right: { type: "Number", value: 0.1 },
           },
         },
       ],

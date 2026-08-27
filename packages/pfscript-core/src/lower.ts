@@ -22,10 +22,12 @@ import type {
   PfScriptProgram,
   PfScriptStatement,
 } from "./ast.js";
+import { assertNoLetDeclarations } from "./validation.js";
 
 const COMPARE_OPS = new Set<PfScriptBinaryOp>([">", ">=", "<", "<=", "==", "!="]);
 
 export function lowerPfScriptToBehavior(program: PfScriptProgram): BehaviorBlock {
+  assertNoLetDeclarations(program.body);
   return {
     type: "Block",
     statements: lowerStatements(program.body),

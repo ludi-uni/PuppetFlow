@@ -4,6 +4,29 @@ import { SPEC_SAMPLE_PFSCRIPT } from "./samples.js";
 import { lowerPfScriptToBehavior } from "./lower.js";
 
 describe("lowerPfScriptToBehavior", () => {
+  it("rejects let declarations instead of dropping local bindings", () => {
+    for (const source of [
+      "let target = 0.5\nsmile = target",
+      `if true then
+  let target = 0.5
+end`,
+      `if false then
+  smile = 0.5
+elseif true then
+  let target = 0.5
+end`,
+      `if false then
+  smile = 0.5
+else
+  let target = 0.5
+end`,
+    ]) {
+      expect(() => lowerPfScriptToBehavior(parsePfScript(source))).toThrow(
+        "PFScript let declarations are not supported by compilation",
+      );
+    }
+  });
+
   it("lowers the spec sample to a behavior block", () => {
     const program = parsePfScript(SPEC_SAMPLE_PFSCRIPT);
     const behavior = lowerPfScriptToBehavior(program);
