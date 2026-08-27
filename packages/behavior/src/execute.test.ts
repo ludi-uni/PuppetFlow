@@ -305,6 +305,42 @@ describe("executeBehavior", () => {
     expect(output.mouthX).toBeCloseTo(0.7, 3);
   });
 
+  it("does not retain locals between behavior executions", () => {
+    const firstOutput = executeBehavior(
+      {
+        type: "Block",
+        statements: [
+          { type: "LocalLet", name: "value", value: { type: "Number", value: 0.8 } },
+          {
+            type: "ExprAssign",
+            target: "mouthX",
+            value: { type: "Identifier", name: "value" },
+          },
+        ],
+      },
+      createCtx(),
+    );
+
+    const state = new StateStore();
+    state.set("value", 0.3);
+    const secondOutput = executeBehavior(
+      {
+        type: "Block",
+        statements: [
+          {
+            type: "ExprAssign",
+            target: "mouthX",
+            value: { type: "Identifier", name: "value" },
+          },
+        ],
+      },
+      createCtx({ state }),
+    );
+
+    expect(firstOutput.mouthX).toBeCloseTo(0.8, 3);
+    expect(secondOutput.mouthX).toBeCloseTo(0.3, 3);
+  });
+
   it("rejects assignment to an undeclared local", () => {
     expect(() =>
       executeBehavior(
