@@ -1,7 +1,7 @@
 # 実装計画 — Input Channel & Timeline
 
-> **ステータス: M1〜M3 完了（2026-06）** — Timeline Sources（M5）は未着手  
-> 仕様: [追加仕様.md](追加仕様.md)  
+> **ステータス: M1〜M5 完了（2026-08-27）**
+> 仕様: [追加仕様.md](追加仕様.md)
 > 設計決定: [adr/input-timeline-design-decisions.md](adr/input-timeline-design-decisions.md)
 
 [追加仕様.md](追加仕様.md)（Input Channel & Timeline 拡張）に基づく実装計画です。  
@@ -24,7 +24,7 @@ vNext MVP（[implementation-plan.md](implementation-plan.md)）完了後の Phas
 - 入力を **State / Channel / Timeline** の3層に分離し、外部システムは「入力データ」を渡すだけにする
 - `runtime.channels.*` / `runtime.timeline.*` API を `@puppetflow/runtime` に追加する
 - Behavior / Motion Graph から Channel・Timeline を参照し、**音量リップシンク・音素リップシンク**を MotionState → VMC まで流す
-- Timeline Source（SRT / VOICEVOX 変換）は Core 外の将来パッケージとする
+- Timeline Source（Rhubarb / VOICEVOX 変換）は Core 外の `@puppetflow/timeline-sources` パッケージとする
 - `plugin-emotion` を Channel ベースに移行する
 
 **目標パイプライン:**
@@ -56,7 +56,7 @@ Bridge/Script  ──→ TimelineStore   (global clock)
 | M2  | **Pipeline 統合**            | tick 統合、Graph ノード、phoneme テーブル、emotion 移行 | 1.5〜2 週 |
 | M3  | **Studio & Sources**         | Pipeline 監視、Graph UI、Channel ペイロード             | 1.5〜2 週 |
 | M4  | **LipSync 縦スライス**       | volume + phoneme E2E デモ                               | 1 週      |
-| M5  | **Timeline Sources**（将来） | 外部フォーマット → TimelineEvent 変換                   | 2〜3 週   |
+| M5  | **Timeline Sources**（完了） | 外部フォーマット → TimelineEvent 変換                   | 2〜3 週   |
 
 ---
 
@@ -194,7 +194,9 @@ Bridge/Script  ──→ TimelineStore   (global clock)
 
 ---
 
-### Epic E6 — Timeline Sources（将来 M5）
+### Epic E6 — Timeline Sources
+
+**Status:** 完了（2026-08-27）
 
 - **I23 TimelineSource interface** (size: S, priority: P2)
 - **I24 Rhubarb JSON adapter** (size: M, priority: P2)

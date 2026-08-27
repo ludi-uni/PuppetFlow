@@ -51,6 +51,7 @@ Adapters → 外部 Viewer
 | [Motion Extension](reference/motion-extension.md)           | Extension Layer、Pack、custom パラメータ |
 | [PFScript](reference/pfscript.md)                           | 上級者向け Behavior DSL（.pfscript）     |
 | [Stateful 関数](reference/stateful.md)                      | フレーム跨ぎ状態・Physics Pack 連携      |
+| [Timeline Sources](reference/timeline-sources.md)           | Rhubarb / VOICEVOX の TimelineEvent 変換 |
 | [プリセット](reference/presets.md)                          | Preset v3、Standard モデル、公式 7 種    |
 | [アダプタ](reference/adapters.md)                           | VMC / Live2D / VRM / WebSocket / Logger  |
 | [State Sources](reference/sources.md)                       | HTTP / WebSocket / MQTT / Discord        |
@@ -60,7 +61,7 @@ Adapters → 外部 Viewer
 | ドキュメント                                                           | 内容                                               |
 | ---------------------------------------------------------------------- | -------------------------------------------------- |
 | [追加仕様（Motion Extension / PFScript 設計メモ）](追加仕様.md)        | PFScript DSL / Extension Layer の設計草案          |
-| [実装計画（PFScript）](implementation-plan-pfscript.md)                | PFScript Issue 分解・**M1–M6 完了**                |
+| [実装計画（PFScript）](implementation-plan-pfscript.md)                | PFScript Issue 分解・**M1–M6 + Phase 2 完了**      |
 | [Stateful 関数](reference/stateful.md)                                 | フレーム跨ぎ状態・Physics Pack 連携                |
 | [実装計画（Stateful Node）](implementation-plan-stateful.md)           | Stateful 関数・ノード Issue 分解（**完了**）       |
 | [リファクタリング計画（進捗）](refactoring-plan.md)                    | R0–R5 フェーズの完了状況と残タスク                 |
@@ -68,7 +69,7 @@ Adapters → 外部 Viewer
 | [設計決定（Mapper / Inochi2D）](adr/motion-mapper-inochi2d.md)         | nijiexpose は live2d ターゲットを使用              |
 | [設計決定（Preset 正本）](adr/preset-canonical-model.md)               | behaviorPfScript 正本 / overlap / custom 値域      |
 | [設計決定（Stateful）](adr/stateful-design-decisions.md)               | Stateful / Modifier / Plugin の境界                |
-| [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（未着手）                      |
+| [実装計画（Input & Timeline）](implementation-plan-input-timeline.md)  | Phase 11 Issue 分解（**M1〜M5 完了**）             |
 | [設計決定（Input & Timeline）](adr/input-timeline-design-decisions.md) | sticky Channel / global clock / phoneme テーブル等 |
 
 ### vNext 移行（履歴・MVP 完了）

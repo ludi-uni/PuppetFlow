@@ -1,6 +1,6 @@
 # Timeline Sources Design
 
-**Status:** Draft for user review
+**Status:** Approved and implemented
 **Date:** 2026-08-27
 
 ## Goal

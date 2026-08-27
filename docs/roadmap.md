@@ -78,32 +78,32 @@ Phase 1 を完了したうえで、OSS として段階的に拡張する計画�
 
 ---
 
-## Phase 11 — Input Channel & Timeline 🔶
+## Phase 11 — Input Channel & Timeline ✅
 
 [追加仕様.md](追加仕様.md) / [implementation-plan-input-timeline.md](implementation-plan-input-timeline.md)
 
-| 項目                                                  | 状況    |
-| ----------------------------------------------------- | ------- |
-| ChannelStore（sticky）/ TimelineStore                 | ✅      |
-| Graph: channelInput / volumeToMouth / phonemeToShape  | ✅      |
-| PFScript: `volume`, `currentPhoneme`, `eventActive()` | ✅      |
-| Studio Pipeline 監視                                  | ✅      |
-| Timeline Sources（Rhubarb / VOICEVOX 等）             | ⬜ 将来 |
+| 項目                                                  | 状況 |
+| ----------------------------------------------------- | ---- |
+| ChannelStore（sticky）/ TimelineStore                 | ✅   |
+| Graph: channelInput / volumeToMouth / phonemeToShape  | ✅   |
+| PFScript: `volume`, `currentPhoneme`, `eventActive()` | ✅   |
+| Studio Pipeline 監視                                  | ✅   |
+| Timeline Sources（Rhubarb / VOICEVOX 等）             | ✅   |
 
 ---
 
 ## Phase 12 — PFScript ✅
 
-[implementation-plan-pfscript.md](implementation-plan-pfscript.md) — **M1–M6 完了**
+[implementation-plan-pfscript.md](implementation-plan-pfscript.md) — **M1–M6 + Phase 2 完了（2026-08-27）**
 
-| 項目                                                     | 状況    |
-| -------------------------------------------------------- | ------- |
-| Lexer / Parser / Lowering（`@puppetflow/pfscript-core`） | ✅      |
-| `behaviorPfScript` + Preset コンパイル                   | ✅      |
-| Studio PFScript タブ                                     | ✅      |
-| 組み込み関数 + stateful 関数                             | ✅      |
-| `examples/pfscript/` サンプル                            | ✅      |
-| Phase 2（ローカル変数、式中 Pack 呼び出し）              | ⬜ 将来 |
+| 項目                                                     | 状況 |
+| -------------------------------------------------------- | ---- |
+| Lexer / Parser / Lowering（`@puppetflow/pfscript-core`） | ✅   |
+| `behaviorPfScript` + Preset コンパイル                   | ✅   |
+| Studio PFScript タブ                                     | ✅   |
+| 組み込み関数 + stateful 関数                             | ✅   |
+| `examples/pfscript/` サンプル                            | ✅   |
+| Phase 2（ローカル変数、式中 Pack 呼び出し）              | ✅   |
 
 ---
 

@@ -1,5 +1,7 @@
 # PFScript Phase 2 Implementation Plan
 
+> **実行状況:** 完了（2026-08-27）
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add per-tick block-local PFScript variables, numeric scalar extension-function expressions, expression-valued Motion Pack configuration, and the approved alias/composition/Preset policies while preserving Phase 1 behavior.

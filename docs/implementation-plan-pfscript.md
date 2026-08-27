@@ -1,7 +1,7 @@
 # 実装計画 — PFScript（Behavior Language）
 
-> **ステータス: M1–M6 完了（2026-06）**  
-> 仕様ソース: [追加仕様.md](追加仕様.md)（PFScript 章）  
+> **ステータス: M1–M6 + Phase 2 完了（2026-08-27）**
+> 仕様ソース: [追加仕様.md](追加仕様.md)（PFScript 章）
 > 関連: [behavior-and-graph.md](reference/behavior-and-graph.md) / [motion-extension.md](reference/motion-extension.md) / [presets.md](reference/presets.md)
 
 ---
@@ -32,7 +32,7 @@ merge → Modifiers → Extension Layer → Adapters
 
 ---
 
-## 2) 現状とのギャップ
+## 2) 現状とのギャップ（Phase 2 実装前のベースライン）
 
 | 領域                        | 現状                                                  | 仕様で必要                                                                |
 | --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -51,30 +51,31 @@ merge → Modifiers → Extension Layer → Adapters
 
 ---
 
-## 3) 設計決定（提案・要 ADR）
+## 3) 設計決定（Phase 1〜2）
 
-| #   | 論点                         | 提案                                                                                                                                              |
-| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | PFScript AST と Behavior AST | **2 段 AST**。PFScript AST → Lowering → Behavior AST（Scratch/Blockly と同じ出口）                                                                |
-| D2  | Graph との関係               | Graph は **現状維持**（数値 UI）。PFScript は Behavior 式を担い、Graph へ自動 lower しない（Phase 1）                                             |
-| D3  | 仕様の Motion 名             | **エイリアス表**（`smile` → `mouthX` 等）を `pfscript-core` に定義。未マップは `custom` へ                                                        |
-| D4  | Preset への格納              | `behaviorPfScript?: string`（ソース）+ `behavior`（コンパイル結果キャッシュ）。Studio Export 時に両方更新                                         |
-| D5  | ローカル変数                 | **Phase 1 非対応**（`lerp(smile, targetSmile, 0.1)` の `targetSmile` は仕様例だが state 変数が無い）。Phase 2 で `let` 検討 or ドキュメントで禁止 |
-| D6  | `elseif`                     | Lowering で nested `If` チェーンに変換                                                                                                            |
-| D7  | 文字列比較                   | BehaviorCondition を拡張（`StringCompare`: `currentPhoneme == "A"`）                                                                              |
+| #   | 論点                         | 提案                                                                                                      |
+| --- | ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| D1  | PFScript AST と Behavior AST | **2 段 AST**。PFScript AST → Lowering → Behavior AST（Scratch/Blockly と同じ出口）                        |
+| D2  | Graph との関係               | Graph は **現状維持**（数値 UI）。PFScript は Behavior 式を担い、Graph へ自動 lower しない（Phase 1）     |
+| D3  | 仕様の Motion 名             | **エイリアス表**（`smile` → `mouthX` 等）を `pfscript-core` に定義。未マップは `custom` へ                |
+| D4  | Preset への格納              | `behaviorPfScript?: string`（ソース）+ `behavior`（コンパイル結果キャッシュ）。Studio Export 時に両方更新 |
+| D5  | ローカル変数                 | **Phase 2 で対応済み**。`let` はブロックローカル・tick 単位で、State / Channel / Preset へ永続化しない    |
+| D6  | `elseif`                     | Lowering で nested `If` チェーンに変換                                                                    |
+| D7  | 文字列比較                   | BehaviorCondition を拡張（`StringCompare`: `currentPhoneme == "A"`）                                      |
 
 ---
 
 ## 4) マイルストーン
 
-| #      | 名称                     | 目標                                                   | 期間目安  |
-| ------ | ------------------------ | ------------------------------------------------------ | --------- |
-| **M1** | **Language Core**        | Lexer / Parser / PFScript AST / 単体テスト             | 1.5〜2 週 |
-| **M2** | **Lowering & Runtime**   | PFScript AST → Behavior AST、式評価 Runtime            | 2〜2.5 週 |
-| **M3** | **Builtins & Context**   | State/Channel/Timeline/time/標準関数/Plugin 関数       | 1.5〜2 週 |
-| **M4** | **Preset & CLI**         | `.pfscript` 読込、Preset v3 フィールド、コンパイル API | 1 週      |
-| **M5** | **Studio PFScript タブ** | エディタ、コンパイルプレビュー、behavior 反映          | 1.5〜2 週 |
-| **M6** | **Docs & 公式サンプル**  | リファレンス、サンプル `.pfscript`、移行ガイド         | 0.5 週    |
+| #           | 名称                          | 目標                                                   | 期間目安           |
+| ----------- | ----------------------------- | ------------------------------------------------------ | ------------------ |
+| **M1**      | **Language Core**             | Lexer / Parser / PFScript AST / 単体テスト             | 1.5〜2 週          |
+| **M2**      | **Lowering & Runtime**        | PFScript AST → Behavior AST、式評価 Runtime            | 2〜2.5 週          |
+| **M3**      | **Builtins & Context**        | State/Channel/Timeline/time/標準関数/Plugin 関数       | 1.5〜2 週          |
+| **M4**      | **Preset & CLI**              | `.pfscript` 読込、Preset v3 フィールド、コンパイル API | 1 週               |
+| **M5**      | **Studio PFScript タブ**      | エディタ、コンパイルプレビュー、behavior 反映          | 1.5〜2 週          |
+| **M6**      | **Docs & 公式サンプル**       | リファレンス、サンプル `.pfscript`、移行ガイド         | 0.5 週             |
+| **Phase 2** | **Locals & Expression Calls** | ローカル変数、式中の scalar 拡張関数、Pack 設定式      | 完了（2026-08-27） |
 
 **合計目安: 8〜10 週**（1 人フルタイム相当。Graph/Extension 並行開発時は +バッファ）
 
@@ -208,26 +209,25 @@ Sprint 7 (M6):  I29–I33  仕上げ
 
 ## 8) スコープ外（明示的にやらない）
 
-仕様・追加仕様の「柵」に従い、以下は **Phase 1〜2 では実装しない**。
+仕様・追加仕様の「柵」に従い、以下は **Phase 2 完了後も実装しない**。
 
 - `while` / `repeat` / `for` / `goto`
 - 配列・table・userdata
 - `os.*` / `io.*` / `require` / モジュール
 - Lua 互換レイヤー
 - PFScript から Graph ノードへの自動変換（将来 Epic として分離可）
-- ローカル変数 `let`（仕様例の `targetSmile` は Phase 2 以降の ADR）
 
 ---
 
 ## 9) リスクと緩和
 
-| リスク                               | 影響                     | 緩和                                                 |
-| ------------------------------------ | ------------------------ | ---------------------------------------------------- |
-| Motion 名の不一致（smile vs mouthX） | Viewer 連携混乱          | D3 エイリアス表 + Adapter ドキュメント               |
-| 言語機能の肥大化                     | 保守コスト増             | 禁止リストを Parser で enforce（I4）                 |
-| Pack 二重実行                        | モーション過剰           | 既存 `extension-duplicates` を PFScript 解析にも拡張 |
-| Behavior AST 破壊的変更              | Scratch/既存 Preset 互換 | ExprAssign は additive。旧 Assign は維持             |
-| Timeline API 未整備                  | `currentPhoneme` 遅延    | I16 を P1、eventActive を P2 に分離                  |
+| リスク                               | 影響                          | 緩和                                                                         |
+| ------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| Motion 名の不一致（smile vs mouthX） | Viewer 連携混乱               | D3 エイリアス表 + Adapter ドキュメント                                       |
+| 言語機能の肥大化                     | 保守コスト増                  | 禁止リストを Parser で enforce（I4）                                         |
+| Pack 二重実行                        | モーション過剰                | 既存 `extension-duplicates` を PFScript 解析にも拡張                         |
+| Behavior AST 破壊的変更              | Scratch/既存 Preset 互換      | ExprAssign は additive。旧 Assign は維持                                     |
+| Timeline Source の外部統合範囲       | Runtime / Studio への責務混入 | `@puppetflow/timeline-sources` は純粋な変換層に限定し、統合は別 Issue とする |
 
 ---
 
@@ -254,12 +254,14 @@ docs/reference/pfscript.md  ← 新規
 
 ---
 
-## 12) オープンクエスチョン（実装前に決定）
+## 12) 解決済みの設計論点
 
-1. **Motion エイリアス** — `smile` / `mouthOpen` / `MouthA` を標準 16 キー + custom のどれにマップするか（Live2D 向け命名との整合）。
-2. **`thinking()` の実行経路** — Behavior 内 `MotionPack` として即実行 vs Extension Layer 委譲（後者は tick タイミングが異なる）。
-3. **PFScript と Graph の役割分担** — 同一 Preset で PFScript 代入と Graph output が同キーを触った場合の merge ルール（平均のままか、優先度か）。
-4. **Preset にソースを保存するか** — `behaviorPfScript` のみ vs コンパイル済 `behavior` のみ（推奨: 両方、ソースを正とする）。
+1. **Motion エイリアス** — `smile` → `mouthX`、`mouthOpen` → `mouthY`。未知名（`MouthA` を含む）は `custom`。
+2. **`thinking()` の実行経路** — Pack は文として Extension Layer へ委譲し、式中の副作用呼び出しは許可しない。
+3. **PFScript と Graph の役割分担** — 同一キーは既存の merge（平均）を維持し、PFScript 優先度は導入しない。
+4. **Preset にソースを保存するか** — `behaviorPfScript` を正本、コンパイル済み `behavior` を v3 キャッシュとして併存する。
+
+詳細は [PFScript Phase 2 Design](superpowers/specs/2026-08-27-pfscript-phase2-design.md) を参照。
 
 ---
 
