@@ -29,6 +29,24 @@ describe("pfscript lexer", () => {
     ]);
   });
 
+  it("keeps inherited object names as identifiers", () => {
+    expect(tokenize("constructor()\ntoString()").map((token) => token.type)).toEqual([
+      "identifier",
+      "lparen",
+      "rparen",
+      "newline",
+      "identifier",
+      "lparen",
+      "rparen",
+      "eof",
+    ]);
+
+    expect(parsePfScript("constructor()\ntoString()").body).toEqual([
+      { type: "CallStmt", callee: "constructor", args: [] },
+      { type: "CallStmt", callee: "toString", args: [] },
+    ]);
+  });
+
   it("skips line comments", () => {
     const tokens = tokenize("-- comment\nsmile = 1").filter(
       (token) => token.type !== "newline",

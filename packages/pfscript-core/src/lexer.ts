@@ -198,7 +198,7 @@ export function tokenize(source: string): Token[] {
         push("forbidden", lower, startLine, startColumn);
         continue;
       }
-      const keyword = KEYWORDS[lower];
+      const keyword = Object.hasOwn(KEYWORDS, lower) ? KEYWORDS[lower] : undefined;
       if (keyword) {
         push(keyword, lower, startLine, startColumn);
         continue;

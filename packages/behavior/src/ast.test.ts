@@ -115,4 +115,54 @@ describe("parseBehaviorRoot", () => {
       }),
     ).toThrow(/config.*configExpressions/i);
   });
+
+  it("preserves JSON-originated Pack config records with null prototypes", () => {
+    const root = parseBehaviorRoot(
+      JSON.parse(`{
+        "type": "Block",
+        "statements": [
+          {
+            "type": "MotionPack",
+            "packId": "literal",
+            "config": { "__proto__": 0.2, "constructor": 0.4 }
+          },
+          {
+            "type": "MotionPack",
+            "packId": "expression",
+            "configExpressions": {
+              "__proto__": { "type": "Number", "value": 0.6 },
+              "toString": { "type": "Number", "value": 0.8 }
+            }
+          }
+        ]
+      }`),
+    );
+    const [literalPack, expressionPack] = root.statements;
+
+    expect(literalPack).toMatchObject({ type: "MotionPack", packId: "literal" });
+    expect(expressionPack).toMatchObject({ type: "MotionPack", packId: "expression" });
+    if (
+      literalPack?.type !== "MotionPack" ||
+      !literalPack.config ||
+      expressionPack?.type !== "MotionPack" ||
+      !expressionPack.configExpressions
+    ) {
+      throw new Error("expected normalized MotionPack config records");
+    }
+
+    expect(Object.getPrototypeOf(literalPack.config)).toBeNull();
+    expect(Object.hasOwn(literalPack.config, "__proto__")).toBe(true);
+    expect(literalPack.config.__proto__).toBeCloseTo(0.2, 3);
+    expect(literalPack.config.constructor).toBeCloseTo(0.4, 3);
+    expect(Object.getPrototypeOf(expressionPack.configExpressions)).toBeNull();
+    expect(Object.hasOwn(expressionPack.configExpressions, "__proto__")).toBe(true);
+    expect(expressionPack.configExpressions.__proto__).toEqual({
+      type: "Number",
+      value: 0.6,
+    });
+    expect(expressionPack.configExpressions.toString).toEqual({
+      type: "Number",
+      value: 0.8,
+    });
+  });
 });

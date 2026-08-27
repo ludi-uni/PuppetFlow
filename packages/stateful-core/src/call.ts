@@ -45,7 +45,7 @@ export function evaluateStatefulGraphNode(
   registry: StatefulRegistry,
 ): number {
   const instanceId = String(nodeData.stateId ?? nodeId);
-  const config: Record<string, number | string> = {};
+  const config = Object.create(null) as Record<string, number | string>;
 
   for (const [key, value] of Object.entries(nodeData)) {
     if (key === "stateId" || key === "label") {

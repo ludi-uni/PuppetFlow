@@ -166,6 +166,70 @@ describe("evaluateExpressionAsNumber", () => {
       ),
     ).toBeCloseTo(0.7, 3);
   });
+
+  it("rejects string extension arguments before invoking the callback", () => {
+    const callback = vi.fn(() => 0.7);
+
+    expect(() =>
+      evaluateExpressionAsNumber(
+        {
+          type: "Call",
+          callee: "heartbeat",
+          args: [{ name: "amplitude", value: { type: "String", value: "0.2" } }],
+        },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toThrow(/named finite numeric arguments/);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("rejects boolean extension arguments before invoking the callback", () => {
+    const callback = vi.fn(() => 0.7);
+
+    expect(() =>
+      evaluateExpressionAsNumber(
+        {
+          type: "Call",
+          callee: "heartbeat",
+          args: [{ name: "amplitude", value: { type: "Boolean", value: true } }],
+        },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toThrow(/named finite numeric arguments/);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-finite extension arguments before invoking the callback", () => {
+    const callback = vi.fn(() => 0.7);
+
+    expect(() =>
+      evaluateExpressionAsNumber(
+        {
+          type: "Call",
+          callee: "heartbeat",
+          args: [{ name: "amplitude", value: { type: "Number", value: Number.NaN } }],
+        },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toThrow(/named finite numeric arguments/);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("rejects positional extension arguments before invoking the callback", () => {
+    const callback = vi.fn(() => 0.7);
+
+    expect(() =>
+      evaluateExpressionAsNumber(
+        {
+          type: "Call",
+          callee: "heartbeat",
+          args: [{ value: { type: "Number", value: 0.2 } }],
+        },
+        createContext({ evaluateExtensionFunction: callback }),
+      ),
+    ).toThrow(/named finite numeric arguments/);
+    expect(callback).not.toHaveBeenCalled();
+  });
 });
 
 describe("executeBehavior PFScript outputs", () => {

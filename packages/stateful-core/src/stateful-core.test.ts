@@ -4,6 +4,7 @@ import {
   createDefaultStatefulRegistry,
   createRuntimeStatefulRegistry,
   createStatefulRegistry,
+  evaluateStatefulGraphNode,
   runStatefulNumber,
 } from "./index.js";
 import { StatefulStore } from "./store.js";
@@ -117,6 +118,38 @@ describe("callStatefulFunction", () => {
     expect(receivedConfig).toBeDefined();
     expect(Object.hasOwn(receivedConfig!, "__proto__")).toBe(true);
     expect(receivedConfig!.__proto__).toBeCloseTo(0.2, 3);
+  });
+
+  it("preserves JSON-originated Graph config keys on a null-prototype record", () => {
+    let receivedConfig: Record<string, number | string> | undefined;
+    const registry = createStatefulRegistry([
+      {
+        name: "capture",
+        createState: (config) => {
+          receivedConfig = config;
+          return undefined;
+        },
+        update: (_frame, state) => {
+          return { value: 0, state };
+        },
+      },
+    ]);
+
+    evaluateStatefulGraphNode(
+      "capture",
+      JSON.parse('{"stateId":"graph","__proto__":0.2,"constructor":0.4}'),
+      "fallback",
+      0,
+      frame(0.016, 0),
+      new StatefulStore(),
+      registry,
+    );
+
+    expect(receivedConfig).toBeDefined();
+    expect(Object.getPrototypeOf(receivedConfig!)).toBeNull();
+    expect(Object.hasOwn(receivedConfig!, "__proto__")).toBe(true);
+    expect(receivedConfig!.__proto__).toBeCloseTo(0.2, 3);
+    expect(receivedConfig!.constructor).toBeCloseTo(0.4, 3);
   });
 });
 

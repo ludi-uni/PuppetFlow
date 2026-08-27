@@ -369,7 +369,7 @@ function parseBehaviorStatement(
       ) {
         throw new Error(`MotionPack configExpressions must be an object at ${path}`);
       }
-      const normalized: Record<string, number> = {};
+      const normalized = Object.create(null) as Record<string, number>;
       if (config) {
         for (const [key, value] of Object.entries(config)) {
           if (typeof value === "number" && Number.isFinite(value)) {
@@ -377,7 +377,10 @@ function parseBehaviorStatement(
           }
         }
       }
-      const normalizedExpressions: Record<string, BehaviorExpression> = {};
+      const normalizedExpressions = Object.create(null) as Record<
+        string,
+        BehaviorExpression
+      >;
       if (configExpressions) {
         for (const [key, expression] of Object.entries(configExpressions)) {
           normalizedExpressions[key] = parseBehaviorExpression(

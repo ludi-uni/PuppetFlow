@@ -65,6 +65,29 @@ end
     ]);
   });
 
+  it("compiles inherited object names for scalar extension calls", () => {
+    const behavior = compilePfScript(`
+constructorValue = constructor()
+toStringValue = toString()
+`);
+    const evaluateExtensionFunction = vi.fn((name: string) =>
+      name === "constructor" ? 0.2 : 0.4,
+    );
+
+    const output = executeBehavior(behavior, {
+      state: new StateStore(),
+      channels: new ChannelStore(),
+      renderedMotion: DEFAULT_MOTION_STATE,
+      deltaTime: 0.016,
+      evaluateExtensionFunction,
+    });
+
+    expect(evaluateExtensionFunction).toHaveBeenNthCalledWith(1, "constructor", {});
+    expect(evaluateExtensionFunction).toHaveBeenNthCalledWith(2, "toString", {});
+    expect(output.custom?.constructorValue).toBeCloseTo(0.2, 3);
+    expect(output.custom?.toStringValue).toBeCloseTo(0.4, 3);
+  });
+
   it("executes phoneme lip-sync branches", () => {
     const behavior = compilePfScript(`
 if currentPhoneme == "A" then

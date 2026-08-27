@@ -119,15 +119,11 @@ function evaluateCall(
     value: evaluateExpression(arg.value, ctx, locals),
   }));
   const namedRecord = Object.create(null) as Record<string, BehaviorValue>;
-  const extensionArgs = Object.create(null) as Record<string, number>;
   let inputValue = 0;
 
   for (const arg of evaluatedArgs) {
     if (!arg.name) {
       continue;
-    }
-    if (typeof arg.value === "number" && Number.isFinite(arg.value)) {
-      extensionArgs[arg.name] = arg.value;
     }
     if (arg.name === "value" || arg.name === "target") {
       inputValue = typeof arg.value === "number" ? arg.value : Number(arg.value) || 0;
@@ -173,9 +169,25 @@ function evaluateCall(
     return callBuiltinFunction(callee, builtinArgs);
   }
 
-  const extensionResult = ctx.evaluateExtensionFunction?.(callee, extensionArgs);
-  if (extensionResult !== undefined) {
-    return extensionResult;
+  if (ctx.evaluateExtensionFunction) {
+    const extensionArgs = Object.create(null) as Record<string, number>;
+    for (const arg of evaluatedArgs) {
+      if (
+        arg.name === undefined ||
+        typeof arg.value !== "number" ||
+        !Number.isFinite(arg.value)
+      ) {
+        throw new Error(
+          `extension function ${callee}() requires named finite numeric arguments`,
+        );
+      }
+      extensionArgs[arg.name] = arg.value;
+    }
+
+    const extensionResult = ctx.evaluateExtensionFunction(callee, extensionArgs);
+    if (extensionResult !== undefined) {
+      return extensionResult;
+    }
   }
 
   return callBuiltinFunction(callee, builtinArgs);
