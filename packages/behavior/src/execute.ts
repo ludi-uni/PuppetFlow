@@ -240,7 +240,7 @@ function executeStatement(
       const value = evaluateExpression(statement.value, ctx, locals.snapshot());
       if (!locals.set(statement.name, value)) {
         throw new Error(
-          `LocalAssign cannot update undeclared local \"${statement.name}\" at ${instanceKey}`,
+          `LocalAssign cannot update undeclared local "${statement.name}" at ${instanceKey}`,
         );
       }
       return {};
