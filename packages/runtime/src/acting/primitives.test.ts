@@ -219,13 +219,19 @@ describe("sampleActingPrimitive", () => {
   });
 
   it.each(["wave", "small_wave"] as const)(
-    "mirrors %s arm rotations and selects both arms when requested",
+    "mirrors %s arm rotations on signed Z and selects both arms when requested",
     (action) => {
       const left = sample({ action, side: "left", duration: 1 }, 0.5);
       const right = sample({ action, side: "right", duration: 1 }, 0.5);
       const both = sample({ action, side: "both", duration: 1 }, 0.5);
 
-      expect(left.LeftUpperArm.x).toBeCloseTo(-right.RightUpperArm.x);
+      expect(left.LeftUpperArm!.x).toBeCloseTo(0);
+      expect(left.LeftUpperArm!.y).toBeCloseTo(0);
+      expect(right.RightUpperArm!.x).toBeCloseTo(0);
+      expect(right.RightUpperArm!.y).toBeCloseTo(0);
+      expect(left.LeftUpperArm!.z).toBeLessThan(0);
+      expect(right.RightUpperArm!.z).toBeGreaterThan(0);
+      expect(left.LeftUpperArm!.z).toBeCloseTo(-right.RightUpperArm!.z);
       expect(left.LeftLowerArm.z).toBeCloseTo(-right.RightLowerArm.z);
       expect(isIdentity(both.LeftUpperArm)).toBe(false);
       expect(isIdentity(both.RightUpperArm)).toBe(false);
@@ -240,6 +246,13 @@ describe("sampleActingPrimitive", () => {
 
     expect(isIdentity(left.LeftShoulder)).toBe(false);
     expect(isIdentity(left.RightShoulder)).toBe(true);
+    expect(left.LeftUpperArm!.x).toBeCloseTo(0);
+    expect(left.LeftUpperArm!.y).toBeCloseTo(0);
+    expect(right.RightUpperArm!.x).toBeCloseTo(0);
+    expect(right.RightUpperArm!.y).toBeCloseTo(0);
+    expect(left.LeftUpperArm!.z).toBeLessThan(0);
+    expect(right.RightUpperArm!.z).toBeGreaterThan(0);
+    expect(left.LeftUpperArm!.z).toBeCloseTo(-right.RightUpperArm!.z);
     expect(left.LeftShoulder.z).toBeCloseTo(-right.RightShoulder.z);
     expect(isIdentity(right.LeftShoulder)).toBe(true);
   });

@@ -54,7 +54,7 @@ export function sampleActingPrimitive(
     for (const selectedSide of selectedSides(side)) {
       const prefix = selectedSide === "left" ? "Left" : "Right";
       const sign = selectedSide === "left" ? -1 : 1;
-      addEuler(`${prefix}UpperArm`, sign * upper, 0, 0);
+      addEuler(`${prefix}UpperArm`, 0, 0, sign * upper);
       addEuler(`${prefix}LowerArm`, 0, 0, sign * lower);
     }
   };
