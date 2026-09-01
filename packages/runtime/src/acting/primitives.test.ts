@@ -139,10 +139,10 @@ describe("sampleActingPrimitive", () => {
     ).toBeCloseTo(0.3);
 
     const wave = sample({ action: "wave", duration: 1 }, 0.5);
-    expect(rotationAngle(wave.RightUpperArm)).toBeCloseTo(0.9);
+    expect(rotationAngle(wave.RightUpperArm)).toBeCloseTo(Math.PI / 2);
     expect(rotationAngle(wave.RightLowerArm)).toBeCloseTo(0.35);
     const smallWave = sample({ action: "small_wave", duration: 1 }, 0.5);
-    expect(rotationAngle(smallWave.RightUpperArm)).toBeCloseTo(0.45);
+    expect(rotationAngle(smallWave.RightUpperArm)).toBeCloseTo((Math.PI * 2) / 5);
     expect(rotationAngle(smallWave.RightLowerArm)).toBeCloseTo(0.18);
     expect(
       rotationAngle(sample({ action: "bow", duration: 1 }, 0.5).Spine),

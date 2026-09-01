@@ -8,6 +8,9 @@ import type {
 } from "./types.js";
 import { validateActingActionParams, validateActingDuration } from "./types.js";
 
+const WAVE_UPPER_ARM_RAISE_RADIANS = Math.PI / 2;
+const SMALL_WAVE_UPPER_ARM_RAISE_RADIANS = (Math.PI * 2) / 5;
+
 /**
  * Samples one model-independent acting primitive as local bone rotation offsets.
  * Finite actions always return to neutral once their duration is reached.
@@ -82,14 +85,14 @@ export function sampleActingPrimitive(
     case "wave":
       addArm(
         request.side ?? "right",
-        0.9 * held,
+        WAVE_UPPER_ARM_RAISE_RADIANS * held,
         0.35 * held * Math.cos(Math.PI * 2 * phase * speed),
       );
       break;
     case "small_wave":
       addArm(
         request.side ?? "right",
-        0.45 * held,
+        SMALL_WAVE_UPPER_ARM_RAISE_RADIANS * held,
         0.18 * held * Math.cos(Math.PI * 2 * phase * speed),
       );
       break;

@@ -1,4 +1,5 @@
-import { quaternionFromEuler } from "@puppetflow/runtime";
+import { createEmptyMotionState } from "@puppetflow/core";
+import { ActingEngine, quaternionFromEuler } from "@puppetflow/runtime";
 import { describe, expect, it } from "vitest";
 import { AI_NIKECHAN_BONE_PROFILE } from "./ai-nikechan-profile";
 
@@ -31,7 +32,7 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
         {
           name: "LeftUpperArm",
           position: { x: -0.0820496753, y: 0.0113123655, z: 0.0255604982 },
-          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: Math.PI / 2 }),
+          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: (Math.PI * 5) / 12 }),
         },
         {
           name: "LeftLowerArm",
@@ -44,7 +45,7 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
         {
           name: "RightUpperArm",
           position: { x: 0.0820496455, y: 0.0113123655, z: 0.0255606174 },
-          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: -Math.PI / 2 }),
+          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: (-Math.PI * 5) / 12 }),
         },
         {
           name: "RightLowerArm",
@@ -58,10 +59,21 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
     expect(
       AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "LeftUpperArm")
         ?.neutralRotation,
-    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: Math.PI / 2 }));
+    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: (Math.PI * 5) / 12 }));
     expect(
       AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "RightUpperArm")
         ?.neutralRotation,
-    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: -Math.PI / 2 }));
+    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: (-Math.PI * 5) / 12 }));
+  });
+
+  it("raises the right arm above horizontal at the full wave peak", () => {
+    const engine = new ActingEngine({ profile: AI_NIKECHAN_BONE_PROFILE });
+    engine.act("wave", { side: "right", duration: 1 });
+
+    const rotation = engine.tick(0.5, createEmptyMotionState()).bones?.RightUpperArm
+      ?.rotation;
+
+    expect(rotation?.z).toBeCloseTo(Math.sin(Math.PI / 24));
+    expect(rotation?.w).toBeCloseTo(Math.cos(Math.PI / 24));
   });
 });

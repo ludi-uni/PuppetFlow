@@ -1,5 +1,7 @@
 import { quaternionFromEuler, type ActingBoneProfile } from "@puppetflow/runtime";
 
+const AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS = (Math.PI * 5) / 12;
+
 /**
  * VMC Humanoid bones for AI NIKKE-chan.
  *
@@ -28,7 +30,11 @@ export const AI_NIKECHAN_BONE_PROFILE: ActingBoneProfile = {
     {
       name: "LeftUpperArm",
       position: { x: -0.0820496753, y: 0.0113123655, z: 0.0255604982 },
-      neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: Math.PI / 2 }),
+      neutralRotation: quaternionFromEuler({
+        x: 0,
+        y: 0,
+        z: AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS,
+      }),
     },
     {
       name: "LeftLowerArm",
@@ -41,7 +47,11 @@ export const AI_NIKECHAN_BONE_PROFILE: ActingBoneProfile = {
     {
       name: "RightUpperArm",
       position: { x: 0.0820496455, y: 0.0113123655, z: 0.0255606174 },
-      neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: -Math.PI / 2 }),
+      neutralRotation: quaternionFromEuler({
+        x: 0,
+        y: 0,
+        z: -AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS,
+      }),
     },
     {
       name: "RightLowerArm",
