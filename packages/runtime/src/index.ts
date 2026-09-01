@@ -33,3 +33,20 @@ export {
   type MotionOutputInspectorSnapshot,
   type MotionSourceInspectorSnapshot,
 } from "./motion-inspector.js";
+export {
+  ACTING_ACTION_NAMES,
+  blendBoneRotations,
+  composeBoneRotation,
+  identityPose,
+  quaternionFromEuler,
+  sampleActingPrimitive,
+  type ActingActionName,
+  type ActingActionParams,
+  type ActingActionRequest,
+  type ActingApi,
+  type ActingBoneProfile,
+  type ActingCommandResult,
+  type ActingPrimitiveContext,
+  type ActingSide,
+  type ActingState,
+} from "./acting/index.js";
