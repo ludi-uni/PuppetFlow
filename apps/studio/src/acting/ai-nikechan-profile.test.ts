@@ -1,3 +1,4 @@
+import { quaternionFromEuler } from "@puppetflow/runtime";
 import { describe, expect, it } from "vitest";
 import { AI_NIKECHAN_BONE_PROFILE } from "./ai-nikechan-profile";
 
@@ -30,6 +31,7 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
         {
           name: "LeftUpperArm",
           position: { x: -0.0820496753, y: 0.0113123655, z: 0.0255604982 },
+          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: Math.PI / 2 }),
         },
         {
           name: "LeftLowerArm",
@@ -42,6 +44,7 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
         {
           name: "RightUpperArm",
           position: { x: 0.0820496455, y: 0.0113123655, z: 0.0255606174 },
+          neutralRotation: quaternionFromEuler({ x: 0, y: 0, z: -Math.PI / 2 }),
         },
         {
           name: "RightLowerArm",
@@ -49,5 +52,16 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
         },
       ],
     });
+  });
+
+  it("defines a relaxed neutral rotation for both upper arms", () => {
+    expect(
+      AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "LeftUpperArm")
+        ?.neutralRotation,
+    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: Math.PI / 2 }));
+    expect(
+      AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "RightUpperArm")
+        ?.neutralRotation,
+    ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: -Math.PI / 2 }));
   });
 });
