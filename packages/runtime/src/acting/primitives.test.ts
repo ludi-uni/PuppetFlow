@@ -102,6 +102,20 @@ describe("sampleActingPrimitive", () => {
     expect(Object.values(sample(request, 1)).every(isIdentity)).toBe(true);
   });
 
+  it("uses shake_head speed as a frequency input and keeps every speed neutral at the endpoint", () => {
+    const slow = { action: "shake_head", duration: 1, speed: 0.1 } as const;
+    const fast = { action: "shake_head", duration: 1, speed: 4 } as const;
+
+    for (const elapsed of [0.2, 0.35]) {
+      expect(sample(slow, elapsed).Head.y).not.toBeCloseTo(
+        sample(fast, elapsed).Head.y,
+        6,
+      );
+    }
+    expect(Object.values(sample(slow, 1)).every(isIdentity)).toBe(true);
+    expect(Object.values(sample(fast, 1)).every(isIdentity)).toBe(true);
+  });
+
   it("keeps look_camera at the neutral camera pose", () => {
     expect(
       Object.values(sample({ action: "look_camera", duration: 1 }, 0.5)).every(

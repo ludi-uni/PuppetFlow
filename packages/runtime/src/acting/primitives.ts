@@ -77,7 +77,7 @@ export function sampleActingPrimitive(
       addEuler("Head", 0.22 * pulse * Math.sin(Math.PI * phase * speed), 0, 0);
       break;
     case "shake_head":
-      addEuler("Head", 0, 0.3 * Math.sin(Math.PI * 2 * phase), 0);
+      addEuler("Head", 0, 0.3 * held * Math.sin(Math.PI * 2 * phase * speed), 0);
       break;
     case "wave":
       addArm(
