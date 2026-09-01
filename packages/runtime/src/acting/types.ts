@@ -20,6 +20,14 @@ export type ActingActionName = (typeof ACTING_ACTION_NAMES)[number];
 
 export type ActingSide = "left" | "right" | "both";
 
+export const ACTING_DURATION_MIN_SECONDS = 0.05;
+export const ACTING_DURATION_MAX_SECONDS = 30;
+export const ACTING_SPEED_MIN = 0.1;
+export const ACTING_SPEED_MAX = 4;
+export const ACTING_BLEND_DURATION_MIN_SECONDS = 0.1;
+export const ACTING_BLEND_DURATION_MAX_SECONDS = 0.3;
+export const DEFAULT_ACTING_BLEND_DURATION_SECONDS = 0.18;
+
 export interface ActingActionParams {
   intensity?: number;
   duration?: number;
@@ -70,4 +78,45 @@ export interface ActingApi {
   sequence(actions: readonly ActingActionRequest[]): ActingCommandResult;
   interrupt(): ActingCommandResult;
   get_state(): ActingState;
+}
+
+/** Rejects invalid explicit action parameters before they can alter acting state. */
+export function validateActingActionParams(params: ActingActionParams): void {
+  if (params.intensity !== undefined && !Number.isFinite(params.intensity)) {
+    throw new RangeError("Acting intensity must be finite");
+  }
+  if (params.duration !== undefined) {
+    validateRange(
+      params.duration,
+      ACTING_DURATION_MIN_SECONDS,
+      ACTING_DURATION_MAX_SECONDS,
+      "duration",
+    );
+  }
+  if (params.speed !== undefined) {
+    validateRange(params.speed, ACTING_SPEED_MIN, ACTING_SPEED_MAX, "speed");
+  }
+  if (params.blendDuration !== undefined) {
+    validateRange(
+      params.blendDuration,
+      ACTING_BLEND_DURATION_MIN_SECONDS,
+      ACTING_BLEND_DURATION_MAX_SECONDS,
+      "blendDuration",
+    );
+  }
+}
+
+export function validateActingDuration(duration: number, name = "duration"): void {
+  validateRange(
+    duration,
+    ACTING_DURATION_MIN_SECONDS,
+    ACTING_DURATION_MAX_SECONDS,
+    name,
+  );
+}
+
+function validateRange(value: number, min: number, max: number, name: string): void {
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new RangeError(`Acting ${name} must be finite and within ${min}..${max}`);
+  }
 }

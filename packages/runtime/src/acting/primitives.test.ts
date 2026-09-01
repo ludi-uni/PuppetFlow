@@ -21,7 +21,6 @@ const finiteActions: readonly {
   request: ActingActionRequest;
   targetTime: number;
 }[] = [
-  { request: { action: "look_camera", duration: 1 }, targetTime: 0.5 },
   { request: { action: "look_left", duration: 1 }, targetTime: 0.5 },
   { request: { action: "look_right", duration: 1 }, targetTime: 0.5 },
   { request: { action: "head_tilt", duration: 1 }, targetTime: 0.5 },
@@ -35,10 +34,14 @@ const finiteActions: readonly {
   { request: { action: "body_lean", duration: 1 }, targetTime: 0.5 },
 ];
 
-function sample(request: ActingActionRequest, elapsed: number) {
+function sample(
+  request: ActingActionRequest,
+  elapsed: number,
+  contextDuration = request.duration ?? Infinity,
+) {
   return sampleActingPrimitive(
     request,
-    { elapsed, duration: request.duration ?? Infinity },
+    { elapsed, duration: contextDuration },
     boneNames,
   );
 }
@@ -60,6 +63,10 @@ function hasNonNeutralRotation(
 
 function lengthOf(rotation: { x: number; y: number; z: number; w: number }): number {
   return Math.hypot(rotation.x, rotation.y, rotation.z, rotation.w);
+}
+
+function rotationAngle(rotation: { w: number }): number {
+  return 2 * Math.acos(Math.min(1, Math.abs(rotation.w)));
 }
 
 describe("sampleActingPrimitive", () => {
@@ -88,6 +95,89 @@ describe("sampleActingPrimitive", () => {
     expect(Math.abs(pose.Chest.z)).toBeLessThanOrEqual(Math.sin(0.025) + 1e-8);
   });
 
+  it("returns a finite idle action to neutral at its endpoint", () => {
+    const request = { action: "idle", duration: 1 } as const;
+
+    expect(hasNonNeutralRotation(sample(request, 0.25))).toBe(true);
+    expect(Object.values(sample(request, 1)).every(isIdentity)).toBe(true);
+  });
+
+  it("keeps look_camera at the neutral camera pose", () => {
+    expect(
+      Object.values(sample({ action: "look_camera", duration: 1 }, 0.5)).every(
+        isIdentity,
+      ),
+    ).toBe(true);
+  });
+
+  it("uses the bounded numeric primitive defaults", () => {
+    expect(
+      rotationAngle(sample({ action: "look_left", duration: 1 }, 0.5).Head),
+    ).toBeCloseTo(0.35);
+    expect(
+      rotationAngle(sample({ action: "head_tilt", duration: 1 }, 0.5).Head),
+    ).toBeCloseTo(0.26);
+    expect(rotationAngle(sample({ action: "nod", duration: 1 }, 0.5).Head)).toBeCloseTo(
+      0.22,
+    );
+    expect(
+      rotationAngle(sample({ action: "shake_head", duration: 1 }, 0.25).Head),
+    ).toBeCloseTo(0.3);
+
+    const wave = sample({ action: "wave", duration: 1 }, 0.5);
+    expect(rotationAngle(wave.RightUpperArm)).toBeCloseTo(0.9);
+    expect(rotationAngle(wave.RightLowerArm)).toBeCloseTo(0.35);
+    const smallWave = sample({ action: "small_wave", duration: 1 }, 0.5);
+    expect(rotationAngle(smallWave.RightUpperArm)).toBeCloseTo(0.45);
+    expect(rotationAngle(smallWave.RightLowerArm)).toBeCloseTo(0.18);
+    expect(
+      rotationAngle(sample({ action: "bow", duration: 1 }, 0.5).Spine),
+    ).toBeCloseTo(0.3);
+    expect(
+      rotationAngle(sample({ action: "shrug", duration: 1 }, 0.5).LeftShoulder),
+    ).toBeCloseTo(0.22);
+    expect(
+      rotationAngle(sample({ action: "body_lean", duration: 1 }, 0.5).Spine),
+    ).toBeCloseTo(0.24);
+    expect(
+      rotationAngle(sample({ action: "recoil", duration: 1 }, 0.5).Chest),
+    ).toBeLessThanOrEqual(0.2);
+    const idle = sample({ action: "idle" }, 0.25);
+    expect(rotationAngle(idle.Head)).toBeLessThanOrEqual(0.05);
+    expect(rotationAngle(idle.Chest)).toBeLessThanOrEqual(0.05);
+  });
+
+  it("rejects invalid duration, blend duration, and request/context duration combinations", () => {
+    expect(() => sample({ action: "bow", duration: 0.049 }, 0.01)).toThrow("duration");
+    expect(() => sample({ action: "bow", duration: 30.01 }, 0.01)).toThrow("duration");
+    expect(() => sample({ action: "idle", duration: Infinity }, 0.01)).toThrow(
+      "duration",
+    );
+    expect(() => sample({ action: "bow", blendDuration: 0.09 }, 0.01)).toThrow(
+      "blendDuration",
+    );
+    expect(() => sample({ action: "bow", blendDuration: 0.31 }, 0.01)).toThrow(
+      "blendDuration",
+    );
+    expect(() => sample({ action: "bow", speed: 0.09 }, 0.01)).toThrow("speed");
+    expect(() => sample({ action: "bow", intensity: Infinity }, 0.01)).toThrow(
+      "intensity",
+    );
+    expect(() => sample({ action: "bow", duration: 1 }, 0.01, 0.5)).toThrow(
+      "context.duration",
+    );
+    expect(() => sample({ action: "idle" }, 0.01, 1)).toThrow("context.duration");
+  });
+
+  it("accepts inclusive duration and blend-duration boundaries", () => {
+    expect(() =>
+      sample({ action: "bow", duration: 0.05, blendDuration: 0.1 }, 0.01),
+    ).not.toThrow();
+    expect(() =>
+      sample({ action: "bow", duration: 30, blendDuration: 0.3 }, 0.01),
+    ).not.toThrow();
+  });
+
   it("mirrors look and head tilt directions", () => {
     const lookLeft = sample({ action: "look_left", duration: 1 }, 0.5);
     const lookRight = sample({ action: "look_right", duration: 1 }, 0.5);
@@ -112,6 +202,40 @@ describe("sampleActingPrimitive", () => {
     expect(isIdentity(right.RightLowerArm)).toBe(false);
     expect(isIdentity(right.LeftUpperArm)).toBe(true);
     expect(isIdentity(right.LeftLowerArm)).toBe(true);
+  });
+
+  it.each(["wave", "small_wave"] as const)(
+    "mirrors %s arm rotations and selects both arms when requested",
+    (action) => {
+      const left = sample({ action, side: "left", duration: 1 }, 0.5);
+      const right = sample({ action, side: "right", duration: 1 }, 0.5);
+      const both = sample({ action, side: "both", duration: 1 }, 0.5);
+
+      expect(left.LeftUpperArm.x).toBeCloseTo(-right.RightUpperArm.x);
+      expect(left.LeftLowerArm.z).toBeCloseTo(-right.RightLowerArm.z);
+      expect(isIdentity(both.LeftUpperArm)).toBe(false);
+      expect(isIdentity(both.RightUpperArm)).toBe(false);
+      expect(isIdentity(both.LeftLowerArm)).toBe(false);
+      expect(isIdentity(both.RightLowerArm)).toBe(false);
+    },
+  );
+
+  it("selects and mirrors shrug sides", () => {
+    const left = sample({ action: "shrug", side: "left", duration: 1 }, 0.5);
+    const right = sample({ action: "shrug", side: "right", duration: 1 }, 0.5);
+
+    expect(isIdentity(left.LeftShoulder)).toBe(false);
+    expect(isIdentity(left.RightShoulder)).toBe(true);
+    expect(left.LeftShoulder.z).toBeCloseTo(-right.RightShoulder.z);
+    expect(isIdentity(right.LeftShoulder)).toBe(true);
+  });
+
+  it("mirrors body_lean sides", () => {
+    const left = sample({ action: "body_lean", side: "left", duration: 1 }, 0.5);
+    const right = sample({ action: "body_lean", side: "right", duration: 1 }, 0.5);
+
+    expect(left.Spine.z).toBeCloseTo(-right.Spine.z);
+    expect(left.Chest.z).toBeCloseTo(-right.Chest.z);
   });
 
   it("clamps intensity to the neutral and full-strength bounds", () => {

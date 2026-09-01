@@ -6,6 +6,7 @@ import type {
   ActingPrimitiveContext,
   ActingSide,
 } from "./types.js";
+import { validateActingActionParams, validateActingDuration } from "./types.js";
 
 /**
  * Samples one model-independent acting primitive as local bone rotation offsets.
@@ -16,22 +17,27 @@ export function sampleActingPrimitive(
   context: ActingPrimitiveContext,
   boneNames: readonly string[],
 ): Record<string, Quaternion> {
+  validateActingActionParams(request);
   const pose = identityPose(boneNames);
   const intensity = clamp(request.intensity ?? 1, 0, 1);
   if (intensity === 0) {
     return pose;
   }
 
-  const speed = clamp(request.speed ?? 1, 0.1, 4);
-  const elapsed = Math.max(0, finiteOr(context.elapsed, 0));
-  const duration = context.duration;
-  const isIdle = request.action === "idle";
+  if (!Number.isFinite(context.elapsed) || context.elapsed < 0) {
+    throw new RangeError("Acting context.elapsed must be finite and non-negative");
+  }
 
-  if (!isIdle && (!Number.isFinite(duration) || duration <= 0 || elapsed >= duration)) {
+  const speed = request.speed ?? 1;
+  const elapsed = context.elapsed;
+  const isContinuousIdle = request.action === "idle" && request.duration === undefined;
+  const duration = resolveDuration(request, context, isContinuousIdle);
+
+  if (!isContinuousIdle && elapsed >= duration) {
     return pose;
   }
 
-  const phase = isIdle ? 0 : clamp(elapsed / duration, 0, 1);
+  const phase = isContinuousIdle ? 0 : elapsed / duration;
   const held = easedHoldRelease(phase);
   const pulse = Math.sin(Math.PI * phase);
   const addEuler = (boneName: string, x = 0, y = 0, z = 0): void => {
@@ -55,7 +61,6 @@ export function sampleActingPrimitive(
 
   switch (request.action) {
     case "look_camera":
-      addEuler("Head", -0.12 * held, 0, 0);
       break;
     case "look_left":
       addEuler("Head", 0, 0.35 * held, 0);
@@ -72,7 +77,7 @@ export function sampleActingPrimitive(
       addEuler("Head", 0.22 * pulse * Math.sin(Math.PI * phase * speed), 0, 0);
       break;
     case "shake_head":
-      addEuler("Head", 0, 0.3 * pulse * Math.sin(Math.PI * 2 * phase * speed), 0);
+      addEuler("Head", 0, 0.3 * Math.sin(Math.PI * 2 * phase), 0);
       break;
     case "wave":
       addArm(
@@ -115,13 +120,14 @@ export function sampleActingPrimitive(
     }
     case "idle": {
       const time = elapsed * speed;
+      const envelope = isContinuousIdle ? 1 : pulse;
       addEuler(
         "Head",
-        0.04 * Math.sin(time * Math.PI * 0.8),
+        envelope * 0.04 * Math.sin(time * Math.PI * 0.8),
         0,
-        0.03 * Math.sin(time * Math.PI * 0.5),
+        envelope * 0.03 * Math.sin(time * Math.PI * 0.5),
       );
-      addEuler("Chest", 0, 0, 0.05 * Math.sin(time * Math.PI * 0.4));
+      addEuler("Chest", 0, 0, envelope * 0.05 * Math.sin(time * Math.PI * 0.4));
       break;
     }
     default:
@@ -157,6 +163,23 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 }
 
-function finiteOr(value: number, fallback: number): number {
-  return Number.isFinite(value) ? value : fallback;
+function resolveDuration(
+  request: ActingActionRequest,
+  context: ActingPrimitiveContext,
+  isContinuousIdle: boolean,
+): number {
+  if (isContinuousIdle) {
+    if (context.duration !== Infinity) {
+      throw new RangeError(
+        "Acting context.duration must be Infinity for idle without duration",
+      );
+    }
+    return Infinity;
+  }
+
+  validateActingDuration(context.duration, "context.duration");
+  if (request.duration !== undefined && context.duration !== request.duration) {
+    throw new RangeError("Acting context.duration must match request.duration");
+  }
+  return context.duration;
 }

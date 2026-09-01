@@ -35,6 +35,13 @@ export {
 } from "./motion-inspector.js";
 export {
   ACTING_ACTION_NAMES,
+  ACTING_BLEND_DURATION_MAX_SECONDS,
+  ACTING_BLEND_DURATION_MIN_SECONDS,
+  ACTING_DURATION_MAX_SECONDS,
+  ACTING_DURATION_MIN_SECONDS,
+  ACTING_SPEED_MAX,
+  ACTING_SPEED_MIN,
+  DEFAULT_ACTING_BLEND_DURATION_SECONDS,
   blendBoneRotations,
   composeBoneRotation,
   identityPose,
@@ -49,4 +56,6 @@ export {
   type ActingPrimitiveContext,
   type ActingSide,
   type ActingState,
+  validateActingActionParams,
+  validateActingDuration,
 } from "./acting/index.js";
