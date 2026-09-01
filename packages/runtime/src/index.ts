@@ -21,6 +21,7 @@ export type {
 export { MicroBehaviorEngine } from "@puppetflow/micro-behavior";
 export {
   PuppetFlowRuntime,
+  type ActingUpdateListener,
   type MotionListener,
   type MotionUpdateListener,
   type PluginOutputSnapshot,

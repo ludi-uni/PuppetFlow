@@ -58,6 +58,7 @@ import {
   MicroBehaviorEngine,
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
+import { ActingEngine, type ActingApi, type ActingState } from "./acting/index.js";
 import {
   MotionOverrideStore,
   type MotionSource,
@@ -76,8 +77,15 @@ import { RuntimeStateStore } from "./state-store.js";
 
 const TICK_INTERVAL_MS = 1000 / 60;
 const DEFAULT_DELTA_TIME = TICK_INTERVAL_MS / 1000;
+const EMPTY_ACTING_STATE: ActingState = {
+  elapsed: 0,
+  remaining: 0,
+  queueLength: 0,
+  blendRemaining: 0,
+};
 
 export type MotionListener = (motion: MotionState) => void;
+export type ActingUpdateListener = (state: ActingState) => void;
 
 export interface PluginOutputSnapshot {
   pluginId: string;
@@ -179,6 +187,7 @@ export class PuppetFlowRuntime {
   private motionFrameGraphSnapshot: MotionFrameGraphSnapshot | undefined;
   private readonly motionListeners = new Set<MotionListener>();
   private readonly motionUpdateListeners = new Set<MotionUpdateListener>();
+  private readonly actingUpdateListeners = new Set<ActingUpdateListener>();
 
   private targetMotion = createEmptyMotionState();
   private renderedMotion = createEmptyMotionState();
@@ -218,6 +227,7 @@ export class PuppetFlowRuntime {
   private sourcesInitialized = false;
   private readonly startedMotionSources = new Set<MotionSource>();
   private readonly motionOverride = new MotionOverrideStore();
+  private actingEngine: ActingEngine | undefined;
 
   use(plugin: BehaviorPlugin): this {
     this.plugins.push(plugin);
@@ -234,6 +244,26 @@ export class PuppetFlowRuntime {
     this.motionFrameAdapters.push(adapter);
     this.ensureMotionOutputHealth(adapter.id);
     return this;
+  }
+
+  attachActingEngine(engine: ActingEngine): this {
+    this.actingEngine = engine;
+    return this;
+  }
+
+  getActingApi(): ActingApi | null {
+    return this.actingEngine ?? null;
+  }
+
+  getActingState(): ActingState {
+    return this.actingEngine?.get_state() ?? EMPTY_ACTING_STATE;
+  }
+
+  onActingUpdate(listener: ActingUpdateListener): () => void {
+    this.actingUpdateListeners.add(listener);
+    return () => {
+      this.actingUpdateListeners.delete(listener);
+    };
   }
 
   useModifier(modifier: MotionModifier): this {
@@ -943,6 +973,7 @@ export class PuppetFlowRuntime {
     this.motionOverride.clear();
     this.microBehavior.reset();
     this.statefulStore.reset();
+    this.actingEngine?.reset();
     this.elapsedTime = 0;
     this.frameNumber = 0;
   }
@@ -1547,7 +1578,15 @@ export class PuppetFlowRuntime {
         }
       }
 
-      await this.dispatchMotionFrames(deltaTime);
+      const actingFrame = this.actingEngine?.tick(deltaTime, this.renderedMotion);
+      await this.dispatchMotionFrames(deltaTime, actingFrame);
+
+      if (this.actingEngine) {
+        const actingState = this.actingEngine.get_state();
+        for (const listener of this.actingUpdateListeners) {
+          listener(actingState);
+        }
+      }
 
       for (const listener of this.motionListeners) {
         listener(this.renderedMotion);
@@ -1567,7 +1606,10 @@ export class PuppetFlowRuntime {
     }
   }
 
-  private async dispatchMotionFrames(deltaTime: number): Promise<void> {
+  private async dispatchMotionFrames(
+    deltaTime: number,
+    actingFrame?: MotionFrame,
+  ): Promise<void> {
     const inputs: MotionFrameInput[] = [];
     const currentTime = now();
     for (const source of this.uniqueMotionSources()) {
@@ -1588,6 +1630,10 @@ export class PuppetFlowRuntime {
           inputs.push({ sourceId: source.id, frame: safe.frame });
         }
       }
+    }
+
+    if (actingFrame) {
+      inputs.push({ sourceId: "acting", frame: actingFrame });
     }
 
     let policy: MotionLayerPolicy | undefined;

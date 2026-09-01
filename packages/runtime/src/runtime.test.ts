@@ -18,6 +18,7 @@ import type {
 } from "@puppetflow/source-core";
 import type { MotionFrameGraphDocument } from "@puppetflow/motion-graph";
 import type { MotionFrameInput, MotionLayerPolicy } from "@puppetflow/motion-pipeline";
+import { ActingEngine, type ActingBoneProfile } from "./acting/index.js";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 class TestPlugin implements BehaviorPlugin {
@@ -93,7 +94,98 @@ const motionFrameGraph: MotionFrameGraphDocument = {
   ],
 };
 
+const actingProfile: ActingBoneProfile = {
+  id: "runtime-test",
+  bones: [
+    { name: "Hips", position: { x: 0, y: 0.9, z: 0 } },
+    { name: "Spine", position: { x: 0, y: 0.15, z: 0 } },
+    { name: "Chest", position: { x: 0, y: 0.12, z: 0 } },
+    { name: "Neck", position: { x: 0, y: 0.13, z: 0 } },
+    { name: "Head", position: { x: 0, y: 0.1, z: 0 } },
+  ],
+};
+
 describe("PuppetFlowRuntime", () => {
+  it("optionally dispatches acting frames while preserving normal adapter updates", async () => {
+    const update = vi.fn(async () => {});
+    const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
+    const actingUpdate = vi.fn();
+    const engine = new ActingEngine({ profile: actingProfile, autoIdle: false });
+    const runtime = new PuppetFlowRuntime()
+      .attachAdapter({ ...createTestAdapter(update), id: "normal-output" })
+      .attachMotionAdapter({
+        id: "acting-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      })
+      .attachActingEngine(engine);
+
+    const unsubscribe = runtime.onActingUpdate(actingUpdate);
+    expect(runtime.getActingApi()).toBe(engine);
+    expect(runtime.getActingApi()?.act("wave").accepted).toBe(true);
+
+    await runtime.start();
+
+    expect(update).toHaveBeenCalled();
+    expect(updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ sourceId: "acting" }),
+        bones: expect.objectContaining({
+          Hips: expect.objectContaining({ position: actingProfile.bones[0]?.position }),
+          Head: expect.objectContaining({ position: actingProfile.bones[4]?.position }),
+        }),
+      }),
+      expect.any(Number),
+    );
+    expect(actingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeAction: expect.objectContaining({ action: "wave" }),
+      }),
+    );
+
+    unsubscribe();
+    await runtime.stop();
+
+    expect(runtime.getActingState().activeAction).toBeUndefined();
+  });
+
+  it("sends the acting frame through an attached motion pipeline", async () => {
+    const process = vi.fn((inputs: readonly MotionFrameInput[]) => inputs[0]?.frame);
+    const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
+    const runtime = new PuppetFlowRuntime()
+      .attachActingEngine(new ActingEngine({ profile: actingProfile, autoIdle: false }))
+      .attachMotionPipeline({ process, reset: vi.fn() })
+      .attachMotionAdapter({
+        id: "acting-pipeline-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      });
+
+    await runtime.start();
+
+    expect(process).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          sourceId: "acting",
+          frame: expect.objectContaining({
+            metadata: {
+              sourceId: "acting",
+              sourceType: "procedural-acting",
+              coordinateSpace: "local",
+              clock: "monotonic",
+            },
+          }),
+        }),
+      ],
+      expect.any(Number),
+    );
+    expect(updateFrame).toHaveBeenCalledTimes(1);
+
+    await runtime.stop();
+  });
+
   it("rejects yielded hook and external starts during adapter cleanup before a retry", async () => {
     const releaseCleanup = createDeferred<void>();
     let disposeCalls = 0;

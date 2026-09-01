@@ -4,6 +4,7 @@ import type { MotionState, StateValue } from "@puppetflow/core";
 import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { loadPreset } from "@puppetflow/preset";
 import {
+  ActingEngine,
   PuppetFlowRuntime,
   type PluginOutputSnapshot,
   type StatefulEntrySnapshot,
@@ -26,6 +27,7 @@ import {
   loadPersistedMapperConfig,
   loadPersistedSourceConfig,
 } from "./utils/studio-config-storage";
+import { AI_NIKECHAN_BONE_PROFILE } from "./acting/ai-nikechan-profile";
 
 const PRESETS = {
   Curious: curiousPreset,
@@ -92,23 +94,29 @@ function attachMapperOutputs(instance: PuppetFlowRuntime): void {
       continue;
     }
 
-    instance.attachAdapter(
-      new TauriOscAdapter({
-        id: `osc-${target}`,
-        host: model.host,
-        port: model.port,
-        profile: toMotionMapperProfile(target, model),
-        customParams: model.customParams,
-        customTransforms: model.customTransforms,
-      }),
-    );
+    const adapter = new TauriOscAdapter({
+      id: `osc-${target}`,
+      host: model.host,
+      port: model.port,
+      profile: toMotionMapperProfile(target, model),
+      customParams: model.customParams,
+      customTransforms: model.customTransforms,
+    });
+    instance.attachAdapter(adapter);
+    if (target === "vmc") {
+      instance.attachMotionAdapter(adapter);
+    }
   }
 }
 
 function buildRuntime(): PuppetFlowRuntime {
   const presetJson = customPresetJson ?? PRESETS[currentPreset];
   const loaded = loadPreset(presetJson);
-  const instance = new PuppetFlowRuntime().loadPreset(loaded);
+  const instance = new PuppetFlowRuntime()
+    .loadPreset(loaded)
+    .attachActingEngine(
+      new ActingEngine({ profile: AI_NIKECHAN_BONE_PROFILE, autoIdle: true }),
+    );
 
   attachMapperOutputs(instance);
 
