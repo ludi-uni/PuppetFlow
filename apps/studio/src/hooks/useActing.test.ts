@@ -122,6 +122,33 @@ describe("useActing", () => {
     root = undefined;
   });
 
+  it("does not initialize or subscribe after unmount during cold startup", async () => {
+    let resolveRuntime: ((runtime: PuppetFlowRuntime) => void) | undefined;
+    const pendingRuntime = new Promise<PuppetFlowRuntime>((resolve) => {
+      resolveRuntime = resolve;
+    });
+    vi.mocked(ensureRuntime).mockReturnValue(pendingRuntime);
+    vi.mocked(getActingState).mockReturnValue(initialState);
+    vi.mocked(subscribeActing).mockReturnValue(vi.fn());
+
+    await renderHook();
+
+    expect(getActingState).not.toHaveBeenCalled();
+    expect(subscribeActing).not.toHaveBeenCalled();
+
+    act(() => root?.unmount());
+    root = undefined;
+
+    await act(async () => {
+      resolveRuntime?.({} as PuppetFlowRuntime);
+      await pendingRuntime;
+      await Promise.resolve();
+    });
+
+    expect(getActingState).not.toHaveBeenCalled();
+    expect(subscribeActing).not.toHaveBeenCalled();
+  });
+
   it("applies accepted command state immediately without waiting for duration", async () => {
     const nextState: ActingState = {
       ...initialState,
