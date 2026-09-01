@@ -134,13 +134,13 @@ export class TauriOscAdapter implements Adapter, MotionFrameAdapter {
         host: this.host,
         port: this.port,
         bones,
-        blend_shapes: blendShapes,
-        timestamp_mode: frameUnix
+        blendShapes,
+        timestampMode: frameUnix
           ? "frame-unix"
           : this.timestampMode === "frame-unix"
             ? "send-time"
             : this.timestampMode,
-        timestamp_ms: frameUnix ? frame.timestamp : null,
+        timestampMs: frameUnix ? frame.timestamp : null,
       });
       this.lastFrameSentAt = now;
     } catch (error) {

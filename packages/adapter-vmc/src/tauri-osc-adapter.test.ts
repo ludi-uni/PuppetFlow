@@ -50,12 +50,12 @@ describe("TauriOscAdapter.updateFrame", () => {
           rotation: { x: 0, y: 0, z: 0, w: 1 },
         },
       ],
-      blend_shapes: {
+      blendShapes: {
         Smile: 0.5,
         ParamMouthForm: expect.closeTo(0.4, 5),
       },
-      timestamp_mode: "frame-unix",
-      timestamp_ms: 1_700_000_000_000,
+      timestampMode: "frame-unix",
+      timestampMs: 1_700_000_000_000,
     });
   });
 });
