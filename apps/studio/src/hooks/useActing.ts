@@ -8,6 +8,7 @@ import type {
 import { useCallback, useEffect, useState } from "react";
 import {
   act as runtimeAct,
+  ensureRuntime,
   getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
@@ -43,16 +44,34 @@ export function useActing(): UseActingResult {
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      setState(getActingState());
-      return subscribeActing((nextState) => {
-        setState(nextState);
-        setStatus(null);
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+
+    void ensureRuntime()
+      .then(() => {
+        if (disposed) {
+          return;
+        }
+
+        setState(getActingState());
+        unsubscribe = subscribeActing((nextState) => {
+          if (disposed) {
+            return;
+          }
+          setState(nextState);
+          setStatus(null);
+        });
+      })
+      .catch((error: unknown) => {
+        if (!disposed) {
+          setStatus(errorMessage(error));
+        }
       });
-    } catch (error) {
-      setStatus(errorMessage(error));
-      return undefined;
-    }
+
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
   }, []);
 
   const runCommand = useCallback((command: () => ActingCommandResult) => {

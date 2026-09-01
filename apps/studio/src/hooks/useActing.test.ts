@@ -2,11 +2,16 @@
 
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ActingCommandResult, ActingState } from "@puppetflow/runtime";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  ActingCommandResult,
+  ActingState,
+  PuppetFlowRuntime,
+} from "@puppetflow/runtime";
 import { useActing } from "./useActing";
 import {
   act as runtimeAct,
+  ensureRuntime,
   getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
@@ -15,6 +20,7 @@ import {
 
 vi.mock("../runtime", () => ({
   act: vi.fn(),
+  ensureRuntime: vi.fn(),
   sequence: vi.fn(),
   interrupt: vi.fn(),
   getActingState: vi.fn(),
@@ -39,6 +45,10 @@ describe("useActing", () => {
   let root: Root | undefined;
   let current: ReturnType<typeof useActing> | undefined;
 
+  beforeEach(() => {
+    vi.mocked(ensureRuntime).mockResolvedValue({} as PuppetFlowRuntime);
+  });
+
   afterEach(() => {
     if (root) {
       act(() => root?.unmount());
@@ -50,27 +60,28 @@ describe("useActing", () => {
     vi.clearAllMocks();
   });
 
-  function renderHook(): void {
+  async function renderHook(): Promise<void> {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
 
-    act(() => {
+    await act(async () => {
       root?.render(
         createElement(() => {
           current = useActing();
           return null;
         }),
       );
+      await Promise.resolve();
     });
   }
 
-  it("subscribes to acting updates and cleans up on unmount", () => {
+  it("subscribes to acting updates and cleans up on unmount", async () => {
     const unsubscribe = vi.fn();
     vi.mocked(getActingState).mockReturnValue(initialState);
     vi.mocked(subscribeActing).mockReturnValue(unsubscribe);
 
-    renderHook();
+    await renderHook();
 
     expect(getActingState).toHaveBeenCalled();
     expect(subscribeActing).toHaveBeenCalledWith(expect.any(Function));
@@ -80,7 +91,38 @@ describe("useActing", () => {
     root = undefined;
   });
 
-  it("applies accepted command state immediately without waiting for duration", () => {
+  it("subscribes after cold startup resolves exactly once", async () => {
+    let resolveRuntime: ((runtime: PuppetFlowRuntime) => void) | undefined;
+    const pendingRuntime = new Promise<PuppetFlowRuntime>((resolve) => {
+      resolveRuntime = resolve;
+    });
+    const readyState: ActingState = { ...initialState, queueLength: 1 };
+    const unsubscribe = vi.fn();
+    vi.mocked(ensureRuntime).mockReturnValue(pendingRuntime);
+    vi.mocked(getActingState).mockReturnValue(readyState);
+    vi.mocked(subscribeActing).mockReturnValue(unsubscribe);
+
+    await renderHook();
+
+    expect(getActingState).not.toHaveBeenCalled();
+    expect(subscribeActing).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRuntime?.({} as PuppetFlowRuntime);
+      await pendingRuntime;
+      await Promise.resolve();
+    });
+
+    expect(getActingState).toHaveBeenCalledOnce();
+    expect(subscribeActing).toHaveBeenCalledOnce();
+    expect(current?.state).toEqual(readyState);
+
+    act(() => root?.unmount());
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    root = undefined;
+  });
+
+  it("applies accepted command state immediately without waiting for duration", async () => {
     const nextState: ActingState = {
       ...initialState,
       activeAction: { action: "wave", duration: 2 },
@@ -92,7 +134,7 @@ describe("useActing", () => {
     vi.mocked(runtimeSequence).mockReturnValue(result());
     vi.mocked(runtimeInterrupt).mockReturnValue(result());
 
-    renderHook();
+    await renderHook();
 
     act(() => {
       current?.act("wave", { duration: 2 });
@@ -103,14 +145,14 @@ describe("useActing", () => {
     expect(current?.status).toBeNull();
   });
 
-  it("converts command errors into status text", () => {
+  it("converts command errors into status text", async () => {
     vi.mocked(getActingState).mockReturnValue(initialState);
     vi.mocked(subscribeActing).mockReturnValue(() => {});
     vi.mocked(runtimeInterrupt).mockImplementation(() => {
       throw new Error("Acting runtime is unavailable");
     });
 
-    renderHook();
+    await renderHook();
 
     act(() => {
       current?.interrupt();
