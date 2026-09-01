@@ -1,10 +1,12 @@
 export { sampleActingPrimitive } from "./primitives.js";
+export { ActingEngine, type ActingEngineOptions } from "./engine.js";
 export {
   blendBoneRotations,
   composeBoneRotation,
   identityPose,
   quaternionFromEuler,
 } from "./rotation.js";
+export { ActingScheduler, type ActingSchedulerOptions } from "./scheduler.js";
 export {
   ACTING_ACTION_NAMES,
   ACTING_BLEND_DURATION_MAX_SECONDS,

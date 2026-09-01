@@ -1,6 +1,12 @@
 import { createEmptyMotionState } from "@puppetflow/core";
 import { describe, expect, it } from "vitest";
 
+import {
+  ActingEngine as PublicActingEngine,
+  ActingScheduler as PublicActingScheduler,
+  type ActingEngineOptions,
+  type ActingSchedulerOptions,
+} from "../index.js";
 import { ActingEngine } from "./engine.js";
 import { quaternionFromEuler } from "./rotation.js";
 import type { ActingBoneProfile } from "./types.js";
@@ -83,15 +89,15 @@ describe("ActingEngine", () => {
     expect(frame.bones?.[boneName]?.rotation).not.toEqual({ x: 0, y: 0, z: 0, w: 1 });
   });
 
-  it("resets scheduler state and its monotonic frame clock", () => {
+  it("resets scheduler state without moving the monotonic frame clock backward", () => {
     const engine = new ActingEngine({ profile: PROFILE });
     engine.act("wave", { duration: 1 });
-    engine.tick(1, createEmptyMotionState());
+    expect(engine.tick(1, createEmptyMotionState()).timestamp).toBe(1000);
 
     engine.reset();
 
     expect(engine.get_state().activeAction).toBeUndefined();
-    expect(engine.tick(0, createEmptyMotionState()).timestamp).toBe(0);
+    expect(engine.tick(0.1, createEmptyMotionState()).timestamp).toBe(1100);
   });
 
   it("returns to configured idle when reset", () => {
@@ -101,5 +107,15 @@ describe("ActingEngine", () => {
     engine.reset();
 
     expect(engine.get_state().activeAction).toEqual({ action: "idle" });
+  });
+
+  it("exports the scheduler and engine contracts from the package root", () => {
+    const schedulerOptions: ActingSchedulerOptions = { autoIdle: false };
+    const engineOptions: ActingEngineOptions = { profile: PROFILE, autoIdle: true };
+
+    expect(PublicActingEngine).toBe(ActingEngine);
+    expect(PublicActingScheduler.name).toBe("ActingScheduler");
+    expect(schedulerOptions.autoIdle).toBe(false);
+    expect(engineOptions.profile).toBe(PROFILE);
   });
 });

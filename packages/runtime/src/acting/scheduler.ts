@@ -16,6 +16,7 @@ import {
 
 const DEFAULT_ACTION_DURATION_SECONDS = 1;
 const MAX_QUEUED_ACTIONS = 32;
+const MAX_ACTIONS_PER_TICK = MAX_QUEUED_ACTIONS + 1;
 
 export interface ActingSchedulerOptions {
   autoIdle?: boolean;
@@ -123,21 +124,42 @@ export class ActingScheduler implements ActingApi {
       throw new RangeError("Acting deltaTime must be finite and non-negative");
     }
 
-    const action = this.active;
-    if (action === undefined) {
-      this.currentPose = identityPose(this.boneNames);
-      return this.currentPose;
-    }
+    let remainingDelta = deltaTime;
+    let completedActions = 0;
+    while (completedActions < MAX_ACTIONS_PER_TICK) {
+      const action = this.active;
+      if (action === undefined) {
+        this.currentPose = identityPose(this.boneNames);
+        return this.currentPose;
+      }
 
-    action.elapsed += deltaTime;
-    const targetPose = this.sample(action);
-    this.currentPose = this.applyBlend(targetPose, deltaTime);
+      if (action.continuous) {
+        this.advanceAction(action, remainingDelta);
+        return this.currentPose;
+      }
 
-    if (!action.continuous && action.elapsed >= action.duration) {
+      const untilCompletion = Math.max(0, action.duration - action.elapsed);
+      const actionDelta = Math.min(remainingDelta, untilCompletion);
+      this.advanceAction(action, actionDelta);
+      remainingDelta -= actionDelta;
+
+      if (action.elapsed < action.duration) {
+        return this.currentPose;
+      }
+
       this.advanceAfterCompletion();
+      completedActions += 1;
+      if (remainingDelta === 0) {
+        return this.currentPose;
+      }
     }
 
     return this.currentPose;
+  }
+
+  private advanceAction(action: ActiveAction, deltaTime: number): void {
+    action.elapsed += deltaTime;
+    this.currentPose = this.applyBlend(this.sample(action), deltaTime);
   }
 
   private start(request: ActingActionRequest): void {

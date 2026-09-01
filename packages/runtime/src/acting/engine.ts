@@ -54,7 +54,6 @@ export class ActingEngine implements ActingApi {
 
   reset(): void {
     this.scheduler.reset();
-    this.timestamp = 0;
   }
 
   tick(deltaTime: number, baseMotion: MotionState): MotionFrame {

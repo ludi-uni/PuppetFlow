@@ -68,6 +68,23 @@ describe("ActingScheduler", () => {
     expect(scheduler.get_state().activeAction).toBeUndefined();
   });
 
+  it("consumes overshoot across every completed action in a sequence", () => {
+    const scheduler = new ActingScheduler(BONE_NAMES);
+    scheduler.sequence([
+      { action: "look_left", duration: 0.05 },
+      { action: "look_right", duration: 0.05 },
+    ]);
+
+    scheduler.tick(0.15);
+
+    expect(scheduler.get_state()).toMatchObject({
+      elapsed: 0,
+      remaining: 0,
+      queueLength: 0,
+    });
+    expect(scheduler.get_state().activeAction).toBeUndefined();
+  });
+
   it("interrupts an active action and clears its queue when a new command arrives", () => {
     const scheduler = new ActingScheduler(BONE_NAMES);
     scheduler.sequence([
