@@ -256,7 +256,7 @@ export class PuppetFlowRuntime {
   }
 
   getActingState(): ActingState {
-    return this.actingEngine?.get_state() ?? EMPTY_ACTING_STATE;
+    return this.actingEngine?.get_state() ?? { ...EMPTY_ACTING_STATE };
   }
 
   onActingUpdate(listener: ActingUpdateListener): () => void {

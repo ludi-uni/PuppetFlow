@@ -83,13 +83,17 @@ function isTauriEnvironment(): boolean {
   );
 }
 
-function attachMapperOutputs(instance: PuppetFlowRuntime): void {
-  if (!isTauriEnvironment()) {
+export function attachMapperOutputs(
+  instance: PuppetFlowRuntime,
+  config: MotionMapperEditorConfig = mapperConfig,
+  tauriEnvironment = isTauriEnvironment(),
+): void {
+  if (!tauriEnvironment) {
     return;
   }
 
   for (const target of getMapperTargets()) {
-    const model = mapperConfig[target];
+    const model = config[target];
     if (!model.enabled) {
       continue;
     }

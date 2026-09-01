@@ -106,6 +106,28 @@ const actingProfile: ActingBoneProfile = {
 };
 
 describe("PuppetFlowRuntime", () => {
+  it("returns independent empty acting-state snapshots when no engine is attached", () => {
+    const runtimeA = new PuppetFlowRuntime();
+    const runtimeB = new PuppetFlowRuntime();
+    const stateA = runtimeA.getActingState();
+
+    stateA.elapsed = 123;
+    stateA.queueLength = 456;
+
+    expect(runtimeA.getActingState()).toEqual({
+      elapsed: 0,
+      remaining: 0,
+      queueLength: 0,
+      blendRemaining: 0,
+    });
+    expect(runtimeB.getActingState()).toEqual({
+      elapsed: 0,
+      remaining: 0,
+      queueLength: 0,
+      blendRemaining: 0,
+    });
+  });
+
   it("optionally dispatches acting frames while preserving normal adapter updates", async () => {
     const update = vi.fn(async () => {});
     const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
@@ -184,6 +206,36 @@ describe("PuppetFlowRuntime", () => {
     expect(updateFrame).toHaveBeenCalledTimes(1);
 
     await runtime.stop();
+  });
+
+  it("emits one acting frame for every runtime tick", async () => {
+    vi.useFakeTimers();
+    const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
+    const engine = new ActingEngine({ profile: actingProfile, autoIdle: false });
+    const tick = vi.spyOn(engine, "tick");
+    const runtime = new PuppetFlowRuntime()
+      .attachActingEngine(engine)
+      .attachMotionAdapter({
+        id: "per-tick-acting-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      });
+
+    try {
+      await runtime.start();
+      expect(tick).toHaveBeenCalledTimes(1);
+      expect(updateFrame).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(50);
+      await flushMicrotasks(8);
+
+      expect(tick).toHaveBeenCalledTimes(4);
+      expect(updateFrame).toHaveBeenCalledTimes(4);
+    } finally {
+      await runtime.stop();
+      vi.useRealTimers();
+    }
   });
 
   it("rejects yielded hook and external starts during adapter cleanup before a retry", async () => {
