@@ -133,6 +133,7 @@ describe("useActing", () => {
 
     await renderHook();
 
+    expect(ensureRuntime).toHaveBeenCalledOnce();
     expect(getActingState).not.toHaveBeenCalled();
     expect(subscribeActing).not.toHaveBeenCalled();
 
