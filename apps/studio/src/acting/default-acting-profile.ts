@@ -1,16 +1,16 @@
 import { quaternionFromEuler, type ActingBoneProfile } from "@puppetflow/runtime";
 
-const AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS = (Math.PI * 5) / 12;
+const RELAXED_UPPER_ARM_ANGLE_RADIANS = (Math.PI * 5) / 12;
 
 /**
- * VMC Humanoid bones for AI NIKKE-chan.
+ * Default VMC Humanoid profile for the configured VRM.
  *
- * Warudo's pose receiver treats the VRM rest identity as a T-pose for this
- * model. Keep a relaxed arm pose as the acting neutral so finite actions and
- * interrupt-to-idle do not leave both sleeves raised.
+ * Bone positions and neutral rotations are model calibration data. The
+ * procedural acting runtime stays model-agnostic; replace this profile when a
+ * different VRM is selected.
  */
-export const AI_NIKECHAN_BONE_PROFILE: ActingBoneProfile = {
-  id: "ai-nikechan-v2-outerwear",
+export const DEFAULT_ACTING_BONE_PROFILE: ActingBoneProfile = {
+  id: "default-vrm-humanoid",
   bones: [
     { name: "Hips", position: { x: -4.16676547e-14, y: 0.8669316, z: 0.04389208 } },
     { name: "Spine", position: { x: -9.18101044e-15, y: 0.147577465, z: -0.03021568 } },
@@ -33,7 +33,7 @@ export const AI_NIKECHAN_BONE_PROFILE: ActingBoneProfile = {
       neutralRotation: quaternionFromEuler({
         x: 0,
         y: 0,
-        z: AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS,
+        z: RELAXED_UPPER_ARM_ANGLE_RADIANS,
       }),
     },
     {
@@ -50,7 +50,7 @@ export const AI_NIKECHAN_BONE_PROFILE: ActingBoneProfile = {
       neutralRotation: quaternionFromEuler({
         x: 0,
         y: 0,
-        z: -AI_NIKECHAN_RELAXED_ARM_ANGLE_RADIANS,
+        z: -RELAXED_UPPER_ARM_ANGLE_RADIANS,
       }),
     },
     {

@@ -38,7 +38,7 @@ export function ActingTab({ state, status, act, sequence, interrupt }: ActingTab
         <div>
           <h2>Acting</h2>
           <p className="hint">
-            Procedural bone controls for local AI-Nikechan verification.
+            Procedural Humanoid bone controls for the configured VRM.
           </p>
         </div>
         <button

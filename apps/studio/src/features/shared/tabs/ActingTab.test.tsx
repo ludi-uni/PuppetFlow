@@ -105,6 +105,13 @@ describe("ActingTab", () => {
     }
   });
 
+  it("describes the acting controls for the configured VRM", () => {
+    renderTab();
+
+    expect(container?.textContent).toContain("configured VRM");
+    expect(container?.textContent).not.toContain("AI-Nikechan");
+  });
+
   it("wires interrupt, idle, the exact acceptance sequence, and state rendering", () => {
     renderTab();
 

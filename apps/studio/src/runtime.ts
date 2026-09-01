@@ -32,7 +32,7 @@ import {
   loadPersistedMapperConfig,
   loadPersistedSourceConfig,
 } from "./utils/studio-config-storage";
-import { AI_NIKECHAN_BONE_PROFILE } from "./acting/ai-nikechan-profile";
+import { DEFAULT_ACTING_BONE_PROFILE } from "./acting/default-acting-profile";
 
 const PRESETS = {
   Curious: curiousPreset,
@@ -126,7 +126,7 @@ function buildRuntime(): PuppetFlowRuntime {
   const instance = new PuppetFlowRuntime()
     .loadPreset(loaded)
     .attachActingEngine(
-      new ActingEngine({ profile: AI_NIKECHAN_BONE_PROFILE, autoIdle: true }),
+      new ActingEngine({ profile: DEFAULT_ACTING_BONE_PROFILE, autoIdle: true }),
     );
 
   attachMapperOutputs(instance);

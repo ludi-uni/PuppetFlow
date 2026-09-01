@@ -1,12 +1,12 @@
 import { createEmptyMotionState } from "@puppetflow/core";
 import { ActingEngine, quaternionFromEuler } from "@puppetflow/runtime";
 import { describe, expect, it } from "vitest";
-import { AI_NIKECHAN_BONE_PROFILE } from "./ai-nikechan-profile";
+import { DEFAULT_ACTING_BONE_PROFILE } from "./default-acting-profile";
 
-describe("AI_NIKECHAN_BONE_PROFILE", () => {
+describe("DEFAULT_ACTING_BONE_PROFILE", () => {
   it("maps exactly the verified VMC bones to their VRM local rest translations", () => {
-    expect(AI_NIKECHAN_BONE_PROFILE).toEqual({
-      id: "ai-nikechan-v2-outerwear",
+    expect(DEFAULT_ACTING_BONE_PROFILE).toEqual({
+      id: "default-vrm-humanoid",
       bones: [
         { name: "Hips", position: { x: -4.16676547e-14, y: 0.8669316, z: 0.04389208 } },
         {
@@ -57,23 +57,23 @@ describe("AI_NIKECHAN_BONE_PROFILE", () => {
 
   it("defines a relaxed neutral rotation for both upper arms", () => {
     expect(
-      AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "LeftUpperArm")
+      DEFAULT_ACTING_BONE_PROFILE.bones.find((bone) => bone.name === "LeftUpperArm")
         ?.neutralRotation,
     ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: (Math.PI * 5) / 12 }));
     expect(
-      AI_NIKECHAN_BONE_PROFILE.bones.find((bone) => bone.name === "RightUpperArm")
+      DEFAULT_ACTING_BONE_PROFILE.bones.find((bone) => bone.name === "RightUpperArm")
         ?.neutralRotation,
     ).toEqual(quaternionFromEuler({ x: 0, y: 0, z: (-Math.PI * 5) / 12 }));
   });
 
   it("raises the right arm above horizontal at the full wave peak", () => {
-    const engine = new ActingEngine({ profile: AI_NIKECHAN_BONE_PROFILE });
+    const engine = new ActingEngine({ profile: DEFAULT_ACTING_BONE_PROFILE });
     engine.act("wave", { side: "right", duration: 1 });
 
     const rotation = engine.tick(0.5, createEmptyMotionState()).bones?.RightUpperArm
       ?.rotation;
 
-    expect(rotation?.z).toBeCloseTo(Math.sin(Math.PI / 24));
-    expect(rotation?.w).toBeCloseTo(Math.cos(Math.PI / 24));
+    expect(rotation?.z).toBeCloseTo(Math.sin((Math.PI * 5) / 24));
+    expect(rotation?.w).toBeCloseTo(Math.cos((Math.PI * 5) / 24));
   });
 });

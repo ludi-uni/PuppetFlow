@@ -8,8 +8,8 @@ import type {
 } from "./types.js";
 import { validateActingActionParams, validateActingDuration } from "./types.js";
 
-const WAVE_UPPER_ARM_RAISE_RADIANS = Math.PI / 2;
-const SMALL_WAVE_UPPER_ARM_RAISE_RADIANS = (Math.PI * 2) / 5;
+const WAVE_UPPER_ARM_RAISE_RADIANS = (Math.PI * 5) / 6;
+const SMALL_WAVE_UPPER_ARM_RAISE_RADIANS = Math.PI / 2;
 
 /**
  * Samples one model-independent acting primitive as local bone rotation offsets.
