@@ -4,6 +4,7 @@ import { StudioTabPanel } from "./features/shared/StudioTabPanel";
 import { usePresetState } from "./hooks/usePresetState";
 import { useMotionPipeline } from "./hooks/useMotionPipeline";
 import { useInputSources } from "./hooks/useInputSources";
+import { useActing } from "./hooks/useActing";
 import { useMapperConfig } from "./hooks/useMapperConfig";
 import { useStudioMode } from "./hooks/useStudioMode";
 import { useStudioStatus } from "./hooks/useStudioStatus";
@@ -172,6 +173,7 @@ export function App() {
     handleImportCustomBehaviors,
     customMicroBehaviorCount,
   } = motionPipeline;
+  const acting = useActing();
 
   const nextStepGuide = useStudioNextStep({
     mapperConfig: appliedMapperConfig,
@@ -396,6 +398,7 @@ export function App() {
           handleApplySimpleMapper,
           handleApplyExpertMapper,
         }}
+        acting={acting}
         onStudioModeChange={handleStudioModeChange}
         onStayOnMapperTab={() => goToTab("mapper")}
       />

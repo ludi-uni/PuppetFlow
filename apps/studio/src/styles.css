@@ -1428,3 +1428,65 @@ button:disabled {
 .mouth-status-hint {
   margin: 0.5rem 0 0;
 }
+
+.acting-tab {
+  max-width: 58rem;
+}
+
+.acting-tab-heading,
+.acting-actions,
+.acting-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.acting-tab-heading {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.acting-controls {
+  margin: 1rem 0;
+}
+
+.acting-controls label {
+  display: grid;
+  gap: 0.25rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.acting-controls input,
+.acting-controls select {
+  width: 6.5rem;
+}
+
+.acting-state {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.acting-state div,
+.acting-status {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #111827;
+}
+
+.acting-state dt {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.acting-state dd {
+  margin: 0.15rem 0 0;
+}
+
+.acting-status {
+  color: #fca5a5;
+}

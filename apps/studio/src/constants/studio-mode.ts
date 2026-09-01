@@ -17,7 +17,8 @@ export type TabId =
   | "presets"
   | "plugins"
   | "sources"
-  | "mapper";
+  | "mapper"
+  | "acting";
 
 export function loadStudioMode(): StudioMode {
   return loadPersistedStudioMode();
@@ -49,6 +50,7 @@ export function getTabsForMode(
       { id: "plugins", label: "Plugins" },
       { id: "sources", label: "Input Sources" },
       { id: "mapper", label: "Motion Mapper" },
+      { id: "acting", label: "Acting" },
     ];
   }
 

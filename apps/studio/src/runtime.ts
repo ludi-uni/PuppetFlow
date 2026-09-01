@@ -6,6 +6,11 @@ import { loadPreset } from "@puppetflow/preset";
 import {
   ActingEngine,
   PuppetFlowRuntime,
+  type ActingActionName,
+  type ActingActionParams,
+  type ActingActionRequest,
+  type ActingCommandResult,
+  type ActingState,
   type PluginOutputSnapshot,
   type StatefulEntrySnapshot,
 } from "@puppetflow/runtime";
@@ -75,6 +80,8 @@ const pipelineListenerUnsubs = new Map<
   (update: MotionPipelineUpdate) => void,
   () => void
 >();
+const actingListenerSet = new Set<(state: ActingState) => void>();
+const actingListenerUnsubs = new Map<(state: ActingState) => void, () => void>();
 
 function isTauriEnvironment(): boolean {
   return (
@@ -149,6 +156,18 @@ function bindPipelineListeners(instance: PuppetFlowRuntime): void {
   }
 }
 
+function bindActingListeners(instance: PuppetFlowRuntime): void {
+  for (const unsub of actingListenerUnsubs.values()) {
+    unsub();
+  }
+  actingListenerUnsubs.clear();
+
+  for (const listener of actingListenerSet) {
+    actingListenerUnsubs.set(listener, instance.onActingUpdate(listener));
+    listener(instance.getActingState());
+  }
+}
+
 function restoreState(
   instance: PuppetFlowRuntime,
   savedState: Record<string, StateValue>,
@@ -169,6 +188,7 @@ async function createAndStartRuntime(generation: number): Promise<PuppetFlowRunt
 
   runtime = instance;
   bindPipelineListeners(instance);
+  bindActingListeners(instance);
   return instance;
 }
 
@@ -354,5 +374,58 @@ export function subscribeMotionPipeline(
     pipelineListenerSet.delete(listener);
     pipelineListenerUnsubs.get(listener)?.();
     pipelineListenerUnsubs.delete(listener);
+  };
+}
+
+function getActingApi() {
+  const api = getRuntime().getActingApi();
+  if (!api) {
+    throw new Error("Acting engine is not attached to the Studio runtime");
+  }
+  return api;
+}
+
+export function act(
+  action: ActingActionName | string,
+  params?: ActingActionParams,
+): ActingCommandResult {
+  return getActingApi().act(action, params);
+}
+
+export function sequence(actions: readonly ActingActionRequest[]): ActingCommandResult {
+  return getActingApi().sequence(actions);
+}
+
+export function interrupt(): ActingCommandResult {
+  return getActingApi().interrupt();
+}
+
+export function getActingState(): ActingState {
+  return getRuntime().getActingState();
+}
+
+export function subscribeActing(listener: (state: ActingState) => void): () => void {
+  actingListenerSet.add(listener);
+
+  if (runtime) {
+    actingListenerUnsubs.set(listener, runtime.onActingUpdate(listener));
+    listener(runtime.getActingState());
+  } else {
+    void ensureRuntime().then(() => {
+      if (
+        actingListenerSet.has(listener) &&
+        runtime &&
+        !actingListenerUnsubs.has(listener)
+      ) {
+        actingListenerUnsubs.set(listener, runtime.onActingUpdate(listener));
+        listener(runtime.getActingState());
+      }
+    });
+  }
+
+  return () => {
+    actingListenerSet.delete(listener);
+    actingListenerUnsubs.get(listener)?.();
+    actingListenerUnsubs.delete(listener);
   };
 }

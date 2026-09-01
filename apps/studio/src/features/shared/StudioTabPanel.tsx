@@ -4,6 +4,7 @@ import type { PluginOutputSnapshot, StatefulEntrySnapshot } from "@puppetflow/ru
 import { PipelineTab } from "../../components/PipelineTab";
 import type { StatusKind } from "../../components/StatusBanner";
 import type { MotionMapperEditorConfig } from "../../mapper-config";
+import type { UseActingResult } from "../../hooks/useActing";
 import type { MicroBehaviorDraft } from "../../utils/micro-behavior-draft";
 import type { PresetName, SourceConfig } from "../../runtime";
 import type { StudioMode, TabId } from "../../constants/studio-mode";
@@ -17,6 +18,7 @@ import { MapperTab } from "./tabs/MapperTab";
 import { PluginsTab } from "./tabs/PluginsTab";
 import { PresetsTab } from "./tabs/PresetsTab";
 import { ScratchTab } from "./tabs/ScratchTab";
+import { ActingTab } from "./tabs/ActingTab";
 
 export interface StudioTabPanelProps {
   tab: TabId;
@@ -126,6 +128,7 @@ export interface StudioTabPanelProps {
     handleApplySimpleMapper: (config: MotionMapperEditorConfig) => Promise<void>;
     handleApplyExpertMapper: (config: MotionMapperEditorConfig) => Promise<void>;
   };
+  acting: UseActingResult;
   onStudioModeChange: (mode: StudioMode) => void;
   onStayOnMapperTab: () => void;
 }
@@ -138,6 +141,7 @@ export function StudioTabPanel({
   preset,
   sources,
   mapper,
+  acting,
   onStudioModeChange,
   onStayOnMapperTab,
 }: StudioTabPanelProps) {
@@ -374,6 +378,10 @@ export function StudioTabPanel({
         onStayOnMapperTab={onStayOnMapperTab}
       />
     );
+  }
+
+  if (tab === "acting" && !isSimpleMode) {
+    return <ActingTab {...acting} />;
   }
 
   return null;
