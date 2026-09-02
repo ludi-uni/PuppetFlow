@@ -202,6 +202,44 @@ describe("useActing", () => {
     expect(current?.state).toEqual(nextState);
   });
 
+  it("forwards clearExpression and applies returned state immediately", async () => {
+    const nextState: ActingState = {
+      ...initialState,
+      expression: {
+        activeExpression: { expression: "neutral", fadeOut: 0.2 },
+        elapsed: 0,
+        remaining: 0.2,
+        fadeRemaining: 0.2,
+      },
+    };
+    vi.mocked(getActingState).mockReturnValue(initialState);
+    vi.mocked(subscribeActing).mockReturnValue(() => {});
+    vi.mocked(runtimeClearExpression).mockReturnValue(result(nextState));
+
+    await renderHook();
+    act(() => current?.clearExpression({ fadeOut: 0.2 }));
+
+    expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
+    expect(current?.state).toEqual(nextState);
+    expect(current?.status).toBeNull();
+  });
+
+  it("surfaces rejected clearExpression commands through status", async () => {
+    vi.mocked(getActingState).mockReturnValue(initialState);
+    vi.mocked(subscribeActing).mockReturnValue(() => {});
+    vi.mocked(runtimeClearExpression).mockReturnValue({
+      accepted: false,
+      reason: "Expression clear was rejected",
+      state: initialState,
+    });
+
+    await renderHook();
+    act(() => current?.clearExpression({ fadeOut: 0.2 }));
+
+    expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
+    expect(current?.status).toBe("Expression clear was rejected");
+  });
+
   it("converts command errors into status text", async () => {
     vi.mocked(getActingState).mockReturnValue(initialState);
     vi.mocked(subscribeActing).mockReturnValue(() => {});
