@@ -36,6 +36,10 @@ export function encodeBlendShapeMessage(blendName: string, value: number): Uint8
   ]);
 }
 
+export function encodeBlendShapeApplyMessage(): Uint8Array {
+  return concatChunks([encodeString("/VMC/Ext/Blend/Apply"), encodeString(",")]);
+}
+
 export function encodeBonePoseMessage(
   boneName: string,
   transform: BoneTransform,

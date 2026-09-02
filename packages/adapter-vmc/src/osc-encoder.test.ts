@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { encodeBlendShapeMessage, encodeBonePoseMessage } from "./osc-encoder.js";
+import {
+  encodeBlendShapeApplyMessage,
+  encodeBlendShapeMessage,
+  encodeBonePoseMessage,
+} from "./osc-encoder.js";
 
 function readOscString(packet: Uint8Array, offset: number): [string, number] {
   const end = packet.indexOf(0, offset);
@@ -32,6 +36,15 @@ describe("encodeBlendShapeMessage", () => {
 
     expect(packet.length % 4).toBe(0);
     expect(packet.length).toBeGreaterThan(0);
+  });
+});
+
+describe("encodeBlendShapeApplyMessage", () => {
+  it("encodes a zero-argument VMC Blend/Apply message", () => {
+    const packet = encodeBlendShapeApplyMessage();
+
+    expect(new TextDecoder().decode(packet)).toContain("/VMC/Ext/Blend/Apply");
+    expect(new TextDecoder().decode(packet)).toContain(",");
   });
 });
 

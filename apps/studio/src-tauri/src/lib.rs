@@ -43,6 +43,7 @@ fn osc_send_blend_params(
         .socket
         .lock()
         .map_err(|_| "OSC sender lock poisoned".to_string())?;
+    let has_blend_shapes = !params.is_empty();
 
     for (param_name, value) in params {
         let packet = OscPacket::Message(OscMessage {
@@ -50,6 +51,19 @@ fn osc_send_blend_params(
             args: vec![OscType::String(param_name), OscType::Float(value)],
         });
 
+        let encoded = rosc::encoder::encode(&packet)
+            .map_err(|error| format!("Failed to encode OSC packet: {error}"))?;
+
+        socket
+            .send_to(&encoded, format!("{host}:{port}"))
+            .map_err(|error| format!("Failed to send OSC packet: {error}"))?;
+    }
+
+    if has_blend_shapes {
+        let packet = OscPacket::Message(OscMessage {
+            addr: "/VMC/Ext/Blend/Apply".to_string(),
+            args: vec![],
+        });
         let encoded = rosc::encoder::encode(&packet)
             .map_err(|error| format!("Failed to encode OSC packet: {error}"))?;
 
@@ -87,10 +101,17 @@ fn osc_send_motion_frame(
             ],
         }));
     }
+    let has_blend_shapes = !blend_shapes.is_empty();
     for (param_name, value) in blend_shapes {
         content.push(OscPacket::Message(OscMessage {
             addr: "/VMC/Ext/Blend/Val".to_string(),
             args: vec![OscType::String(param_name), OscType::Float(value)],
+        }));
+    }
+    if has_blend_shapes {
+        content.push(OscPacket::Message(OscMessage {
+            addr: "/VMC/Ext/Blend/Apply".to_string(),
+            args: vec![],
         }));
     }
 

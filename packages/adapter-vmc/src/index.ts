@@ -4,7 +4,11 @@ export {
   isTauriOscEnabled,
 } from "./tauri-vmc-adapter.js";
 export { TauriOscAdapter } from "./tauri-osc-adapter.js";
-export { encodeBonePoseMessage, encodeBlendShapeMessage } from "./osc-encoder.js";
+export {
+  encodeBlendShapeApplyMessage,
+  encodeBlendShapeMessage,
+  encodeBonePoseMessage,
+} from "./osc-encoder.js";
 export {
   encodeOscBundle,
   resolveOscTimetag,

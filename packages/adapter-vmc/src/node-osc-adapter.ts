@@ -12,7 +12,11 @@ import {
   type MotionMapperProfile,
   type ValueTransform,
 } from "@puppetflow/motion-mapper";
-import { encodeBlendShapeMessage, encodeBonePoseMessage } from "./osc-encoder.js";
+import {
+  encodeBlendShapeApplyMessage,
+  encodeBlendShapeMessage,
+  encodeBonePoseMessage,
+} from "./osc-encoder.js";
 import { encodeOscBundle } from "./osc-bundle.js";
 import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT, type VmcTimestampMode } from "./types.js";
 
@@ -110,9 +114,13 @@ export class NodeOscAdapter implements Adapter, MotionFrameAdapter {
       ...mapCustomMotion(motion, this.customParams, this.customTransforms),
     };
 
-    for (const [param, value] of Object.entries(mapped)) {
+    const blendShapeEntries = Object.entries(mapped);
+    for (const [param, value] of blendShapeEntries) {
       const packet = encodeBlendShapeMessage(param, value);
       await this.transport.send(packet, this.port, this.host);
+    }
+    if (blendShapeEntries.length > 0) {
+      await this.transport.send(encodeBlendShapeApplyMessage(), this.port, this.host);
     }
   }
 
@@ -131,8 +139,10 @@ export class NodeOscAdapter implements Adapter, MotionFrameAdapter {
       }
     }
 
+    let hasBlendShapeValues = false;
     for (const [blendName, value] of Object.entries(frame.blendShapes ?? {})) {
       messages.push(encodeBlendShapeMessage(blendName, value));
+      hasBlendShapeValues = true;
     }
 
     for (const [param, value] of mapFrameParameters(
@@ -142,6 +152,11 @@ export class NodeOscAdapter implements Adapter, MotionFrameAdapter {
       this.customTransforms,
     )) {
       messages.push(encodeBlendShapeMessage(param, value));
+      hasBlendShapeValues = true;
+    }
+
+    if (hasBlendShapeValues) {
+      messages.push(encodeBlendShapeApplyMessage());
     }
 
     if (messages.length === 0) {

@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("TauriOscAdapter.updateFrame", () => {
-  it("invokes the native motion-frame Bundle command with complete bones", async () => {
+  it("invokes the native motion-frame Bundle command with complete bones and expressions", async () => {
     const adapter = new TauriOscAdapter({
       host: "127.0.0.1",
       port: 39539,
@@ -34,7 +34,7 @@ describe("TauriOscAdapter.updateFrame", () => {
           },
           Partial: { rotation: { x: 0, y: 0, z: 0, w: 1 } },
         },
-        blendShapes: { Smile: 0.5 },
+        blendShapes: { ExpressionHappy: 0.5 },
         parameters: { mouthX: 0.4 },
       },
       1 / 60,
@@ -51,7 +51,7 @@ describe("TauriOscAdapter.updateFrame", () => {
         },
       ],
       blendShapes: {
-        Smile: 0.5,
+        ExpressionHappy: 0.5,
         ParamMouthForm: expect.closeTo(0.4, 5),
       },
       timestampMode: "frame-unix",
