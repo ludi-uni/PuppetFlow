@@ -21,6 +21,7 @@ import type { MotionFrameInput, MotionLayerPolicy } from "@puppetflow/motion-pip
 import {
   ActingEngine,
   type ActingBoneProfile,
+  type ActingCommandResult,
   type ActingExpressionProfile,
 } from "./acting/index.js";
 import { PuppetFlowRuntime } from "./runtime.js";
@@ -135,6 +136,26 @@ describe("PuppetFlowRuntime", () => {
       queueLength: 0,
       blendRemaining: 0,
     });
+  });
+
+  it("exposes aggregate Expression command state through the public runtime API", () => {
+    const runtime = new PuppetFlowRuntime().attachActingEngine(
+      new ActingEngine({
+        profile: actingProfile,
+        expressionProfile: actingExpressionProfile,
+        autoIdle: false,
+      }),
+    );
+    const api = runtime.getActingApi();
+    if (api === null) {
+      throw new Error("Expected attached ActingEngine API");
+    }
+
+    const result = api.set_expression("happy", { intensity: 0.5, fadeIn: 0 });
+    const aggregate: ActingCommandResult = result;
+
+    expect(aggregate.state.expression?.activeExpression?.expression).toBe("happy");
+    expect(result.state.expression?.activeExpression?.expression).toBe("happy");
   });
 
   it("optionally dispatches acting frames while preserving normal adapter updates", async () => {

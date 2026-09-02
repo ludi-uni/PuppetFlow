@@ -135,7 +135,14 @@ export interface ExpressionApi {
   get_expression_state(): ActingExpressionState;
 }
 
-export interface ActingRuntimeApi extends ActingApi, ExpressionApi {}
+export interface ActingRuntimeApi extends ActingApi {
+  set_expression(
+    expression: ActingExpressionName | string,
+    params?: ActingExpressionParams,
+  ): ActingCommandResult;
+  clear_expression(params?: { fadeOut?: number }): ActingCommandResult;
+  get_expression_state(): ActingExpressionState;
+}
 
 /** Rejects invalid explicit action parameters before they can alter acting state. */
 export function validateActingActionParams(params: ActingActionParams): void {

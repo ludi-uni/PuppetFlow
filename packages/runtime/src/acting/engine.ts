@@ -73,7 +73,7 @@ export class ActingEngine implements ActingRuntimeApi {
   set_expression(
     expression: ActingExpressionName | string,
     params?: ActingExpressionParams,
-  ): ExpressionAggregateCommandResult {
+  ): ActingCommandResult {
     if (this.expressionEngine === undefined) {
       return this.rejectExpressionCommand();
     }
@@ -81,7 +81,7 @@ export class ActingEngine implements ActingRuntimeApi {
     return this.expressionCommandResult(result);
   }
 
-  clear_expression(params?: { fadeOut?: number }): ExpressionAggregateCommandResult {
+  clear_expression(params?: { fadeOut?: number }): ActingCommandResult {
     if (this.expressionEngine === undefined) {
       return this.rejectExpressionCommand();
     }
@@ -140,7 +140,7 @@ export class ActingEngine implements ActingRuntimeApi {
     });
   }
 
-  private rejectExpressionCommand(): ExpressionAggregateCommandResult {
+  private rejectExpressionCommand(): ActingCommandResult {
     return this.expressionCommandResult({
       accepted: false,
       reason: "No Expression profile is configured",
@@ -149,13 +149,11 @@ export class ActingEngine implements ActingRuntimeApi {
 
   private expressionCommandResult(
     result: Pick<ExpressionCommandResult, "accepted" | "reason">,
-  ): ExpressionAggregateCommandResult {
-    const state = this.get_state();
-    const expression = state.expression ?? this.get_expression_state();
+  ): ActingCommandResult {
     return {
       accepted: result.accepted,
       ...(result.reason === undefined ? {} : { reason: result.reason }),
-      state: { ...state, ...expression, expression },
+      state: this.get_state(),
     };
   }
 }
@@ -166,8 +164,6 @@ const EMPTY_EXPRESSION_STATE: ActingExpressionState = {
   remaining: 0,
   fadeRemaining: 0,
 };
-
-type ExpressionAggregateCommandResult = ActingCommandResult & ExpressionCommandResult;
 
 function cloneExpressionState(state: ActingExpressionState): ActingExpressionState {
   return {
