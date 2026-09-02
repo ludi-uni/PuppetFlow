@@ -240,19 +240,20 @@ describe("useActing", () => {
     expect(current?.status).toBe("Expression clear was rejected");
   });
 
-  it("converts command errors into status text", async () => {
+  it("converts clearExpression errors into status text", async () => {
     vi.mocked(getActingState).mockReturnValue(initialState);
     vi.mocked(subscribeActing).mockReturnValue(() => {});
-    vi.mocked(runtimeInterrupt).mockImplementation(() => {
-      throw new Error("Acting runtime is unavailable");
+    vi.mocked(runtimeClearExpression).mockImplementation(() => {
+      throw new Error("Expression clear is unavailable");
     });
 
     await renderHook();
 
     act(() => {
-      current?.interrupt();
+      current?.clearExpression({ fadeOut: 0.2 });
     });
 
-    expect(current?.status).toBe("Acting runtime is unavailable");
+    expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
+    expect(current?.status).toBe("Expression clear is unavailable");
   });
 });
