@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "test": "vitest run --dir ."
+    "test": "vitest run --dir .",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
   },
   "dependencies": {
     "@puppetflow/adapter-core": "workspace:*",
