@@ -1,5 +1,6 @@
 export { sampleActingPrimitive } from "./primitives.js";
 export { ActingEngine, type ActingEngineOptions } from "./engine.js";
+export { ExpressionEngine, type ExpressionEngineOptions } from "./expression-engine.js";
 export {
   blendBoneRotations,
   composeBoneRotation,
