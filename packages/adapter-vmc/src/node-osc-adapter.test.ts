@@ -33,7 +33,9 @@ function readBundleAddresses(packet: Uint8Array): string[] {
   const addresses: string[] = [];
   let offset = 16;
   while (offset < packet.length) {
-    const size = new DataView(packet.buffer, packet.byteOffset + offset, 4).getUint32(0);
+    const size = new DataView(packet.buffer, packet.byteOffset + offset, 4).getUint32(
+      0,
+    );
     offset += 4;
     const [address] = readOscString(packet.slice(offset, offset + size), 0);
     addresses.push(address);
@@ -180,8 +182,9 @@ describe("NodeOscAdapter.update", () => {
 
     const addresses = sent.map((packet) => readOscString(packet, 0)[0]);
     expect(addresses.at(-1)).toBe("/VMC/Ext/Blend/Apply");
-    expect(addresses.slice(0, -1)).toSatisfy((values: string[]) =>
-      values.length > 0 && values.every((value) => value === "/VMC/Ext/Blend/Val"),
+    expect(addresses.slice(0, -1)).toSatisfy(
+      (values: string[]) =>
+        values.length > 0 && values.every((value) => value === "/VMC/Ext/Blend/Val"),
     );
   });
 });

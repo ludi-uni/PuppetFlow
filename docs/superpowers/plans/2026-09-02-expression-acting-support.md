@@ -331,6 +331,8 @@ git commit -m "feat(runtime): add expression acting lane"
 - Modify: packages/runtime/src/acting/engine.test.ts
 - Modify: packages/runtime/src/runtime.ts
 - Modify: packages/runtime/src/runtime.test.ts
+- Modify: packages/runtime/package.json
+- Create: packages/runtime/src/acting/public-api.typecheck.ts
 
 **Interfaces:**
 
@@ -391,15 +393,22 @@ it("rejects Expression commands when no profile is configured", () => {
 
 Add runtime tests that an attached engine dispatches one frame containing both bones and blendShapes and that stopping resets both lanes. Keep existing Body-only tests unchanged except type imports.
 
+Add packages/runtime/src/acting/public-api.typecheck.ts as a compile-only
+consumer fixture. It must assign PuppetFlowRuntime.getActingApi()!.set_expression()
+to ActingCommandResult and access result.state.expression, so a regression to
+the expression-only result fails the package typecheck. Add the package script
+typecheck as tsc -p tsconfig.json --noEmit --pretty false.
+
 - [ ] Step 2: Run the focused tests to verify RED.
 
 Run:
 
 ```powershell
 pnpm exec vitest run packages/runtime/src/acting/engine.test.ts packages/runtime/src/runtime.test.ts
+pnpm --filter @puppetflow/runtime typecheck
 ```
 
-Expected: the new assertions fail because ActingEngine has no Expression profile, methods, or blendshape composition.
+Expected: the new assertions and compile-only public API fixture fail because ActingEngine has no Expression profile, methods, blendshape composition, or aggregate public result type.
 
 - [ ] Step 3: Implement aggregate ActingEngine methods and frame composition.
 
@@ -427,6 +436,7 @@ Run:
 
 ```powershell
 pnpm exec vitest run packages/runtime/src/acting/engine.test.ts packages/runtime/src/acting/expression-engine.test.ts packages/runtime/src/runtime.test.ts
+pnpm --filter @puppetflow/runtime typecheck
 ```
 
 Expected: new composition/independence tests and existing runtime tests pass, with Body-only ActingEngine instances still producing no expression field.
@@ -434,7 +444,7 @@ Expected: new composition/independence tests and existing runtime tests pass, wi
 - [ ] Step 5: Commit same-clock composition.
 
 ```powershell
-git add packages/runtime/src/acting/engine.ts packages/runtime/src/acting/engine.test.ts packages/runtime/src/runtime.ts packages/runtime/src/runtime.test.ts
+git add packages/runtime/src/acting/engine.ts packages/runtime/src/acting/engine.test.ts packages/runtime/src/runtime.ts packages/runtime/src/runtime.test.ts packages/runtime/src/acting/public-api.typecheck.ts packages/runtime/package.json
 git commit -m "feat(runtime): compose body and expression acting"
 ```
 
@@ -676,6 +686,7 @@ Run and wait for final exit codes:
 pnpm test
 pnpm lint
 pnpm typecheck:apps
+pnpm --filter @puppetflow/runtime typecheck
 pnpm build
 pnpm exec prettier --check packages/runtime/src/acting packages/runtime/src/runtime.ts packages/adapter-vmc/src apps/studio/src/acting apps/studio/src/hooks/useActing.ts apps/studio/src/features/shared/tabs/ActingTab.tsx
 git -c safe.directory=D:/99.AITuber/PuppetFlow -C D:/99.AITuber/PuppetFlow diff --check
