@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_MOTION_STATE } from "@puppetflow/core";
 import { VMC_PROFILE } from "@puppetflow/motion-mapper";
 import { NodeOscAdapter, type OscTransport } from "./node-osc-adapter.js";
 
@@ -14,6 +15,14 @@ function createTransport() {
 
 function decode(packet: Uint8Array): string {
   return new TextDecoder().decode(packet);
+}
+
+function packetAt(sent: Uint8Array[], index: number): Uint8Array {
+  const packet = sent[index];
+  if (packet === undefined) {
+    throw new Error(`Expected sent packet at index ${index}`);
+  }
+  return packet;
 }
 
 function readOscString(packet: Uint8Array, offset: number): [string, number] {
@@ -64,10 +73,11 @@ describe("NodeOscAdapter.updateFrame", () => {
     );
 
     expect(sent).toHaveLength(1);
-    expect(decode(sent[0])).toContain("#bundle");
-    expect(decode(sent[0])).toContain("/VMC/Ext/Bone/Pos");
-    expect(decode(sent[0])).toContain("/VMC/Ext/Blend/Val");
-    expect(readBundleAddresses(sent[0])).toEqual([
+    const packet = packetAt(sent, 0);
+    expect(decode(packet)).toContain("#bundle");
+    expect(decode(packet)).toContain("/VMC/Ext/Bone/Pos");
+    expect(decode(packet)).toContain("/VMC/Ext/Blend/Val");
+    expect(readBundleAddresses(packet)).toEqual([
       "/VMC/Ext/Bone/Pos",
       "/VMC/Ext/Blend/Val",
       "/VMC/Ext/Blend/Apply",
@@ -91,7 +101,19 @@ describe("NodeOscAdapter.updateFrame", () => {
       1 / 60,
     );
 
-    expect(readBundleAddresses(sent[0])).toEqual(["/VMC/Ext/Bone/Pos"]);
+    expect(readBundleAddresses(packetAt(sent, 0))).toEqual(["/VMC/Ext/Bone/Pos"]);
+  });
+
+  it("does not send an empty frame or Blend/Apply", async () => {
+    const { sent, transport } = createTransport();
+    const adapter = new NodeOscAdapter({ id: "test", profile: VMC_PROFILE, transport });
+
+    await adapter.updateFrame({ timestamp: 0 }, 1 / 60);
+
+    expect(sent).toHaveLength(0);
+    expect(sent.some((packet) => decode(packet).includes("/VMC/Ext/Blend/Apply"))).toBe(
+      false,
+    );
   });
 
   it("omits incomplete bones and maps canonical parameters through the profile", async () => {
@@ -108,7 +130,7 @@ describe("NodeOscAdapter.updateFrame", () => {
     );
 
     expect(sent).toHaveLength(1);
-    const packetText = decode(sent[0]);
+    const packetText = decode(packetAt(sent, 0));
     expect(packetText).not.toContain("/VMC/Ext/Bone/Pos");
     expect(packetText).toContain("ParamMouthForm");
   });
@@ -148,7 +170,7 @@ describe("NodeOscAdapter.updateFrame", () => {
       { timestamp: 1_700_000_000_000, blendShapes: { Smile: 0.5 } },
       0,
     );
-    const fallbackBundle = sent[0];
+    const fallbackBundle = packetAt(sent, 0);
     await adapter.updateFrame(
       {
         timestamp: 1_700_000_000_000,
@@ -161,7 +183,8 @@ describe("NodeOscAdapter.updateFrame", () => {
     expect(
       new DataView(fallbackBundle.buffer, fallbackBundle.byteOffset).getUint32(8),
     ).not.toBe(0xe8fe6f80);
-    expect(new DataView(sent[1].buffer, sent[1].byteOffset).getUint32(8)).toBe(
+    const unixBundle = packetAt(sent, 1);
+    expect(new DataView(unixBundle.buffer, unixBundle.byteOffset).getUint32(8)).toBe(
       0xe8fe6f80,
     );
   });
@@ -174,6 +197,7 @@ describe("NodeOscAdapter.update", () => {
 
     await adapter.update(
       {
+        ...DEFAULT_MOTION_STATE,
         mouthX: 0.4,
         custom: {},
       },
