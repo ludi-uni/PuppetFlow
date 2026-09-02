@@ -11,17 +11,21 @@ import type {
 import { useActing } from "./useActing";
 import {
   act as runtimeAct,
+  clearExpression as runtimeClearExpression,
   ensureRuntime,
   getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
+  setExpression as runtimeSetExpression,
   subscribeActing,
 } from "../runtime";
 
 vi.mock("../runtime", () => ({
   act: vi.fn(),
+  clearExpression: vi.fn(),
   ensureRuntime: vi.fn(),
   sequence: vi.fn(),
+  setExpression: vi.fn(),
   interrupt: vi.fn(),
   getActingState: vi.fn(),
   subscribeActing: vi.fn(),
@@ -171,6 +175,31 @@ describe("useActing", () => {
     expect(runtimeAct).toHaveBeenCalledWith("wave", { duration: 2 });
     expect(current?.state).toEqual(nextState);
     expect(current?.status).toBeNull();
+  });
+
+  it("forwards expression commands and applies returned state immediately", async () => {
+    const nextState = {
+      ...initialState,
+      expression: {
+        activeExpression: { expression: "happy", intensity: 0.5 },
+        elapsed: 0,
+        remaining: 1.5,
+        fadeRemaining: 0.15,
+      },
+    };
+    vi.mocked(getActingState).mockReturnValue(initialState);
+    vi.mocked(subscribeActing).mockReturnValue(() => {});
+    vi.mocked(runtimeSetExpression).mockReturnValue(result(nextState));
+    vi.mocked(runtimeClearExpression).mockReturnValue(result());
+
+    await renderHook();
+    act(() => current?.setExpression("happy", { intensity: 0.5, duration: 1.5 }));
+
+    expect(runtimeSetExpression).toHaveBeenCalledWith("happy", {
+      intensity: 0.5,
+      duration: 1.5,
+    });
+    expect(current?.state).toEqual(nextState);
   });
 
   it("converts command errors into status text", async () => {

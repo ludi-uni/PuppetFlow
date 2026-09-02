@@ -10,6 +10,8 @@ import {
   type ActingActionParams,
   type ActingActionRequest,
   type ActingCommandResult,
+  type ActingExpressionName,
+  type ActingExpressionParams,
   type ActingState,
   type PluginOutputSnapshot,
   type StatefulEntrySnapshot,
@@ -33,6 +35,7 @@ import {
   loadPersistedSourceConfig,
 } from "./utils/studio-config-storage";
 import { DEFAULT_ACTING_BONE_PROFILE } from "./acting/default-acting-profile";
+import { DEFAULT_EXPRESSION_PROFILE } from "./acting/default-expression-profile";
 
 const PRESETS = {
   Curious: curiousPreset,
@@ -123,11 +126,13 @@ export function attachMapperOutputs(
 function buildRuntime(): PuppetFlowRuntime {
   const presetJson = customPresetJson ?? PRESETS[currentPreset];
   const loaded = loadPreset(presetJson);
-  const instance = new PuppetFlowRuntime()
-    .loadPreset(loaded)
-    .attachActingEngine(
-      new ActingEngine({ profile: DEFAULT_ACTING_BONE_PROFILE, autoIdle: true }),
-    );
+  const instance = new PuppetFlowRuntime().loadPreset(loaded).attachActingEngine(
+    new ActingEngine({
+      profile: DEFAULT_ACTING_BONE_PROFILE,
+      expressionProfile: DEFAULT_EXPRESSION_PROFILE,
+      autoIdle: true,
+    }),
+  );
 
   attachMapperOutputs(instance);
 
@@ -398,6 +403,17 @@ export function sequence(actions: readonly ActingActionRequest[]): ActingCommand
 
 export function interrupt(): ActingCommandResult {
   return getActingApi().interrupt();
+}
+
+export function setExpression(
+  expression: ActingExpressionName | string,
+  params?: ActingExpressionParams,
+): ActingCommandResult {
+  return getActingApi().set_expression(expression, params);
+}
+
+export function clearExpression(params?: { fadeOut?: number }): ActingCommandResult {
+  return getActingApi().clear_expression(params);
 }
 
 export function getActingState(): ActingState {

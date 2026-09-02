@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { cloneMapperConfig, DEFAULT_MAPPER_CONFIG } from "./mapper-config";
-import { attachMapperOutputs } from "./runtime";
+import {
+  attachMapperOutputs,
+  clearExpression,
+  ensureRuntime,
+  setExpression,
+  shutdownRuntime,
+} from "./runtime";
 import { PuppetFlowRuntime } from "@puppetflow/runtime";
 
 describe("attachMapperOutputs", () => {
@@ -22,5 +28,26 @@ describe("attachMapperOutputs", () => {
       "osc-vmc",
     ]);
     expect(runtime.getMotionFrameAdapters()[0]).toBe(runtime.getAdapters()[0]);
+  });
+});
+
+describe("Studio acting runtime", () => {
+  afterEach(async () => {
+    await shutdownRuntime();
+  });
+
+  it("constructs an ActingEngine with the expression API and default profile", async () => {
+    const runtime = await ensureRuntime();
+
+    expect(runtime.getActingApi()?.set_expression).toEqual(expect.any(Function));
+    expect(setExpression("happy", { intensity: 0.5, fadeIn: 0 })).toMatchObject({
+      accepted: true,
+      state: {
+        expression: {
+          activeExpression: { expression: "happy", intensity: 0.5 },
+        },
+      },
+    });
+    expect(clearExpression({ fadeOut: 0 })).toMatchObject({ accepted: true });
   });
 });

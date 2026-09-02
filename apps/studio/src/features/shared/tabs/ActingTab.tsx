@@ -1,6 +1,8 @@
 import {
   ACTING_ACTION_NAMES,
+  ACTING_EXPRESSION_NAMES,
   type ActingActionRequest,
+  type ActingExpressionParams,
   type ActingSide,
 } from "@puppetflow/runtime";
 import { useMemo, useState } from "react";
@@ -17,11 +19,23 @@ const ACCEPTANCE_ACTIONS = [
 
 export type ActingTabProps = UseActingResult;
 
-export function ActingTab({ state, status, act, sequence, interrupt }: ActingTabProps) {
+export function ActingTab({
+  state,
+  status,
+  act,
+  sequence,
+  interrupt,
+  setExpression,
+  clearExpression,
+}: ActingTabProps) {
   const [intensity, setIntensity] = useState(1);
   const [duration, setDuration] = useState(1);
   const [speed, setSpeed] = useState(1);
   const [side, setSide] = useState<ActingSide>("both");
+  const [expressionIntensity, setExpressionIntensity] = useState(1);
+  const [expressionDuration, setExpressionDuration] = useState(1);
+  const [expressionFadeIn, setExpressionFadeIn] = useState(0.15);
+  const [expressionFadeOut, setExpressionFadeOut] = useState(0.15);
   const params = useMemo(
     () => ({ intensity, duration, speed, side }),
     [duration, intensity, side, speed],
@@ -30,6 +44,15 @@ export function ActingTab({ state, status, act, sequence, interrupt }: ActingTab
   const acceptanceSequence = useMemo<ActingActionRequest[]>(
     () => ACCEPTANCE_ACTIONS.map((action) => ({ action, ...params })),
     [params],
+  );
+  const expressionParams = useMemo<ActingExpressionParams>(
+    () => ({
+      intensity: expressionIntensity,
+      duration: expressionDuration,
+      fadeIn: expressionFadeIn,
+      fadeOut: expressionFadeOut,
+    }),
+    [expressionDuration, expressionFadeIn, expressionFadeOut, expressionIntensity],
   );
 
   return (
@@ -115,6 +138,78 @@ export function ActingTab({ state, status, act, sequence, interrupt }: ActingTab
         </button>
       </div>
 
+      <section className="acting-expression" aria-label="Expression controls">
+        <h3>Expression</h3>
+        <div className="acting-controls">
+          <label htmlFor="expression-intensity">
+            Intensity
+            <input
+              id="expression-intensity"
+              type="number"
+              min="0"
+              max="1"
+              step="0.1"
+              value={expressionIntensity}
+              onChange={(event) => setExpressionIntensity(Number(event.target.value))}
+            />
+          </label>
+          <label htmlFor="expression-duration">
+            Duration (s)
+            <input
+              id="expression-duration"
+              type="number"
+              min="0.05"
+              max="30"
+              step="0.05"
+              value={expressionDuration}
+              onChange={(event) => setExpressionDuration(Number(event.target.value))}
+            />
+          </label>
+          <label htmlFor="expression-fade-in">
+            Fade in (s)
+            <input
+              id="expression-fade-in"
+              type="number"
+              min="0"
+              max="30"
+              step="0.05"
+              value={expressionFadeIn}
+              onChange={(event) => setExpressionFadeIn(Number(event.target.value))}
+            />
+          </label>
+          <label htmlFor="expression-fade-out">
+            Fade out (s)
+            <input
+              id="expression-fade-out"
+              type="number"
+              min="0"
+              max="30"
+              step="0.05"
+              value={expressionFadeOut}
+              onChange={(event) => setExpressionFadeOut(Number(event.target.value))}
+            />
+          </label>
+        </div>
+        <div className="acting-actions" aria-label="Semantic expressions">
+          {ACTING_EXPRESSION_NAMES.map((expression) => (
+            <button
+              key={expression}
+              type="button"
+              onClick={() => setExpression(expression, expressionParams)}
+            >
+              {expression}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => clearExpression({ fadeOut: expressionFadeOut })}
+          >
+            Clear expression
+          </button>
+        </div>
+      </section>
+
       <dl className="acting-state">
         <div>
           <dt>Active</dt>
@@ -131,6 +226,14 @@ export function ActingTab({ state, status, act, sequence, interrupt }: ActingTab
         <div>
           <dt>Queue</dt>
           <dd>Queue: {state.queueLength}</dd>
+        </div>
+        <div>
+          <dt>Expression</dt>
+          <dd>{state.expression?.activeExpression?.expression ?? "neutral"}</dd>
+        </div>
+        <div>
+          <dt>Expression remaining</dt>
+          <dd>{(state.expression?.remaining ?? 0).toFixed(2)} s</dd>
         </div>
       </dl>
       {status ? (

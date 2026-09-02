@@ -3,15 +3,19 @@ import type {
   ActingActionParams,
   ActingActionRequest,
   ActingCommandResult,
+  ActingExpressionName,
+  ActingExpressionParams,
   ActingState,
 } from "@puppetflow/runtime";
 import { useCallback, useEffect, useState } from "react";
 import {
   act as runtimeAct,
+  clearExpression as runtimeClearExpression,
   ensureRuntime,
   getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
+  setExpression as runtimeSetExpression,
   subscribeActing,
 } from "../runtime";
 
@@ -37,6 +41,11 @@ export interface UseActingResult {
     actions: readonly ActingActionRequest[],
   ) => ActingCommandResult | undefined;
   interrupt: () => ActingCommandResult | undefined;
+  setExpression: (
+    expression: ActingExpressionName | string,
+    params?: ActingExpressionParams,
+  ) => ActingCommandResult | undefined;
+  clearExpression: (params?: { fadeOut?: number }) => ActingCommandResult | undefined;
 }
 
 export function useActing(): UseActingResult {
@@ -99,6 +108,23 @@ export function useActing(): UseActingResult {
     [runCommand],
   );
   const interrupt = useCallback(() => runCommand(runtimeInterrupt), [runCommand]);
+  const setExpression = useCallback(
+    (expression: ActingExpressionName | string, params?: ActingExpressionParams) =>
+      runCommand(() => runtimeSetExpression(expression, params)),
+    [runCommand],
+  );
+  const clearExpression = useCallback(
+    (params?: { fadeOut?: number }) => runCommand(() => runtimeClearExpression(params)),
+    [runCommand],
+  );
 
-  return { state, status, act, sequence, interrupt };
+  return {
+    state,
+    status,
+    act,
+    sequence,
+    interrupt,
+    setExpression,
+    clearExpression,
+  };
 }

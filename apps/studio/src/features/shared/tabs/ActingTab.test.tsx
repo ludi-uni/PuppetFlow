@@ -8,6 +8,7 @@ import {
   type ActingActionParams,
   ActingActionRequest,
   ActingCommandResult,
+  ActingExpressionParams,
   ActingState,
 } from "@puppetflow/runtime";
 import { getTabsForMode } from "../../../constants/studio-mode";
@@ -30,6 +31,15 @@ const mockAct =
 const mockSequence =
   vi.fn<(actions: readonly ActingActionRequest[]) => ActingCommandResult | undefined>();
 const mockInterrupt = vi.fn<() => ActingCommandResult | undefined>();
+const mockSetExpression =
+  vi.fn<
+    (
+      expression: string,
+      params?: ActingExpressionParams,
+    ) => ActingCommandResult | undefined
+  >();
+const mockClearExpression =
+  vi.fn<(params?: { fadeOut?: number }) => ActingCommandResult | undefined>();
 
 describe("ActingTab", () => {
   let container: HTMLDivElement | undefined;
@@ -40,6 +50,8 @@ describe("ActingTab", () => {
     act: mockAct,
     sequence: mockSequence,
     interrupt: mockInterrupt,
+    setExpression: mockSetExpression,
+    clearExpression: mockClearExpression,
   };
 
   afterEach(() => {
@@ -53,6 +65,8 @@ describe("ActingTab", () => {
     mockAct.mockClear();
     mockSequence.mockClear();
     mockInterrupt.mockClear();
+    mockSetExpression.mockClear();
+    mockClearExpression.mockClear();
   });
 
   function renderTab(): void {
@@ -110,6 +124,38 @@ describe("ActingTab", () => {
 
     expect(container?.textContent).toContain("configured VRM");
     expect(container?.textContent).not.toContain("AI-Nikechan");
+  });
+
+  it("uses semantic expression controls without exposing VRM BlendShape names", () => {
+    renderTab();
+
+    const findButton = (text: string) =>
+      Array.from(container?.querySelectorAll("button") ?? []).find(
+        (button) => button.textContent === text,
+      );
+
+    for (const expression of [
+      "neutral",
+      "happy",
+      "sad",
+      "angry",
+      "relaxed",
+      "surprised",
+    ]) {
+      expect(findButton(expression)).toBeDefined();
+    }
+    act(() => findButton("happy")?.click());
+    act(() => findButton("Clear expression")?.click());
+
+    expect(mockSetExpression).toHaveBeenCalledWith("happy", {
+      intensity: 1,
+      duration: 1,
+      fadeIn: 0.15,
+      fadeOut: 0.15,
+    });
+    expect(mockClearExpression).toHaveBeenCalledWith({ fadeOut: 0.15 });
+    expect(container?.textContent).not.toContain("Warai");
+    expect(container?.textContent).not.toContain("Sorrow");
   });
 
   it("wires interrupt, idle, the exact acceptance sequence, and state rendering", () => {
