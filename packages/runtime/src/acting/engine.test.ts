@@ -9,7 +9,7 @@ import {
 } from "../index.js";
 import { ActingEngine } from "./engine.js";
 import { quaternionFromEuler } from "./rotation.js";
-import type { ActingBoneProfile } from "./types.js";
+import type { ActingBoneProfile, ActingExpressionProfile } from "./types.js";
 
 const PROFILE: ActingBoneProfile = {
   id: "test-profile",
@@ -22,6 +22,11 @@ const PROFILE: ActingBoneProfile = {
     { name: "RightUpperArm", position: { x: 0.2, y: 1.5, z: 0 } },
     { name: "RightLowerArm", position: { x: 0.5, y: 1.5, z: 0 } },
   ],
+};
+
+const EXPRESSION_PROFILE: ActingExpressionProfile = {
+  id: "engine-expressions",
+  expressions: { happy: { blendShape: "Joy" } },
 };
 
 describe("ActingEngine", () => {
@@ -107,6 +112,45 @@ describe("ActingEngine", () => {
     engine.reset();
 
     expect(engine.get_state().activeAction).toEqual({ action: "idle" });
+  });
+
+  it("emits Body bones and Expression blendshapes in one frame with one clock", () => {
+    const engine = new ActingEngine({
+      profile: PROFILE,
+      expressionProfile: EXPRESSION_PROFILE,
+    });
+    engine.act("wave", { duration: 1 });
+    engine.set_expression("happy", { intensity: 0.5, fadeIn: 0 });
+
+    const frame = engine.tick(0.1, createEmptyMotionState());
+
+    expect(frame.timestamp).toBe(100);
+    expect(frame.bones?.RightUpperArm).toBeDefined();
+    expect(frame.blendShapes).toEqual({ Joy: 0.5 });
+  });
+
+  it("keeps Expression active when Body is interrupted and keeps Body active when Expression clears", () => {
+    const engine = new ActingEngine({
+      profile: PROFILE,
+      expressionProfile: EXPRESSION_PROFILE,
+    });
+    engine.act("wave", { duration: 1 });
+    engine.set_expression("happy", { intensity: 0.5, fadeIn: 0 });
+
+    engine.interrupt();
+    expect(engine.get_state().expression?.activeExpression?.expression).toBe("happy");
+
+    engine.act("bow", { duration: 1 });
+    engine.clear_expression({ fadeOut: 0 });
+    expect(engine.get_state().activeAction?.action).toBe("bow");
+  });
+
+  it("rejects Expression commands when no profile is configured", () => {
+    const engine = new ActingEngine({ profile: PROFILE });
+    const result = engine.set_expression("happy");
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/profile/i);
   });
 
   it("exports the scheduler and engine contracts from the package root", () => {

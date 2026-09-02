@@ -58,7 +58,11 @@ import {
   MicroBehaviorEngine,
   type MicroBehaviorSnapshot,
 } from "@puppetflow/micro-behavior";
-import { ActingEngine, type ActingApi, type ActingState } from "./acting/index.js";
+import {
+  ActingEngine,
+  type ActingRuntimeApi,
+  type ActingState,
+} from "./acting/index.js";
 import {
   MotionOverrideStore,
   type MotionSource,
@@ -251,7 +255,7 @@ export class PuppetFlowRuntime {
     return this;
   }
 
-  getActingApi(): ActingApi | null {
+  getActingApi(): ActingRuntimeApi | null {
     return this.actingEngine ?? null;
   }
 

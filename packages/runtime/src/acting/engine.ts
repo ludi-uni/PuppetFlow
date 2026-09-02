@@ -6,24 +6,32 @@ import {
 } from "@puppetflow/core";
 
 import { composeBoneRotation, quaternionFromEuler } from "./rotation.js";
+import { ExpressionEngine } from "./expression-engine.js";
 import { ActingScheduler, type ActingSchedulerOptions } from "./scheduler.js";
 import type {
   ActingActionName,
   ActingActionParams,
-  ActingApi,
   ActingBoneProfile,
   ActingCommandResult,
   ActingActionRequest,
+  ActingExpressionName,
+  ActingExpressionParams,
+  ActingExpressionProfile,
+  ActingExpressionState,
+  ActingRuntimeApi,
   ActingState,
+  ExpressionCommandResult,
 } from "./types.js";
 
 export interface ActingEngineOptions extends ActingSchedulerOptions {
   profile: ActingBoneProfile;
+  expressionProfile?: ActingExpressionProfile;
 }
 
 /** Synchronously converts rendered motion and procedural offsets into a local bone frame. */
-export class ActingEngine implements ActingApi {
+export class ActingEngine implements ActingRuntimeApi {
   private readonly scheduler: ActingScheduler;
+  private readonly expressionEngine: ExpressionEngine | undefined;
   private timestamp = 0;
 
   constructor(private readonly options: ActingEngineOptions) {
@@ -31,6 +39,9 @@ export class ActingEngine implements ActingApi {
       options.profile.bones.map((bone) => bone.name),
       options,
     );
+    this.expressionEngine = options.expressionProfile
+      ? new ExpressionEngine({ profile: options.expressionProfile })
+      : undefined;
   }
 
   act(
@@ -49,11 +60,44 @@ export class ActingEngine implements ActingApi {
   }
 
   get_state(): ActingState {
-    return this.scheduler.get_state();
+    const state = this.scheduler.get_state();
+    const expression = this.expressionEngine?.get_expression_state();
+    return {
+      ...state,
+      ...(expression === undefined
+        ? {}
+        : { expression: cloneExpressionState(expression) }),
+    };
+  }
+
+  set_expression(
+    expression: ActingExpressionName | string,
+    params?: ActingExpressionParams,
+  ): ExpressionAggregateCommandResult {
+    if (this.expressionEngine === undefined) {
+      return this.rejectExpressionCommand();
+    }
+    const result = this.expressionEngine.set_expression(expression, params);
+    return this.expressionCommandResult(result);
+  }
+
+  clear_expression(params?: { fadeOut?: number }): ExpressionAggregateCommandResult {
+    if (this.expressionEngine === undefined) {
+      return this.rejectExpressionCommand();
+    }
+    const result = this.expressionEngine.clear_expression(params);
+    return this.expressionCommandResult(result);
+  }
+
+  get_expression_state(): ActingExpressionState {
+    return cloneExpressionState(
+      this.expressionEngine?.get_expression_state() ?? EMPTY_EXPRESSION_STATE,
+    );
   }
 
   reset(): void {
     this.scheduler.reset();
+    this.expressionEngine?.reset();
   }
 
   tick(deltaTime: number, baseMotion: MotionState): MotionFrame {
@@ -62,6 +106,7 @@ export class ActingEngine implements ActingApi {
     }
     this.timestamp += deltaTime * 1000;
     const offsets = this.scheduler.tick(deltaTime);
+    const expressionValues = this.expressionEngine?.tick(deltaTime);
     const bones = Object.fromEntries(
       this.options.profile.bones.map((bone) => {
         const baseRotation = baseRotationFor(bone.name, baseMotion);
@@ -83,6 +128,9 @@ export class ActingEngine implements ActingApi {
     return normalizeMotionFrame({
       timestamp: this.timestamp,
       bones,
+      ...(expressionValues && Object.keys(expressionValues).length > 0
+        ? { blendShapes: expressionValues }
+        : {}),
       metadata: {
         sourceId: "acting",
         sourceType: "procedural-acting",
@@ -91,9 +139,49 @@ export class ActingEngine implements ActingApi {
       },
     });
   }
+
+  private rejectExpressionCommand(): ExpressionAggregateCommandResult {
+    return this.expressionCommandResult({
+      accepted: false,
+      reason: "No Expression profile is configured",
+    });
+  }
+
+  private expressionCommandResult(
+    result: Pick<ExpressionCommandResult, "accepted" | "reason">,
+  ): ExpressionAggregateCommandResult {
+    const state = this.get_state();
+    const expression = state.expression ?? this.get_expression_state();
+    return {
+      accepted: result.accepted,
+      ...(result.reason === undefined ? {} : { reason: result.reason }),
+      state: { ...state, ...expression, expression },
+    };
+  }
 }
 
 const IDENTITY_ROTATION: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
+const EMPTY_EXPRESSION_STATE: ActingExpressionState = {
+  elapsed: 0,
+  remaining: 0,
+  fadeRemaining: 0,
+};
+
+type ExpressionAggregateCommandResult = ActingCommandResult & ExpressionCommandResult;
+
+function cloneExpressionState(state: ActingExpressionState): ActingExpressionState {
+  return {
+    ...(state.activeExpression === undefined
+      ? {}
+      : { activeExpression: { ...state.activeExpression } }),
+    ...(state.activeExpressionId === undefined
+      ? {}
+      : { activeExpressionId: state.activeExpressionId }),
+    elapsed: state.elapsed,
+    remaining: state.remaining,
+    fadeRemaining: state.fadeRemaining,
+  };
+}
 
 function baseRotationFor(boneName: string, motion: MotionState): Quaternion {
   const head = {

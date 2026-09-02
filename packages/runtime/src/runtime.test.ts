@@ -18,7 +18,11 @@ import type {
 } from "@puppetflow/source-core";
 import type { MotionFrameGraphDocument } from "@puppetflow/motion-graph";
 import type { MotionFrameInput, MotionLayerPolicy } from "@puppetflow/motion-pipeline";
-import { ActingEngine, type ActingBoneProfile } from "./acting/index.js";
+import {
+  ActingEngine,
+  type ActingBoneProfile,
+  type ActingExpressionProfile,
+} from "./acting/index.js";
 import { PuppetFlowRuntime } from "./runtime.js";
 
 class TestPlugin implements BehaviorPlugin {
@@ -105,6 +109,11 @@ const actingProfile: ActingBoneProfile = {
   ],
 };
 
+const actingExpressionProfile: ActingExpressionProfile = {
+  id: "runtime-expressions",
+  expressions: { happy: { blendShape: "Joy" } },
+};
+
 describe("PuppetFlowRuntime", () => {
   it("returns independent empty acting-state snapshots when no engine is attached", () => {
     const runtimeA = new PuppetFlowRuntime();
@@ -170,6 +179,57 @@ describe("PuppetFlowRuntime", () => {
     await runtime.stop();
 
     expect(runtime.getActingState().activeAction).toBeUndefined();
+  });
+
+  it("dispatches one acting frame containing Body bones and Expression blendshapes", async () => {
+    const updateFrame = vi.fn(async (_frame: MotionFrame) => {});
+    const engine = new ActingEngine({
+      profile: actingProfile,
+      expressionProfile: actingExpressionProfile,
+      autoIdle: false,
+    });
+    engine.act("wave", { duration: 1 });
+    engine.set_expression("happy", { intensity: 0.5, fadeIn: 0 });
+    const runtime = new PuppetFlowRuntime()
+      .attachActingEngine(engine)
+      .attachMotionAdapter({
+        id: "expression-acting-output",
+        initialize: vi.fn(async () => {}),
+        updateFrame,
+        dispose: vi.fn(async () => {}),
+      });
+
+    await runtime.start();
+
+    expect(updateFrame).toHaveBeenCalledTimes(1);
+    expect(updateFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bones: expect.objectContaining({
+          Hips: expect.objectContaining({ position: actingProfile.bones[0]?.position }),
+        }),
+        blendShapes: { Joy: 0.5 },
+      }),
+      expect.any(Number),
+    );
+
+    await runtime.stop();
+  });
+
+  it("resets both Body and Expression lanes when stopping", async () => {
+    const engine = new ActingEngine({
+      profile: actingProfile,
+      expressionProfile: actingExpressionProfile,
+      autoIdle: false,
+    });
+    engine.act("wave", { duration: 1 });
+    engine.set_expression("happy", { intensity: 0.5, fadeIn: 0 });
+    const runtime = new PuppetFlowRuntime().attachActingEngine(engine);
+
+    await runtime.start();
+    await runtime.stop();
+
+    expect(runtime.getActingState().activeAction).toBeUndefined();
+    expect(runtime.getActingState().expression?.activeExpression).toBeUndefined();
   });
 
   it("sends the acting frame through an attached motion pipeline", async () => {
