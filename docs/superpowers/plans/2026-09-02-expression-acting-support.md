@@ -155,7 +155,14 @@ export interface ExpressionApi {
   get_expression_state(): ActingExpressionState;
 }
 
-export interface ActingRuntimeApi extends ActingApi, ExpressionApi {}
+export interface ActingRuntimeApi extends ActingApi {
+  set_expression(
+    expression: ActingExpressionName | string,
+    params?: ActingExpressionParams,
+  ): ActingCommandResult;
+  clear_expression(params?: { fadeOut?: number }): ActingCommandResult;
+  get_expression_state(): ActingExpressionState;
+}
 ```
 
 Extend ActingState with expression?: ActingExpressionState. Treat neutral as the implicit zero target. Require a non-empty profile mapping for non-neutral semantic names. Export the new contracts and resolver from both acting/index.ts and the runtime package root.
@@ -328,7 +335,7 @@ git commit -m "feat(runtime): add expression acting lane"
 **Interfaces:**
 
 - ActingEngineOptions gains optional expressionProfile?: ActingExpressionProfile.
-- ActingEngine implements ActingRuntimeApi; Body methods keep current signatures and Expression methods return an ActingCommandResult with nested state.expression.
+- ActingEngine implements ActingRuntimeApi; Body methods keep current signatures and aggregate Expression methods return an ActingCommandResult with nested state.expression. The standalone ExpressionApi keeps its expression-only result for ExpressionEngine; ActingRuntimeApi redeclares the two command methods with the aggregate result.
 - ActingEngine.tick returns one MotionFrame with existing bones plus blendShapes when the Expression lane has output.
 - PuppetFlowRuntime.getActingApi returns ActingRuntimeApi | null; no-engine empty state remains unchanged.
 
