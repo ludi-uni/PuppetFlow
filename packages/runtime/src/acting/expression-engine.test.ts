@@ -73,6 +73,13 @@ describe("ExpressionEngine", () => {
     expect(engine.get_expression_state()).toEqual(before);
   });
 
+  it("does not consume an expression ID for a rejected request", () => {
+    const engine = new ExpressionEngine({ profile: PROFILE });
+
+    expect(engine.set_expression("surprised").accepted).toBe(false);
+    expect(engine.set_expression("happy").state.activeExpressionId).toBe(1);
+  });
+
   it("rejects finite durations shorter than their fade window", () => {
     const engine = new ExpressionEngine({ profile: PROFILE });
 
@@ -84,6 +91,33 @@ describe("ExpressionEngine", () => {
   it("emits the initial neutral record once, then becomes idle", () => {
     const engine = new ExpressionEngine({ profile: PROFILE });
 
+    expect(engine.tick(0)).toEqual({ Joy: 0, Sorrow: 0 });
+    expect(engine.tick(0)).toEqual({});
+  });
+
+  it("returns to neutral idle after set_expression neutral", () => {
+    const engine = new ExpressionEngine({ profile: PROFILE });
+    engine.set_expression("happy", { fadeIn: 0 });
+    engine.tick(0);
+
+    expect(engine.set_expression("neutral").accepted).toBe(true);
+    expect(engine.tick(0.15)).toEqual({ Joy: 0, Sorrow: 0 });
+    expect(engine.get_expression_state().activeExpression).toBeUndefined();
+    expect(engine.tick(0)).toEqual({});
+  });
+
+  it("reset clears active state and emits neutral once", () => {
+    const engine = new ExpressionEngine({ profile: PROFILE });
+    engine.set_expression("happy", { fadeIn: 0 });
+    engine.tick(0);
+
+    engine.reset();
+
+    expect(engine.get_expression_state()).toEqual({
+      elapsed: 0,
+      remaining: 0,
+      fadeRemaining: 0,
+    });
     expect(engine.tick(0)).toEqual({ Joy: 0, Sorrow: 0 });
     expect(engine.tick(0)).toEqual({});
   });

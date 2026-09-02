@@ -60,8 +60,11 @@ export class ExpressionEngine implements ExpressionApi {
       validateActingExpressionParams(params);
       const fadeIn = params.fadeIn ?? this.defaultFadeIn;
       const fadeOut = params.fadeOut ?? this.defaultFadeOut;
-      const duration = params.duration ?? Infinity;
-      if (Number.isFinite(duration) && duration < fadeIn + fadeOut) {
+      const target = this.targetFor(expression, params.intensity ?? 1);
+      const duration =
+        expression === "neutral" ? fadeIn : (params.duration ?? Infinity);
+      const transitionFadeOut = expression === "neutral" ? 0 : fadeOut;
+      if (Number.isFinite(duration) && duration < fadeIn + transitionFadeOut) {
         throw new RangeError("Expression duration must cover fadeIn plus fadeOut");
       }
 
@@ -71,9 +74,9 @@ export class ExpressionEngine implements ExpressionApi {
         elapsed: 0,
         duration,
         fadeIn,
-        fadeOut,
+        fadeOut: transitionFadeOut,
         from: cloneRecord(this.current),
-        target: this.targetFor(expression, params.intensity ?? 1),
+        target,
       };
       this.dirty = true;
       return this.accept();
