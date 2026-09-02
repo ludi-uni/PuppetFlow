@@ -18,6 +18,17 @@ export const ACTING_ACTION_NAMES = [
 
 export type ActingActionName = (typeof ACTING_ACTION_NAMES)[number];
 
+export const ACTING_EXPRESSION_NAMES = [
+  "neutral",
+  "happy",
+  "sad",
+  "angry",
+  "relaxed",
+  "surprised",
+] as const;
+
+export type ActingExpressionName = (typeof ACTING_EXPRESSION_NAMES)[number];
+
 export type ActingSide = "left" | "right" | "both";
 
 export const ACTING_DURATION_MIN_SECONDS = 0.05;
@@ -40,6 +51,40 @@ export interface ActingActionRequest extends ActingActionParams {
   action: ActingActionName | string;
 }
 
+export interface ActingExpressionParams {
+  intensity?: number;
+  duration?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+}
+
+export interface ActingExpressionRequest extends ActingExpressionParams {
+  expression: ActingExpressionName | string;
+}
+
+export interface ActingExpressionTarget {
+  blendShape: string;
+}
+
+export interface ActingExpressionProfile {
+  id: string;
+  expressions: Partial<Record<ActingExpressionName, ActingExpressionTarget>>;
+}
+
+export interface ActingExpressionState {
+  activeExpression?: ActingExpressionRequest;
+  activeExpressionId?: number;
+  elapsed: number;
+  remaining: number;
+  fadeRemaining: number;
+}
+
+export interface ExpressionCommandResult {
+  accepted: boolean;
+  state: ActingExpressionState;
+  reason?: string;
+}
+
 export interface ActingCommandResult {
   accepted: boolean;
   state: ActingState;
@@ -54,6 +99,7 @@ export interface ActingState {
   remaining: number;
   queueLength: number;
   blendRemaining: number;
+  expression?: ActingExpressionState;
 }
 
 export interface ActingBoneProfile {
@@ -79,6 +125,17 @@ export interface ActingApi {
   interrupt(): ActingCommandResult;
   get_state(): ActingState;
 }
+
+export interface ExpressionApi {
+  set_expression(
+    expression: ActingExpressionName | string,
+    params?: ActingExpressionParams,
+  ): ExpressionCommandResult;
+  clear_expression(params?: { fadeOut?: number }): ExpressionCommandResult;
+  get_expression_state(): ActingExpressionState;
+}
+
+export interface ActingRuntimeApi extends ActingApi, ExpressionApi {}
 
 /** Rejects invalid explicit action parameters before they can alter acting state. */
 export function validateActingActionParams(params: ActingActionParams): void {
