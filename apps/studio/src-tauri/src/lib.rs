@@ -32,6 +32,53 @@ struct MotionBone {
     rotation: MotionQuaternion,
 }
 
+fn build_blend_shape_packets(blend_shapes: HashMap<String, f32>) -> Vec<OscPacket> {
+    let mut packets = blend_shapes
+        .into_iter()
+        .map(|(param_name, value)| {
+            OscPacket::Message(OscMessage {
+                addr: "/VMC/Ext/Blend/Val".to_string(),
+                args: vec![OscType::String(param_name), OscType::Float(value)],
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if !packets.is_empty() {
+        packets.push(OscPacket::Message(OscMessage {
+            addr: "/VMC/Ext/Blend/Apply".to_string(),
+            args: vec![],
+        }));
+    }
+
+    packets
+}
+
+fn build_motion_frame_content(
+    bones: Vec<MotionBone>,
+    blend_shapes: HashMap<String, f32>,
+) -> Vec<OscPacket> {
+    let mut content = bones
+        .into_iter()
+        .map(|bone| {
+            OscPacket::Message(OscMessage {
+                addr: "/VMC/Ext/Bone/Pos".to_string(),
+                args: vec![
+                    OscType::String(bone.name),
+                    OscType::Float(bone.position.x),
+                    OscType::Float(bone.position.y),
+                    OscType::Float(bone.position.z),
+                    OscType::Float(bone.rotation.x),
+                    OscType::Float(bone.rotation.y),
+                    OscType::Float(bone.rotation.z),
+                    OscType::Float(bone.rotation.w),
+                ],
+            })
+        })
+        .collect::<Vec<_>>();
+    content.extend(build_blend_shape_packets(blend_shapes));
+    content
+}
+
 #[tauri::command]
 fn osc_send_blend_params(
     host: String,
@@ -43,27 +90,8 @@ fn osc_send_blend_params(
         .socket
         .lock()
         .map_err(|_| "OSC sender lock poisoned".to_string())?;
-    let has_blend_shapes = !params.is_empty();
 
-    for (param_name, value) in params {
-        let packet = OscPacket::Message(OscMessage {
-            addr: "/VMC/Ext/Blend/Val".to_string(),
-            args: vec![OscType::String(param_name), OscType::Float(value)],
-        });
-
-        let encoded = rosc::encoder::encode(&packet)
-            .map_err(|error| format!("Failed to encode OSC packet: {error}"))?;
-
-        socket
-            .send_to(&encoded, format!("{host}:{port}"))
-            .map_err(|error| format!("Failed to send OSC packet: {error}"))?;
-    }
-
-    if has_blend_shapes {
-        let packet = OscPacket::Message(OscMessage {
-            addr: "/VMC/Ext/Blend/Apply".to_string(),
-            args: vec![],
-        });
+    for packet in build_blend_shape_packets(params) {
         let encoded = rosc::encoder::encode(&packet)
             .map_err(|error| format!("Failed to encode OSC packet: {error}"))?;
 
@@ -85,35 +113,7 @@ fn osc_send_motion_frame(
     timestamp_ms: Option<f64>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut content = Vec::new();
-    for bone in bones {
-        content.push(OscPacket::Message(OscMessage {
-            addr: "/VMC/Ext/Bone/Pos".to_string(),
-            args: vec![
-                OscType::String(bone.name),
-                OscType::Float(bone.position.x),
-                OscType::Float(bone.position.y),
-                OscType::Float(bone.position.z),
-                OscType::Float(bone.rotation.x),
-                OscType::Float(bone.rotation.y),
-                OscType::Float(bone.rotation.z),
-                OscType::Float(bone.rotation.w),
-            ],
-        }));
-    }
-    let has_blend_shapes = !blend_shapes.is_empty();
-    for (param_name, value) in blend_shapes {
-        content.push(OscPacket::Message(OscMessage {
-            addr: "/VMC/Ext/Blend/Val".to_string(),
-            args: vec![OscType::String(param_name), OscType::Float(value)],
-        }));
-    }
-    if has_blend_shapes {
-        content.push(OscPacket::Message(OscMessage {
-            addr: "/VMC/Ext/Blend/Apply".to_string(),
-            args: vec![],
-        }));
-    }
+    let content = build_motion_frame_content(bones, blend_shapes);
 
     if content.is_empty() {
         return Ok(());
@@ -160,6 +160,94 @@ fn resolve_motion_timetag(mode: &str, timestamp_ms: Option<f64>) -> Result<OscTi
             })
         }
         _ => Err(format!("unsupported OSC timestamp mode: {mode}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn decode_bundle(content: Vec<OscPacket>) -> OscPacket {
+        let encoded = rosc::encoder::encode(&OscPacket::Bundle(OscBundle {
+            timetag: (0, 1).into(),
+            content,
+        }))
+        .expect("bundle must encode");
+        let (remaining, decoded) = rosc::decoder::decode_udp(&encoded).expect("bundle must decode");
+        assert!(remaining.is_empty());
+        decoded
+    }
+
+    fn message_addresses(packet: OscPacket) -> Vec<String> {
+        match packet {
+            OscPacket::Bundle(bundle) => bundle
+                .content
+                .into_iter()
+                .map(|packet| match packet {
+                    OscPacket::Message(message) => message.addr,
+                    OscPacket::Bundle(_) => panic!("motion frame must not nest OSC bundles"),
+                })
+                .collect(),
+            OscPacket::Message(_) => panic!("motion frame must encode as an OSC bundle"),
+        }
+    }
+
+    fn head_bone() -> MotionBone {
+        MotionBone {
+            name: "Head".to_string(),
+            position: MotionVec3 {
+                x: 0.0,
+                y: 1.0,
+                z: 0.0,
+            },
+            rotation: MotionQuaternion {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+        }
+    }
+
+    #[test]
+    fn encodes_multiple_blend_values_followed_by_one_apply() {
+        let decoded = decode_bundle(build_motion_frame_content(
+            Vec::new(),
+            HashMap::from([
+                ("ExpressionHappy".to_string(), 0.8),
+                ("ExpressionSad".to_string(), 0.2),
+            ]),
+        ));
+
+        assert_eq!(
+            message_addresses(decoded),
+            vec![
+                "/VMC/Ext/Blend/Val",
+                "/VMC/Ext/Blend/Val",
+                "/VMC/Ext/Blend/Apply",
+            ]
+        );
+    }
+
+    #[test]
+    fn encodes_bone_only_frames_without_apply() {
+        let decoded = decode_bundle(build_motion_frame_content(
+            vec![head_bone()],
+            HashMap::new(),
+        ));
+
+        assert_eq!(message_addresses(decoded), vec!["/VMC/Ext/Bone/Pos"]);
+    }
+
+    #[test]
+    fn leaves_empty_frames_without_apply() {
+        let content = build_motion_frame_content(Vec::new(), HashMap::new());
+
+        assert!(content.is_empty());
+        assert!(content.into_iter().all(|packet| match packet {
+            OscPacket::Message(message) => message.addr != "/VMC/Ext/Blend/Apply",
+            OscPacket::Bundle(_) => true,
+        }));
     }
 }
 
