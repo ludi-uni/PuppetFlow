@@ -92,7 +92,7 @@ legacy compatibility
 | AITuber legacy HTTP / MCP transportとMCP SDK依存                                                           | `PUPPETFLOW_ACTING_TRANSPORT`の`http` / `mcp`、`ActingRuntimeClient`、`StdioMcpActingTransport` | 明示選択された既存構成                                                   | **維持。** 利用設定をsharedへ移行し、legacy mode廃止を別途決定した後に削除可能。          |
 | AITuber `PuppetFlowSupervisor`                                                                             | local/legacy mode。sharedでは`autoStart=false`として抑止済み                                    | 旧`pf.exe run`利用者                                                     | **維持。** local実行方式を置換または廃止した後に削除可能。                                |
 | Avatar WebSocket state配信                                                                                 | shared Hostの認証付き`avatar-lip-sync` Source、local legacy consumers                           | shared LipSyncの現行入力                                                 | **維持。** 同等のLipSync入力経路を受入後にのみ置換可能。                                  |
-| sibling `PuppetFlow_Acting_MCP`                                                                            | `C:\tools\mcp\mcp.json`が`dist/main.js --host-module hosts/puppetflow-runtime-host.mjs`を参照   | 旧standalone起動のcompatibility                                          | **維持。** このclient設定と他の外部利用者をworkspace MCPへ移行した後に削除判断。          |
+| sibling `PuppetFlow_Acting_MCP`                                                                            | `C:\tools\mcp\mcp.json`はworkspace MCPへ移行済み。他の外部利用者は未確認                        | 旧standalone起動の復旧・compatibility                                    | **維持。** 残る外部利用者を確認・移行した後に削除判断。                                   |
 
 ## MCPの責務分解
 
