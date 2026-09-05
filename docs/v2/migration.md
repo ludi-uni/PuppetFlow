@@ -1,7 +1,7 @@
 # PuppetFlow 2.0 migration plan
 
 **Scope:** `PuppetFlow`の既存実装を保持しながら、`v2` branchで責務境界を段階的に切り替える。
-**Current status:** Phase Bのcanonical `@puppetflow/control`を実装。Acting/Expression DTO、uniform result、detached state、profile由来capabilitiesを提供する。先行commitでC/Fの一部も存在するが、Studio/CLI/AITuber transportとcanonical ControlへのHost接続は未完了。
+**Current status:** Phase B完了。Phase Cのcanonical Host ownershipも完了し、Hostは一つのRuntimeを所有して`@puppetflow/control`だけを公開する。Studio/CLI/AITuber migrationとMCP全体のPhase Fは未完了。
 
 ローカル再現はPuppetFlowで`pnpm --filter '@puppetflow/runtime-launcher...' build`、
 隣接`PuppetFlow_Acting_MCP`で`pnpm install --frozen-lockfile`と`pnpm build`を実行し、
@@ -21,17 +21,17 @@ Viewer目視は別の受入項目です。
 
 ## Phases
 
-| Phase | 内容                                     | 主な成果物                                                                                       | Exit gate                                                                                                  |
-| ----- | ---------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **A** | Architecture + inventory                 | `docs/v2/inventory.md`, `architecture.md`, `migration.md`、分類とownership決定                   | Runtime owner、Control boundary、AITuber timing、MCP責務が文書上で一意になる。                             |
-| **B** | PuppetFlowControl contract               | `@puppetflow/control`のDTO、uniform result/error、capabilities、focused tests                    | **完了:** HTTP/MCP/Studioが共有できる型があり、direct motion/bone/VMC入力を含まない。                      |
-| **C** | PuppetFlow Host ownership                | Host bootstrap、one Runtime、lifecycle、adapter/source attachment、Control implementation        | Host以外がRuntimeを生成しない。start/stop、preset load、output cleanupのfocused testsが通る。              |
-| **D** | Studio → Control migration               | Studio runtime facade/hooksをControl clientへ変更、状態snapshot/入力操作をControl経由にする      | Studioが`PuppetFlowRuntime`のstore/attach/lifecycleを直接参照しない。UIのSimple/Expert機能を段階的に保つ。 |
-| **E** | AITuber → Control transport migration    | `ActingSession`を維持し、ActingTransportをControl client化。speech anchor/timingを維持           | semantic action/expressionだけが送られ、bone/VMCは送られない。旧supervisorと新Hostが二重送信しない。       |
-| **F** | MCP thin adapter化                       | sibling logicを`apps/mcp`またはworkspace packageへ段階的に統合、host moduleからRuntime生成を除去 | MCPはshape validation → Control call → result serializationだけ。capabilitiesはHostから取得する。          |
-| **G** | legacy transport / duplicate API cleanup | 旧Behavior HTTP、重複acting HTTP、旧pf.exe/WS bridgeを受入条件に沿って整理                       | 使われているcompatibility pathだけが残り、semantic contractの分岐がない。                                  |
-| **H** | Studio 2.0 UX cleanup                    | Simple/Preset、Timeline、PFScript中心。Blocklyをoptional editor/pluginへ隔離                     | Block Editorがcore前提でなく、削除・plugin維持の判断根拠がある。                                           |
-| **I** | v2 stabilization                         | contract golden tests、runtime lifecycle、adapter/motion output、docs更新                        | one Host/one Runtime/one semantic Control、Focused checksと必要なlive gateがpass。                         |
+| Phase | 内容                                     | 主な成果物                                                                                       | Exit gate                                                                                                       |
+| ----- | ---------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **A** | Architecture + inventory                 | `docs/v2/inventory.md`, `architecture.md`, `migration.md`、分類とownership決定                   | Runtime owner、Control boundary、AITuber timing、MCP責務が文書上で一意になる。                                  |
+| **B** | PuppetFlowControl contract               | `@puppetflow/control`のDTO、uniform result/error、capabilities、focused tests                    | **完了:** HTTP/MCP/Studioが共有できる型があり、direct motion/bone/VMC入力を含まない。                           |
+| **C** | PuppetFlow Host ownership                | Host bootstrap、one Runtime、lifecycle、adapter/source attachment、canonical Control             | **完了:** Hostは一つのRuntimeを生成し、canonical Controlだけを公開する。lifecycle/outputのfocused testsが通る。 |
+| **D** | Studio → Control migration               | Studio runtime facade/hooksをControl clientへ変更、状態snapshot/入力操作をControl経由にする      | Studioが`PuppetFlowRuntime`のstore/attach/lifecycleを直接参照しない。UIのSimple/Expert機能を段階的に保つ。      |
+| **E** | AITuber → Control transport migration    | `ActingSession`を維持し、ActingTransportをControl client化。speech anchor/timingを維持           | semantic action/expressionだけが送られ、bone/VMCは送られない。旧supervisorと新Hostが二重送信しない。            |
+| **F** | MCP thin adapter化                       | sibling logicを`apps/mcp`またはworkspace packageへ段階的に統合、host moduleからRuntime生成を除去 | MCPはshape validation → Control call → result serializationだけ。capabilitiesはHostから取得する。               |
+| **G** | legacy transport / duplicate API cleanup | 旧Behavior HTTP、重複acting HTTP、旧pf.exe/WS bridgeを受入条件に沿って整理                       | 使われているcompatibility pathだけが残り、semantic contractの分岐がない。                                       |
+| **H** | Studio 2.0 UX cleanup                    | Simple/Preset、Timeline、PFScript中心。Blocklyをoptional editor/pluginへ隔離                     | Block Editorがcore前提でなく、削除・plugin維持の判断根拠がある。                                                |
+| **I** | v2 stabilization                         | contract golden tests、runtime lifecycle、adapter/motion output、docs更新                        | one Host/one Runtime/one semantic Control、Focused checksと必要なlive gateがpass。                              |
 
 ## Dependency and sequencing notes
 
@@ -114,4 +114,4 @@ PuppetFlowControlState
 PuppetFlowCapabilities
 ```
 
-Phase B完了後の次段階は、先行実装の`PuppetFlowHost`が互換Controlではなくcanonical `@puppetflow/control`を公開するよう、ownershipを変えずに接続境界を整理することです。
+Phase C完了後の次段階はPhase Dです。Studioの既存Runtime facade/hooksを、authoring機能を保持したままcanonical Control clientへ段階的に接続します。Phase FのMCP全体migrationはまだ完了扱いにしません。

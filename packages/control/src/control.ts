@@ -26,7 +26,7 @@ const COMMAND_FAILED_REASON = "PuppetFlow acting command failed";
 
 type RuntimeControlSource = Pick<
   PuppetFlowRuntime,
-  "getActingApi" | "getActingCapabilities"
+  "getActingApi" | "getActingCapabilities" | "isRunning"
 >;
 
 export function createPuppetFlowControl(
@@ -39,6 +39,9 @@ export function createPuppetFlowControl(
       reason?: string;
     },
   ): ControlResult => {
+    if (!runtime.isRunning()) {
+      return unavailableResult();
+    }
     const api = runtime.getActingApi();
     if (api === null) {
       return unavailableResult();
@@ -81,6 +84,9 @@ export function createPuppetFlowControl(
       return command((api) => api.clear_expression({ ...request }));
     },
     getState() {
+      if (!runtime.isRunning()) {
+        return emptyState();
+      }
       const api = runtime.getActingApi();
       return api === null ? emptyState() : safeSnapshot(api);
     },
@@ -110,6 +116,10 @@ function actParams(request: ActRequest): ActingActionParams {
     ...(request.side === undefined ? {} : { side: request.side }),
     ...(request.intensity === undefined ? {} : { intensity: request.intensity }),
     ...(request.speed === undefined ? {} : { speed: request.speed }),
+    ...(request.duration === undefined ? {} : { duration: request.duration }),
+    ...(request.blendDuration === undefined
+      ? {}
+      : { blendDuration: request.blendDuration }),
   };
 }
 
@@ -179,6 +189,10 @@ function semanticAction(request: ActingActionRequest): ActRequest {
     ...(request.side === undefined ? {} : { side: request.side }),
     ...(request.intensity === undefined ? {} : { intensity: request.intensity }),
     ...(request.speed === undefined ? {} : { speed: request.speed }),
+    ...(request.duration === undefined ? {} : { duration: request.duration }),
+    ...(request.blendDuration === undefined
+      ? {}
+      : { blendDuration: request.blendDuration }),
   };
 }
 

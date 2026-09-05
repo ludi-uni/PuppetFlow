@@ -47,13 +47,14 @@ function accepted(state: ActingState = actingState()) {
   return { accepted: true, state };
 }
 
-function fakeRuntime(api: ActingRuntimeApi | null) {
+function fakeRuntime(api: ActingRuntimeApi | null, running = true) {
   return {
     getActingApi: () => api,
     getActingCapabilities: () =>
       api === null
         ? null
         : { actions: ["wave", "look_right"], expressions: ["neutral", "happy"] },
+    isRunning: () => running,
   };
 }
 
@@ -85,12 +86,16 @@ describe("PuppetFlowControl", () => {
       side: "right",
       intensity: 0.7,
       speed: 1.2,
+      duration: 1,
+      blendDuration: 0.18,
     });
 
     expect(api.act).toHaveBeenCalledWith("wave", {
       side: "right",
       intensity: 0.7,
       speed: 1.2,
+      duration: 1,
+      blendDuration: 0.18,
     });
     expect(result.accepted).toBe(true);
     expect(result.state.acting.activeAction).toEqual({
@@ -98,6 +103,8 @@ describe("PuppetFlowControl", () => {
       side: "right",
       intensity: 0.7,
       speed: 1.2,
+      duration: 1,
+      blendDuration: 0.18,
     });
   });
 
@@ -212,6 +219,41 @@ describe("PuppetFlowControl", () => {
       acting: { actions: [], sequence: false, interrupt: false },
       expressions: { names: [], clear: false },
     });
+  });
+
+  it("rejects every command and hides state while stopped without hiding capabilities", () => {
+    const api = fakeApi();
+    const control = createPuppetFlowControl(fakeRuntime(api, false));
+    const unavailable = {
+      accepted: false,
+      reason: "PuppetFlow acting is unavailable",
+      state: {
+        acting: {
+          elapsed: 0,
+          remaining: 0,
+          queuedActions: 0,
+          blendRemaining: 0,
+        },
+        expression: EMPTY_EXPRESSION_STATE,
+      },
+    };
+
+    expect(control.act({ action: "wave" })).toEqual(unavailable);
+    expect(control.sequence({ actions: [{ action: "wave" }] })).toEqual(unavailable);
+    expect(control.interrupt()).toEqual(unavailable);
+    expect(control.setExpression({ expression: "happy" })).toEqual(unavailable);
+    expect(control.clearExpression()).toEqual(unavailable);
+    expect(control.getState()).toEqual(unavailable.state);
+    expect(control.getCapabilities()).toEqual({
+      acting: { actions: ["wave", "look_right"], sequence: true, interrupt: true },
+      expressions: { names: ["neutral", "happy"], clear: true },
+    });
+    expect(api.act).not.toHaveBeenCalled();
+    expect(api.sequence).not.toHaveBeenCalled();
+    expect(api.interrupt).not.toHaveBeenCalled();
+    expect(api.set_expression).not.toHaveBeenCalled();
+    expect(api.clear_expression).not.toHaveBeenCalled();
+    expect(api.get_state).not.toHaveBeenCalled();
   });
 
   it("has no production dependency on transports or VMC", () => {

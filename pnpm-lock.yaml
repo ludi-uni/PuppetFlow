@@ -941,6 +941,9 @@ importers:
       '@puppetflow/adapter-websocket':
         specifier: workspace:*
         version: link:../adapter-websocket
+      '@puppetflow/control':
+        specifier: workspace:*
+        version: link:../control
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../core

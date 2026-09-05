@@ -5,6 +5,8 @@ export interface ActRequest {
   side?: ActingSide;
   intensity?: number;
   speed?: number;
+  duration?: number;
+  blendDuration?: number;
 }
 
 export interface SequenceRequest {

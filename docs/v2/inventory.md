@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**監査フェーズ:** Phase A
+**更新状況:** Phase C canonical Host ownership complete
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 
@@ -13,7 +13,7 @@
 - このPhaseでは、その既存コミットを `main` へ追加pushせず、`main` 自体も変更しない。
 - 作業開始時点の未commit変更（preset関連14ファイル）と未追跡の `docs/superpowers/**` 2ファイルは保持し、今回のcommitには含めない。
 - リポジトリの規模は `packages` 40、`apps` 5、`examples` 5。Runtimeの主要実装は `packages/runtime/src`、Studioの主要実装は `apps/studio/src` にある。
-- `D:\99.AITuber\PuppetFlow_Acting_MCP` は clean な `master` / `05c5464` で、remoteは設定されていない。`D:\99.AITuber\aituber_runtime` は clean な `main` / `e1c47938` で、ローカルが `origin/main` より5コミット先行している。両方ともこのPhaseでは変更しない。
+- `D:\99.AITuber\PuppetFlow_Acting_MCP` はPhase 3開始時にcleanな`master` / `a525660`で、Hostのcanonical Control化に必要なthin compatibility adapterだけを別commitにする。`D:\99.AITuber\aituber_runtime` はこのPhaseでは変更しない。
 
 ## 現行の実行経路
 
@@ -38,10 +38,12 @@ AITuber semantic acting path
   └─ ActingSession
        └─ ActingTransport (HTTP または client-owned stdio MCP)
             └─ PuppetFlow_Acting_MCP host module
-                 └─ new PuppetFlowRuntime() + ActingEngine + VMC
+                 └─ createPuppetFlowHost()
+                      ├─ owns one PuppetFlowRuntime + ActingEngine + VMC
+                      └─ exposes canonical Control through a thin MCP adapter
 ```
 
-したがって、現在の問題はMotion実装が無いことではなく、Runtimeの生成・所有・外部制御が複数の入口に分散していることです。
+MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、AITuber legacy pathの移行は後続Phaseに残ります。
 
 ## Classification table
 
@@ -58,7 +60,7 @@ AITuber semantic acting path
 | Preset system                               | `packages/preset/src`, `packages/behavior-packs`                            | Preset v3 parse/load、`behaviorPfScript` materialization、overlap warning、plugin/extension構成 | **KEEP / REWORK**             | `behaviorPfScript`正本、v3、公式preset資産は維持。load/config ownershipをHostへ集約する。新v4はPhase 1の対象外。                                                                  |
 | Studio                                      | `apps/studio/src/runtime.ts`, `App.tsx`, hooks                              | Runtime生成、lifecycle、state/channel/timeline操作、preset編集、mapper、Acting UI               | **KEEP / REWORK**             | Studio UIは残す。Studio facadeがRuntime内部へ直接入る設計をControl clientへ置き換える。                                                                                           |
 | CLI                                         | `apps/cli/src/commands/run.ts`, `record.ts`, `replay.ts`                    | headless起動、record/replay、VMC/source設定                                                     | **KEEP / REWORK**             | ユーザー向けCLIは維持する。通常の実行はHostのbootstrapにし、record/replayも同じownership規則に寄せる。                                                                            |
-| `runtime-launcher`                          | `packages/runtime-launcher/src/build-runtime.ts`                            | presetをloadしRuntimeを構成する便利関数                                                         | **REWORK**                    | Host内部のbootstrapへ吸収またはHostからのみ利用する。外部のRuntime factoryとして残さない。                                                                                        |
+| `runtime-launcher`                          | `packages/runtime-launcher/src/puppetflow-host.ts`, `build-runtime.ts`      | Hostが一つのRuntime、source/output、lifecycleを所有しcanonical Controlを公開                    | **REWORK / IMPLEMENTED**      | Host public contractはControlとstart/stop/disposeだけ。Studio/CLIなど既存`buildRuntime` consumerの移行は後続Phase。                                                               |
 | VMC adapters                                | `packages/adapter-vmc/src`                                                  | MotionState/FrameをOSC/VMCへencode、mapping、UDP/Tauri transport                                | **KEEP / REWORK**             | encoder、mapping、testsは再利用する。HostがVMC senderを所有し、legacyとframeの二重送出を解消する。                                                                                |
 | その他 adapters                             | `adapter-live2d`, `adapter-vrm`, `adapter-websocket`, `adapter-logger`      | Rendered Motion / frameの外部出力、debug                                                        | **KEEP**                      | 出力protocol adapterとして残す。Control commandを実装する場所にはしない。                                                                                                         |
 | Source adapters                             | `source-http`, `source-websocket`, `source-mqtt`, `source-discord`          | 外部入力をState/Channel/Timelineへ適用                                                          | **KEEP / REWORK**             | input sourceとして残す。Hostがattachを所有し、Controlのsemantic commandと混同しない。                                                                                             |
@@ -66,14 +68,14 @@ AITuber semantic acting path
 | Micro behavior                              | `packages/micro-behavior/src`, `http-server.ts`                             | 短いkeyframe動作、queue/cooldown、現在は専用HTTP APIも提供                                      | **KEEP / REWORK**             | 実装は再利用候補。request入口をControlへ統合し、専用HTTPが別semantic contractになる状態とAITuber側の重複engineを整理する。                                                        |
 | HTTP control                                | `micro-behavior/http-server.ts`、AITuber `ActingRuntimeClient`              | 現在はmicro-behavior HTTPと別形式のacting HTTPが存在。`source-http`は入力polling                | **REWORK**                    | HTTPはControlを包むadapterにする。`source-http`をcontrol APIと呼ばない。旧個別endpointは受入後に必要性を再評価する。                                                              |
 | MCP integration                             | sibling `PuppetFlow_Acting_MCP/src`                                         | MCP schema、tool handler、safe result、stdio protocol                                           | **KEEP / REWORK**             | thin adapterとして保持し、共有Control contractへ接続する。MCPでsemantic validation・Runtime・VMCを所有しない。                                                                    |
-| `PuppetFlow_Acting_MCP` host module         | sibling `hosts/puppetflow-runtime-host.mjs`                                 | compiled PuppetFlow modulesをloadしRuntime/Acting/VMCを生成                                     | **REWORK**                    | host ownershipを本体側へ移す。Sibling自体の削除・archiveはPhase 1で行わない。                                                                                                     |
-| MCP-owned Runtime                           | sibling host moduleが現在実行                                               | MCP child process内でRuntimeを生成・所有する構造                                                | **DELETE**                    | 最終形ではMCPはControl adapterだけにし、Runtime ownershipをPuppetFlow Hostに一本化する。                                                                                          |
+| `PuppetFlow_Acting_MCP` host module         | sibling `hosts/puppetflow-runtime-host.mjs`                                 | 公開Hostを構成しcanonical Controlを既存snake_case tool contractへ変換                           | **REWORK / PARTIAL**          | Runtime生成はHostへ委譲済み。MCP全体のcanonical contract移行とpackage統合はPhase Fに残る。                                                                                        |
+| MCP-owned Runtime                           | sibling host moduleから公開Host factoryを呼び出す                           | composition rootがHost lifecycleを所有し、Runtime objectには触れない                            | **REMOVED FROM MCP**          | one Runtimeの生成、source/output attachment、cleanupは`PuppetFlowHost`だけが行う。                                                                                                |
 | AITuber `ActingSession`                     | `aituber_runtime/apps/avatar-runtime/src/acting/acting-session.ts`          | TTS start/end、実再生anchor、start/early/middle/late/end、utterance cleanup                     | **KEEP**                      | 「WHEN」とcaller orchestrationの責務。PuppetFlowへ移さない。                                                                                                                      |
 | AITuber `ActingTransport` / client          | `acting-transport.ts`, `acting-runtime-client.ts`                           | semantic HTTP、client-owned stdio MCP、tool discovery、payload translation                      | **REWORK**                    | Control clientとして残す。transport選択は一つにし、MCP/HTTPで同じControl semanticsを呼ぶ。                                                                                        |
 | AITuber legacy supervisor / WS state bridge | `puppetflow/supervisor.ts`, `puppetflow/ws-server.ts`                       | `pf.exe` spawn、独自mood/lipsync/micro behavior state、WS broadcast                             | **REWORK → DELETE候補**       | 新Host/Controlの受入後に、duplicate Runtime/output/motion logicを段階的に外す。Phase 1では触らない。                                                                              |
 | Block Editor (Blockly)                      | `apps/studio/src/scratch`, `ScratchEditor`                                  | BlocklyをBehavior ASTへ変換                                                                     | **PLUGIN candidate / REWORK** | 動く実装と変換器は保存するが、2.0 core requirementにはしない。Simple/Preset、Timeline、PFScriptを主軸にし、必要なら任意editor pluginとして隔離する。                              |
-| `PuppetFlowControl`                         | `packages/control`にcanonical contractを実装                                | Acting/Expressionの外部semantic control boundary                                                | **NEW / IMPLEMENTED**         | camelCase DTO、safe result、detached state、capabilitiesを提供する。既存consumer migrationは後続Phase。                                                                           |
-| `PuppetFlowHost`                            | `packages/runtime-launcher/src/puppetflow-host.ts`に先行実装                | Runtime、Control implementation、adapters、lifecycleの所有                                      | **NEW / PARTIAL**             | Phase 2以前の`796fcb9`で追加済み。canonical `@puppetflow/control`への接続と全client ownership統一は後続Phase。                                                                    |
+| `PuppetFlowControl`                         | `packages/control`にcanonical contractを実装                                | Acting/Expressionの外部semantic control boundaryとRuntime availability判定                      | **NEW / IMPLEMENTED**         | camelCase DTO、safe result、停止中empty state、開始前capabilitiesを提供する。Runtime lifecycleは所有しない。                                                                      |
+| `PuppetFlowHost`                            | `packages/runtime-launcher/src/puppetflow-host.ts`                          | one Runtime、canonical Control、adapters、sources、lifecycleの所有                              | **NEW / IMPLEMENTED**         | public APIはcanonical Controlとstart/stop/disposeだけ。Runtime内部objectは公開しない。                                                                                            |
 
 ## Sibling MCPの責務分解
 

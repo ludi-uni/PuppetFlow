@@ -1,4 +1,5 @@
 import { getPresetJson } from "@puppetflow/behavior-packs";
+import type { PuppetFlowControl } from "@puppetflow/control";
 import type { MotionFrameAdapter, StateSource } from "@puppetflow/runtime";
 import { describe, expect, it, vi } from "vitest";
 
@@ -34,7 +35,7 @@ function output(id: string): MotionFrameAdapter {
 }
 
 describe("createPuppetFlowHost", () => {
-  it("shares one Runtime lifecycle across concurrent starts and makes control unavailable after dispose", async () => {
+  it("exposes the canonical Control for its one Runtime across the Host lifecycle", async () => {
     const frameOutput = output("host-output");
     const host = createPuppetFlowHost({
       presetJson: getPresetJson("Idle"),
@@ -42,14 +43,47 @@ describe("createPuppetFlowHost", () => {
       vmc: false,
       motionAdapters: [frameOutput],
     });
+    const control: PuppetFlowControl = host.control;
+
+    expect(Object.keys(control).sort()).toEqual(
+      [
+        "act",
+        "sequence",
+        "interrupt",
+        "setExpression",
+        "clearExpression",
+        "getState",
+        "getCapabilities",
+      ].sort(),
+    );
+    expect(control.act({ action: "wave" })).toMatchObject({ accepted: false });
+    expect(control.getState()).toEqual({
+      acting: {
+        elapsed: 0,
+        remaining: 0,
+        queuedActions: 0,
+        blendRemaining: 0,
+      },
+      expression: { elapsed: 0, remaining: 0, fadeRemaining: 0 },
+    });
+    expect(control.getCapabilities()).toMatchObject({
+      acting: { actions: expect.arrayContaining(["wave"]) },
+      expressions: { names: ["neutral", "happy"] },
+    });
 
     await Promise.all([host.start(), host.start()]);
     expect(frameOutput.initialize).toHaveBeenCalledTimes(1);
     expect(frameOutput.updateFrame).toHaveBeenCalledTimes(1);
+    const accepted = control.act({ action: "wave" });
+    expect(accepted.accepted).toBe(true);
+    expect(control.getState()).toEqual(accepted.state);
+
+    await host.stop();
+    expect(control.act({ action: "wave" })).toMatchObject({ accepted: false });
 
     await Promise.all([host.dispose(), host.dispose()]);
     expect(frameOutput.dispose).toHaveBeenCalledTimes(1);
-    expect(() => host.control.act("wave")).toThrow(/not running/i);
+    expect(control.act({ action: "wave" })).toMatchObject({ accepted: false });
     await expect(host.start()).rejects.toThrow(/disposed/i);
   });
 
@@ -74,7 +108,7 @@ describe("createPuppetFlowHost", () => {
 
     expect(firstOutput.dispose).toHaveBeenCalledTimes(1);
     expect(secondOutput.dispose).not.toHaveBeenCalled();
-    expect(second.control.act("wave").accepted).toBe(true);
+    expect(second.control.act({ action: "wave" }).accepted).toBe(true);
 
     await second.dispose();
     expect(secondOutput.dispose).toHaveBeenCalledTimes(1);
@@ -133,9 +167,17 @@ describe("createPuppetFlowHost", () => {
     expect(initialized.dispose).toHaveBeenCalledTimes(1);
     expect(failed.dispose).toHaveBeenCalledTimes(1);
     expect(initialized.updateFrame).not.toHaveBeenCalled();
-    expect(() => host.control.get_state()).toThrow(/not running/i);
+    expect(host.control.getState()).toEqual({
+      acting: {
+        elapsed: 0,
+        remaining: 0,
+        queuedActions: 0,
+        blendRemaining: 0,
+      },
+      expression: { elapsed: 0, remaining: 0, fadeRemaining: 0 },
+    });
 
-    const frameCalls = initialized.updateFrame.mock.calls.length;
+    const frameCalls = vi.mocked(initialized.updateFrame).mock.calls.length;
     await new Promise<void>((resolve) => setTimeout(resolve, 40));
     expect(initialized.updateFrame).toHaveBeenCalledTimes(frameCalls);
   });
@@ -159,6 +201,14 @@ describe("createPuppetFlowHost", () => {
 
     await expect(host.start()).rejects.toBe(failure);
     expect(close).toHaveBeenCalledTimes(1);
-    expect(() => host.control.get_state()).toThrow(/not running/i);
+    expect(host.control.getState()).toEqual({
+      acting: {
+        elapsed: 0,
+        remaining: 0,
+        queuedActions: 0,
+        blendRemaining: 0,
+      },
+      expression: { elapsed: 0, remaining: 0, fadeRemaining: 0 },
+    });
   });
 });

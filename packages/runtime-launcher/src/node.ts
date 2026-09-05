@@ -16,8 +16,8 @@ export type {
   ActingExpressionState,
   ActingSide,
   ActingState,
-  PuppetFlowControl,
 } from "@puppetflow/runtime";
+export type { PuppetFlowControl } from "@puppetflow/control";
 export type {
   AdaptersLaunchConfig,
   BehaviorApiLaunchConfig,

@@ -10,12 +10,11 @@ import {
   VMC_PROFILE,
   type MotionMapperProfile,
 } from "@puppetflow/motion-mapper";
+import { createPuppetFlowControl, type PuppetFlowControl } from "@puppetflow/control";
 import {
   ActingEngine,
-  createPuppetFlowControl,
   type ActingEngineOptions,
   type MotionFrameAdapter,
-  type PuppetFlowControl,
   type StateSource,
 } from "@puppetflow/runtime";
 import { WebSocketSource } from "@puppetflow/source-websocket";

@@ -11,10 +11,14 @@ import type {
 } from "./acting/index.js";
 import type { PuppetFlowRuntime } from "./runtime.js";
 
-/** Transport-independent access to the Runtime-owned ActingEngine. */
+/**
+ * Transport-independent access to the Runtime-owned ActingEngine.
+ * @deprecated Use `PuppetFlowControl` from `@puppetflow/control`.
+ */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- this named interface is the public Control boundary.
 export interface PuppetFlowControl extends ActingRuntimeApi {}
 
+/** @deprecated Use `createPuppetFlowControl` from `@puppetflow/control`. */
 export function createPuppetFlowControl(runtime: PuppetFlowRuntime): PuppetFlowControl {
   function actingApi(): ActingRuntimeApi {
     const api = runtime.getActingApi();

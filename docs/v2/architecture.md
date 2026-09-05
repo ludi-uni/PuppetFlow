@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Target design; canonical Acting/Expression Control contract implemented
+**Status:** Phase B complete; Phase C canonical Host ownership complete
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
@@ -17,20 +17,20 @@ Application composition root → PuppetFlowHost
                                 └─ owns sources and output adapters
 ```
 
-実装済みの経路は同一プロセスのActing MCPです。`@puppetflow/runtime`の
-`createPuppetFlowControl(runtime)`は既存ActingEngineへ委譲し、停止中の操作・観測は
-エラーにします。`@puppetflow/runtime-launcher/node`の`createPuppetFlowHost`は
-既存`buildRuntime`でRuntimeを一つ生成し、start/stop/disposeを所有します。
-ControlにRuntime・store・lifecycle handleは渡しません。
+実装済みの経路は同一プロセスのActing MCPです。
+`@puppetflow/runtime-launcher/node`の`createPuppetFlowHost`は既存`buildRuntime`で
+Runtimeを一つ生成し、start/stop/disposeを所有します。Hostが公開する`control`は
+canonical `@puppetflow/control`型だけです。Runtime・store・lifecycle handleは公開しません。
 
 Phase 2ではcanonicalな外部境界として`@puppetflow/control`を追加しました。
 このpackageはcamelCaseのsemantic DTO、safe failure、detached state snapshot、
-profile由来capabilitiesを定義し、既存`PuppetFlowRuntime.getActingApi()`へ委譲します。
-既存`@puppetflow/runtime`内Controlは先行Host/MCP互換のため残し、client migrationは
-後続Phaseで行います。
+profile由来capabilitiesを定義し、既存RuntimeのActing APIへ委譲します。Runtimeの
+`isRunning()`はread-only availability signalとしてのみ使い、停止中のcommandはsafe resultで
+拒否し、stateはempty snapshotを返します。capabilitiesは構成情報なので開始前も取得できます。
+既存`@puppetflow/runtime`内Controlはdeprecated compatibility APIとしてPhase Gまで残します。
 
 MCPの`hosts/puppetflow-runtime-host.mjs`は公開Host factoryを呼ぶcomposition rootで、
-`host.control`だけをtool層へ渡します。従来のsnake_case API・7 toolsを維持し、
+canonical `host.control`をthin transport adapterで既存snake_case APIへ変換します。7 toolsを維持し、
 独自の演技状態を持ちません。Node HostのVMC出力は旧状態を一時保持し、
 Acting frameの骨・表情と合わせて一回送信します。表情は同名の旧blendshapeに優先し、
 lip syncは別channelとして保持します。Runtimeの全パイプライン統合は行っていません。
@@ -72,7 +72,7 @@ interface PuppetFlowControl {
 }
 ```
 
-`ActRequest`はaction、side、intensity、speedだけを持ちます。Expression requestはexpression、intensity、duration、fadeIn、fadeOutを持ちます。現行`source-core`の`motion` direct override、bone quaternion、OSC/VMC payloadはControl contractへ持ち込みません。
+`ActRequest`はaction、side、intensity、speed、duration、blendDurationだけを持ちます。Expression requestはexpression、intensity、duration、fadeIn、fadeOutを持ちます。現行`source-core`の`motion` direct override、bone quaternion、OSC/VMC payloadはControl contractへ持ち込みません。
 
 ### Contract rules
 
