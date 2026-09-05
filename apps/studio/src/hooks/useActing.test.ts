@@ -1,24 +1,26 @@
 /** @vitest-environment jsdom */
 
+import type {
+  ControlResult,
+  PuppetFlowCapabilities,
+  PuppetFlowControlState,
+} from "@puppetflow/control";
+import type { PuppetFlowRuntime } from "@puppetflow/runtime";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  ActingCommandResult,
-  ActingState,
-  PuppetFlowRuntime,
-} from "@puppetflow/runtime";
-import { useActing } from "./useActing";
+
 import {
   act as runtimeAct,
   clearExpression as runtimeClearExpression,
   ensureRuntime,
-  getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
   setExpression as runtimeSetExpression,
   subscribeActing,
+  type StudioActingSnapshot,
 } from "../runtime";
+import { useActing } from "./useActing";
 
 vi.mock("../runtime", () => ({
   act: vi.fn(),
@@ -27,20 +29,26 @@ vi.mock("../runtime", () => ({
   sequence: vi.fn(),
   setExpression: vi.fn(),
   interrupt: vi.fn(),
-  getActingState: vi.fn(),
   subscribeActing: vi.fn(),
 }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-const initialState: ActingState = {
-  elapsed: 0,
-  remaining: 0,
-  queueLength: 0,
-  blendRemaining: 0,
+const initialState: PuppetFlowControlState = {
+  acting: { elapsed: 0, remaining: 0, queuedActions: 0, blendRemaining: 0 },
+  expression: { elapsed: 0, remaining: 0, fadeRemaining: 0 },
+};
+const capabilities: PuppetFlowCapabilities = {
+  acting: { actions: ["idle", "wave"], sequence: true, interrupt: true },
+  expressions: { names: ["neutral", "happy"], clear: true },
+};
+const readySnapshot: StudioActingSnapshot = {
+  state: initialState,
+  capabilities,
+  ready: true,
 };
 
-function result(state: ActingState = initialState): ActingCommandResult {
+function result(state: PuppetFlowControlState = initialState): ControlResult {
   return { accepted: true, state };
 }
 
@@ -48,19 +56,24 @@ describe("useActing", () => {
   let container: HTMLDivElement | undefined;
   let root: Root | undefined;
   let current: ReturnType<typeof useActing> | undefined;
+  let notify: ((snapshot: StudioActingSnapshot) => void) | undefined;
 
   beforeEach(() => {
     vi.mocked(ensureRuntime).mockResolvedValue({} as PuppetFlowRuntime);
+    vi.mocked(subscribeActing).mockImplementation((listener) => {
+      notify = listener;
+      listener(readySnapshot);
+      return vi.fn();
+    });
   });
 
   afterEach(() => {
-    if (root) {
-      act(() => root?.unmount());
-    }
+    if (root) act(() => root?.unmount());
     container?.remove();
     root = undefined;
     container = undefined;
     current = undefined;
+    notify = undefined;
     vi.clearAllMocks();
   });
 
@@ -68,7 +81,6 @@ describe("useActing", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-
     await act(async () => {
       root?.render(
         createElement(() => {
@@ -80,180 +92,109 @@ describe("useActing", () => {
     });
   }
 
-  it("subscribes to acting updates and cleans up on unmount", async () => {
+  it("subscribes once after startup and cleans up on unmount", async () => {
     const unsubscribe = vi.fn();
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(unsubscribe);
+    vi.mocked(subscribeActing).mockImplementation((listener) => {
+      listener(readySnapshot);
+      return unsubscribe;
+    });
 
     await renderHook();
 
-    expect(getActingState).toHaveBeenCalled();
-    expect(subscribeActing).toHaveBeenCalledWith(expect.any(Function));
-
-    act(() => root?.unmount());
-    expect(unsubscribe).toHaveBeenCalledOnce();
-    root = undefined;
-  });
-
-  it("subscribes after cold startup resolves exactly once", async () => {
-    let resolveRuntime: ((runtime: PuppetFlowRuntime) => void) | undefined;
-    const pendingRuntime = new Promise<PuppetFlowRuntime>((resolve) => {
-      resolveRuntime = resolve;
-    });
-    const readyState: ActingState = { ...initialState, queueLength: 1 };
-    const unsubscribe = vi.fn();
-    vi.mocked(ensureRuntime).mockReturnValue(pendingRuntime);
-    vi.mocked(getActingState).mockReturnValue(readyState);
-    vi.mocked(subscribeActing).mockReturnValue(unsubscribe);
-
-    await renderHook();
-
-    expect(getActingState).not.toHaveBeenCalled();
-    expect(subscribeActing).not.toHaveBeenCalled();
-
-    await act(async () => {
-      resolveRuntime?.({} as PuppetFlowRuntime);
-      await pendingRuntime;
-      await Promise.resolve();
-    });
-
-    expect(getActingState).toHaveBeenCalledOnce();
     expect(subscribeActing).toHaveBeenCalledOnce();
-    expect(current?.state).toEqual(readyState);
-
+    expect(current).toMatchObject({ state: initialState, capabilities, ready: true });
     act(() => root?.unmount());
     expect(unsubscribe).toHaveBeenCalledOnce();
     root = undefined;
   });
 
-  it("does not initialize or subscribe after unmount during cold startup", async () => {
+  it("does not subscribe or update after unmount during cold startup", async () => {
     let resolveRuntime: ((runtime: PuppetFlowRuntime) => void) | undefined;
-    const pendingRuntime = new Promise<PuppetFlowRuntime>((resolve) => {
+    const pending = new Promise<PuppetFlowRuntime>((resolve) => {
       resolveRuntime = resolve;
     });
-    vi.mocked(ensureRuntime).mockReturnValue(pendingRuntime);
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(vi.fn());
+    vi.mocked(ensureRuntime).mockReturnValue(pending);
 
     await renderHook();
-
-    expect(ensureRuntime).toHaveBeenCalledOnce();
-    expect(getActingState).not.toHaveBeenCalled();
-    expect(subscribeActing).not.toHaveBeenCalled();
-
     act(() => root?.unmount());
     root = undefined;
-
     await act(async () => {
       resolveRuntime?.({} as PuppetFlowRuntime);
-      await pendingRuntime;
-      await Promise.resolve();
+      await pending;
     });
 
-    expect(getActingState).not.toHaveBeenCalled();
     expect(subscribeActing).not.toHaveBeenCalled();
   });
 
-  it("applies accepted command state immediately without waiting for duration", async () => {
-    const nextState: ActingState = {
+  it("forwards complete canonical action and expression requests", async () => {
+    const nextState: PuppetFlowControlState = {
       ...initialState,
-      activeAction: { action: "wave", duration: 2 },
-      remaining: 2,
+      acting: {
+        ...initialState.acting,
+        activeAction: { action: "wave", duration: 2, blendDuration: 0.2 },
+        remaining: 2,
+      },
     };
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(() => {});
     vi.mocked(runtimeAct).mockReturnValue(result(nextState));
     vi.mocked(runtimeSequence).mockReturnValue(result());
     vi.mocked(runtimeInterrupt).mockReturnValue(result());
-
-    await renderHook();
-
-    act(() => {
-      current?.act("wave", { duration: 2 });
-    });
-
-    expect(runtimeAct).toHaveBeenCalledWith("wave", { duration: 2 });
-    expect(current?.state).toEqual(nextState);
-    expect(current?.status).toBeNull();
-  });
-
-  it("forwards expression commands and applies returned state immediately", async () => {
-    const nextState = {
-      ...initialState,
-      expression: {
-        activeExpression: { expression: "happy", intensity: 0.5 },
-        elapsed: 0,
-        remaining: 1.5,
-        fadeRemaining: 0.15,
-      },
-    };
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(() => {});
-    vi.mocked(runtimeSetExpression).mockReturnValue(result(nextState));
+    vi.mocked(runtimeSetExpression).mockReturnValue(result());
     vi.mocked(runtimeClearExpression).mockReturnValue(result());
-
-    await renderHook();
-    act(() => current?.setExpression("happy", { intensity: 0.5, duration: 1.5 }));
-
-    expect(runtimeSetExpression).toHaveBeenCalledWith("happy", {
-      intensity: 0.5,
-      duration: 1.5,
-    });
-    expect(current?.state).toEqual(nextState);
-  });
-
-  it("forwards clearExpression and applies returned state immediately", async () => {
-    const nextState: ActingState = {
-      ...initialState,
-      expression: {
-        activeExpression: { expression: "neutral", fadeOut: 0.2 },
-        elapsed: 0,
-        remaining: 0.2,
-        fadeRemaining: 0.2,
-      },
-    };
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(() => {});
-    vi.mocked(runtimeClearExpression).mockReturnValue(result(nextState));
-
-    await renderHook();
-    act(() => current?.clearExpression({ fadeOut: 0.2 }));
-
-    expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
-    expect(current?.state).toEqual(nextState);
-    expect(current?.status).toBeNull();
-  });
-
-  it("surfaces rejected clearExpression commands through status", async () => {
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(() => {});
-    vi.mocked(runtimeClearExpression).mockReturnValue({
-      accepted: false,
-      reason: "Expression clear was rejected",
-      state: initialState,
-    });
-
-    await renderHook();
-    act(() => current?.clearExpression({ fadeOut: 0.2 }));
-
-    expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
-    expect(current?.status).toBe("Expression clear was rejected");
-  });
-
-  it("converts clearExpression errors into status text", async () => {
-    vi.mocked(getActingState).mockReturnValue(initialState);
-    vi.mocked(subscribeActing).mockReturnValue(() => {});
-    vi.mocked(runtimeClearExpression).mockImplementation(() => {
-      throw new Error("Expression clear is unavailable");
-    });
-
     await renderHook();
 
     act(() => {
+      current?.act({
+        action: "wave",
+        side: "right",
+        intensity: 0.6,
+        speed: 1.2,
+        duration: 2,
+        blendDuration: 0.2,
+      });
+      current?.sequence({ actions: [{ action: "nod", duration: 0.5 }] });
+      current?.interrupt();
+      current?.setExpression({
+        expression: "happy",
+        intensity: 0.5,
+        duration: 1.5,
+        fadeIn: 0.1,
+        fadeOut: 0.2,
+      });
       current?.clearExpression({ fadeOut: 0.2 });
     });
 
+    expect(runtimeAct).toHaveBeenCalledWith({
+      action: "wave",
+      side: "right",
+      intensity: 0.6,
+      speed: 1.2,
+      duration: 2,
+      blendDuration: 0.2,
+    });
+    expect(runtimeSequence).toHaveBeenCalledWith({
+      actions: [{ action: "nod", duration: 0.5 }],
+    });
+    expect(runtimeSetExpression).toHaveBeenCalledWith({
+      expression: "happy",
+      intensity: 0.5,
+      duration: 1.5,
+      fadeIn: 0.1,
+      fadeOut: 0.2,
+    });
     expect(runtimeClearExpression).toHaveBeenCalledWith({ fadeOut: 0.2 });
-    expect(current?.status).toBe("Expression clear is unavailable");
+  });
+
+  it("keeps a rejection reason across ordinary state notifications", async () => {
+    vi.mocked(runtimeAct).mockReturnValue({
+      accepted: false,
+      reason: "Action is unavailable for this profile",
+      state: initialState,
+    });
+    await renderHook();
+
+    act(() => current?.act({ action: "wave" }));
+    act(() => notify?.({ ...readySnapshot, state: { ...initialState } }));
+
+    expect(current?.status).toBe("Action is unavailable for this profile");
   });
 });

@@ -1,14 +1,11 @@
 import {
-  ACTING_ACTION_NAMES,
-  ACTING_EXPRESSION_NAMES,
-  type ActingActionRequest,
-  type ActingExpressionParams,
   type ActingSide,
-} from "@puppetflow/runtime";
+  type ActRequest,
+  type SetExpressionRequest,
+} from "@puppetflow/control";
 import { useMemo, useState } from "react";
 import type { UseActingResult } from "../../../hooks/useActing";
 
-const PRIMITIVE_ACTIONS = ACTING_ACTION_NAMES.filter((action) => action !== "idle");
 const ACCEPTANCE_ACTIONS = [
   "look_left",
   "look_right",
@@ -21,6 +18,8 @@ export type ActingTabProps = UseActingResult;
 
 export function ActingTab({
   state,
+  capabilities,
+  ready,
   status,
   act,
   sequence,
@@ -41,11 +40,25 @@ export function ActingTab({
     [duration, intensity, side, speed],
   );
 
-  const acceptanceSequence = useMemo<ActingActionRequest[]>(
+  const primitiveActions = capabilities.acting.actions.filter(
+    (action) => action !== "idle",
+  );
+  const acceptanceSequence = useMemo<ActRequest[]>(
     () => ACCEPTANCE_ACTIONS.map((action) => ({ action, ...params })),
     [params],
   );
-  const expressionParams = useMemo<ActingExpressionParams>(
+  const missingAcceptanceActions = ACCEPTANCE_ACTIONS.filter(
+    (action) => !capabilities.acting.actions.includes(action),
+  );
+  const acceptanceUnavailableReason =
+    missingAcceptanceActions.length > 0
+      ? `Missing required actions: ${missingAcceptanceActions.join(", ")}`
+      : !capabilities.acting.sequence
+        ? "Sequences are unavailable for this configuration"
+        : !ready
+          ? "Acting controls are unavailable while Studio runtime is starting"
+          : null;
+  const expressionParams = useMemo<Omit<SetExpressionRequest, "expression">>(
     () => ({
       intensity: expressionIntensity,
       duration: expressionDuration,
@@ -67,7 +80,8 @@ export function ActingTab({
         <button
           type="button"
           className="primary"
-          onClick={() => sequence(acceptanceSequence)}
+          disabled={acceptanceUnavailableReason !== null}
+          onClick={() => sequence({ actions: acceptanceSequence })}
         >
           Run acceptance sequence
         </button>
@@ -125,18 +139,37 @@ export function ActingTab({
       </div>
 
       <div className="acting-actions" aria-label="Acting primitives">
-        {PRIMITIVE_ACTIONS.map((action) => (
-          <button key={action} type="button" onClick={() => act(action, params)}>
+        {primitiveActions.map((action) => (
+          <button
+            key={action}
+            type="button"
+            disabled={!ready}
+            onClick={() => act({ action, ...params })}
+          >
             {action}
           </button>
         ))}
-        <button type="button" onClick={() => act("idle", params)}>
-          idle
-        </button>
-        <button type="button" className="ghost-btn" onClick={() => interrupt()}>
+        {capabilities.acting.actions.includes("idle") ? (
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => act({ action: "idle", ...params })}
+          >
+            idle
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="ghost-btn"
+          disabled={!ready || !capabilities.acting.interrupt}
+          onClick={() => interrupt()}
+        >
           interrupt
         </button>
       </div>
+      {acceptanceUnavailableReason ? (
+        <p className="hint">{acceptanceUnavailableReason}</p>
+      ) : null}
 
       <section className="acting-expression" aria-label="Expression controls">
         <h3>Expression</h3>
@@ -191,11 +224,12 @@ export function ActingTab({
           </label>
         </div>
         <div className="acting-actions" aria-label="Semantic expressions">
-          {ACTING_EXPRESSION_NAMES.map((expression) => (
+          {capabilities.expressions.names.map((expression) => (
             <button
               key={expression}
               type="button"
-              onClick={() => setExpression(expression, expressionParams)}
+              disabled={!ready}
+              onClick={() => setExpression({ expression, ...expressionParams })}
             >
               {expression}
             </button>
@@ -203,6 +237,7 @@ export function ActingTab({
           <button
             type="button"
             className="ghost-btn"
+            disabled={!ready || !capabilities.expressions.clear}
             onClick={() => clearExpression({ fadeOut: expressionFadeOut })}
           >
             Clear expression
@@ -213,27 +248,27 @@ export function ActingTab({
       <dl className="acting-state">
         <div>
           <dt>Active</dt>
-          <dd>{state.activeAction?.action ?? "idle"}</dd>
+          <dd>{state.acting.activeAction?.action ?? "idle"}</dd>
         </div>
         <div>
           <dt>Elapsed</dt>
-          <dd>{state.elapsed.toFixed(2)} s</dd>
+          <dd>{state.acting.elapsed.toFixed(2)} s</dd>
         </div>
         <div>
           <dt>Remaining</dt>
-          <dd>{state.remaining.toFixed(2)} s</dd>
+          <dd>{state.acting.remaining.toFixed(2)} s</dd>
         </div>
         <div>
           <dt>Queue</dt>
-          <dd>Queue: {state.queueLength}</dd>
+          <dd>Queue: {state.acting.queuedActions}</dd>
         </div>
         <div>
           <dt>Expression</dt>
-          <dd>{state.expression?.activeExpression?.expression ?? "neutral"}</dd>
+          <dd>{state.expression.activeExpression?.expression ?? "neutral"}</dd>
         </div>
         <div>
           <dt>Expression remaining</dt>
-          <dd>{(state.expression?.remaining ?? 0).toFixed(2)} s</dd>
+          <dd>{state.expression.remaining.toFixed(2)} s</dd>
         </div>
       </dl>
       {status ? (

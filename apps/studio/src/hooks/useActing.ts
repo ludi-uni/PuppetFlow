@@ -1,29 +1,30 @@
 import type {
-  ActingActionName,
-  ActingActionParams,
-  ActingActionRequest,
-  ActingCommandResult,
-  ActingExpressionName,
-  ActingExpressionParams,
-  ActingState,
-} from "@puppetflow/runtime";
+  ActRequest,
+  ClearExpressionRequest,
+  ControlResult,
+  PuppetFlowCapabilities,
+  PuppetFlowControlState,
+  SequenceRequest,
+  SetExpressionRequest,
+} from "@puppetflow/control";
 import { useCallback, useEffect, useState } from "react";
 import {
   act as runtimeAct,
   clearExpression as runtimeClearExpression,
   ensureRuntime,
-  getActingState,
   interrupt as runtimeInterrupt,
   sequence as runtimeSequence,
   setExpression as runtimeSetExpression,
   subscribeActing,
 } from "../runtime";
 
-const EMPTY_ACTING_STATE: ActingState = {
-  elapsed: 0,
-  remaining: 0,
-  queueLength: 0,
-  blendRemaining: 0,
+const EMPTY_ACTING_STATE: PuppetFlowControlState = {
+  acting: { elapsed: 0, remaining: 0, queuedActions: 0, blendRemaining: 0 },
+  expression: { elapsed: 0, remaining: 0, fadeRemaining: 0 },
+};
+const EMPTY_CAPABILITIES: PuppetFlowCapabilities = {
+  acting: { actions: [], sequence: false, interrupt: false },
+  expressions: { names: [], clear: false },
 };
 
 function errorMessage(error: unknown): string {
@@ -31,25 +32,22 @@ function errorMessage(error: unknown): string {
 }
 
 export interface UseActingResult {
-  state: ActingState;
+  state: PuppetFlowControlState;
+  capabilities: PuppetFlowCapabilities;
+  ready: boolean;
   status: string | null;
-  act: (
-    action: ActingActionName | string,
-    params?: ActingActionParams,
-  ) => ActingCommandResult | undefined;
-  sequence: (
-    actions: readonly ActingActionRequest[],
-  ) => ActingCommandResult | undefined;
-  interrupt: () => ActingCommandResult | undefined;
-  setExpression: (
-    expression: ActingExpressionName | string,
-    params?: ActingExpressionParams,
-  ) => ActingCommandResult | undefined;
-  clearExpression: (params?: { fadeOut?: number }) => ActingCommandResult | undefined;
+  act: (request: ActRequest) => ControlResult | undefined;
+  sequence: (request: SequenceRequest) => ControlResult | undefined;
+  interrupt: () => ControlResult | undefined;
+  setExpression: (request: SetExpressionRequest) => ControlResult | undefined;
+  clearExpression: (request?: ClearExpressionRequest) => ControlResult | undefined;
 }
 
 export function useActing(): UseActingResult {
-  const [state, setState] = useState<ActingState>(EMPTY_ACTING_STATE);
+  const [state, setState] = useState<PuppetFlowControlState>(EMPTY_ACTING_STATE);
+  const [capabilities, setCapabilities] =
+    useState<PuppetFlowCapabilities>(EMPTY_CAPABILITIES);
+  const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,13 +60,13 @@ export function useActing(): UseActingResult {
           return;
         }
 
-        setState(getActingState());
-        unsubscribe = subscribeActing((nextState) => {
+        unsubscribe = subscribeActing((snapshot) => {
           if (disposed) {
             return;
           }
-          setState(nextState);
-          setStatus(null);
+          setState(snapshot.state);
+          setCapabilities(snapshot.capabilities);
+          setReady(snapshot.ready);
         });
       })
       .catch((error: unknown) => {
@@ -83,7 +81,7 @@ export function useActing(): UseActingResult {
     };
   }, []);
 
-  const runCommand = useCallback((command: () => ActingCommandResult) => {
+  const runCommand = useCallback((command: () => ControlResult) => {
     try {
       const result = command();
       setState(result.state);
@@ -98,28 +96,28 @@ export function useActing(): UseActingResult {
   }, []);
 
   const act = useCallback(
-    (action: ActingActionName | string, params?: ActingActionParams) =>
-      runCommand(() => runtimeAct(action, params)),
+    (request: ActRequest) => runCommand(() => runtimeAct(request)),
     [runCommand],
   );
   const sequence = useCallback(
-    (actions: readonly ActingActionRequest[]) =>
-      runCommand(() => runtimeSequence(actions)),
+    (request: SequenceRequest) => runCommand(() => runtimeSequence(request)),
     [runCommand],
   );
   const interrupt = useCallback(() => runCommand(runtimeInterrupt), [runCommand]);
   const setExpression = useCallback(
-    (expression: ActingExpressionName | string, params?: ActingExpressionParams) =>
-      runCommand(() => runtimeSetExpression(expression, params)),
+    (request: SetExpressionRequest) => runCommand(() => runtimeSetExpression(request)),
     [runCommand],
   );
   const clearExpression = useCallback(
-    (params?: { fadeOut?: number }) => runCommand(() => runtimeClearExpression(params)),
+    (request?: ClearExpressionRequest) =>
+      runCommand(() => runtimeClearExpression(request)),
     [runCommand],
   );
 
   return {
     state,
+    capabilities,
+    ready,
     status,
     act,
     sequence,

@@ -185,6 +185,9 @@ importers:
       '@puppetflow/cli-config':
         specifier: workspace:*
         version: link:../../packages/cli-config
+      '@puppetflow/control':
+        specifier: workspace:*
+        version: link:../../packages/control
       '@puppetflow/core':
         specifier: workspace:*
         version: link:../../packages/core

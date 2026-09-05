@@ -12,6 +12,7 @@ const workspacePackages = [
   "adapter-vrm",
   "adapter-websocket",
   "core",
+  "control",
   "modifier",
   "modifier-core",
   "motion-graph",

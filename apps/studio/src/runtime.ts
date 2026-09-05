@@ -1,18 +1,22 @@
 import { LoggerAdapter } from "@puppetflow/adapter-logger";
 import { TauriOscAdapter } from "@puppetflow/adapter-vmc";
+import {
+  createPuppetFlowControl,
+  type ActRequest,
+  type ClearExpressionRequest,
+  type ControlResult,
+  type PuppetFlowCapabilities,
+  type PuppetFlowControl,
+  type PuppetFlowControlState,
+  type SequenceRequest,
+  type SetExpressionRequest,
+} from "@puppetflow/control";
 import type { MotionState, StateValue } from "@puppetflow/core";
 import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
 import { loadPreset } from "@puppetflow/preset";
 import {
   ActingEngine,
   PuppetFlowRuntime,
-  type ActingActionName,
-  type ActingActionParams,
-  type ActingActionRequest,
-  type ActingCommandResult,
-  type ActingExpressionName,
-  type ActingExpressionParams,
-  type ActingState,
   type PluginOutputSnapshot,
   type StatefulEntrySnapshot,
 } from "@puppetflow/runtime";
@@ -55,6 +59,7 @@ class StaleRuntimeStartup extends Error {
 }
 
 let runtime: PuppetFlowRuntime | null = null;
+let actingConnection: StudioActingConnection | null = null;
 let startupGeneration = 0;
 let startupPromise: Promise<PuppetFlowRuntime> | null = null;
 let shuttingDown = false;
@@ -83,8 +88,22 @@ const pipelineListenerUnsubs = new Map<
   (update: MotionPipelineUpdate) => void,
   () => void
 >();
-const actingListenerSet = new Set<(state: ActingState) => void>();
-const actingListenerUnsubs = new Map<(state: ActingState) => void, () => void>();
+export interface StudioActingSnapshot {
+  state: PuppetFlowControlState;
+  capabilities: PuppetFlowCapabilities;
+  ready: boolean;
+}
+
+type StudioActingListener = (snapshot: StudioActingSnapshot) => void;
+
+interface StudioActingConnection {
+  runtime: PuppetFlowRuntime;
+  control: PuppetFlowControl;
+  capabilities: PuppetFlowCapabilities;
+}
+
+const actingListenerSet = new Set<StudioActingListener>();
+const actingListenerUnsubs = new Map<StudioActingListener, () => void>();
 
 function isTauriEnvironment(): boolean {
   return (
@@ -161,15 +180,55 @@ function bindPipelineListeners(instance: PuppetFlowRuntime): void {
   }
 }
 
-function bindActingListeners(instance: PuppetFlowRuntime): void {
+function actingSnapshot(
+  connection: StudioActingConnection,
+  ready: boolean,
+): StudioActingSnapshot {
+  return {
+    state: connection.control.getState(),
+    capabilities: connection.capabilities,
+    ready,
+  };
+}
+
+function publishActingSnapshot(
+  connection: StudioActingConnection,
+  ready: boolean,
+): void {
+  const snapshot = actingSnapshot(connection, ready);
+  for (const listener of actingListenerSet) listener(snapshot);
+}
+
+function bindActingListener(
+  listener: StudioActingListener,
+  connection: StudioActingConnection,
+): void {
+  const unsubscribe = connection.runtime.onActingUpdate(() => {
+    if (
+      !actingListenerSet.has(listener) ||
+      actingConnection !== connection ||
+      !connection.runtime.isRunning()
+    ) {
+      return;
+    }
+    listener(actingSnapshot(connection, true));
+  });
+  actingListenerUnsubs.set(listener, unsubscribe);
+  listener(actingSnapshot(connection, connection.runtime.isRunning()));
+}
+
+function detachActingListeners(): void {
   for (const unsub of actingListenerUnsubs.values()) {
     unsub();
   }
   actingListenerUnsubs.clear();
+}
+
+function bindActingListeners(connection: StudioActingConnection): void {
+  detachActingListeners();
 
   for (const listener of actingListenerSet) {
-    actingListenerUnsubs.set(listener, instance.onActingUpdate(listener));
-    listener(instance.getActingState());
+    bindActingListener(listener, connection);
   }
 }
 
@@ -184,6 +243,12 @@ function restoreState(
 
 async function createAndStartRuntime(generation: number): Promise<PuppetFlowRuntime> {
   const instance = buildRuntime();
+  const control = createPuppetFlowControl(instance);
+  const connection: StudioActingConnection = {
+    runtime: instance,
+    control,
+    capabilities: control.getCapabilities(),
+  };
   await instance.start();
 
   if (generation !== startupGeneration) {
@@ -192,8 +257,9 @@ async function createAndStartRuntime(generation: number): Promise<PuppetFlowRunt
   }
 
   runtime = instance;
+  actingConnection = connection;
   bindPipelineListeners(instance);
-  bindActingListeners(instance);
+  bindActingListeners(connection);
   return instance;
 }
 
@@ -210,15 +276,27 @@ export async function restartRuntime(): Promise<PuppetFlowRuntime> {
 
   let savedState: Record<string, StateValue> = {};
   if (runtime) {
-    savedState = runtime.state.getAll();
-    await runtime.stop();
+    const instance = runtime;
+    const connection = actingConnection;
+    savedState = instance.state.getAll();
+    const stopping = instance.stop();
+    if (connection?.runtime === instance) {
+      publishActingSnapshot(connection, false);
+    }
+    detachActingListeners();
+    await stopping;
     runtime = null;
   }
 
   startupPromise = null;
-  const instance = await ensureRuntime();
-  restoreState(instance, savedState);
-  return instance;
+  try {
+    const instance = await ensureRuntime();
+    restoreState(instance, savedState);
+    return instance;
+  } catch (error) {
+    actingConnection = null;
+    throw error;
+  }
 }
 
 export async function shutdownRuntime(): Promise<void> {
@@ -227,12 +305,21 @@ export async function shutdownRuntime(): Promise<void> {
   startupPromise = null;
 
   if (!runtime) {
+    detachActingListeners();
+    actingConnection = null;
     return;
   }
 
   const instance = runtime;
+  const connection = actingConnection;
+  const stopping = instance.stop();
+  if (connection?.runtime === instance) {
+    publishActingSnapshot(connection, false);
+  }
+  detachActingListeners();
   runtime = null;
-  await instance.stop();
+  actingConnection = null;
+  await stopping;
 }
 
 export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
@@ -382,59 +469,55 @@ export function subscribeMotionPipeline(
   };
 }
 
-function getActingApi() {
-  const api = getRuntime().getActingApi();
-  if (!api) {
-    throw new Error("Acting engine is not attached to the Studio runtime");
+function getActingControl(): PuppetFlowControl {
+  if (!actingConnection) {
+    throw new Error("Studio acting control is not ready");
   }
-  return api;
+  return actingConnection.control;
 }
 
-export function act(
-  action: ActingActionName | string,
-  params?: ActingActionParams,
-): ActingCommandResult {
-  return getActingApi().act(action, params);
+export function act(request: ActRequest): ControlResult {
+  return getActingControl().act(request);
 }
 
-export function sequence(actions: readonly ActingActionRequest[]): ActingCommandResult {
-  return getActingApi().sequence(actions);
+export function sequence(request: SequenceRequest): ControlResult {
+  return getActingControl().sequence(request);
 }
 
-export function interrupt(): ActingCommandResult {
-  return getActingApi().interrupt();
+export function interrupt(): ControlResult {
+  return getActingControl().interrupt();
 }
 
-export function setExpression(
-  expression: ActingExpressionName | string,
-  params?: ActingExpressionParams,
-): ActingCommandResult {
-  return getActingApi().set_expression(expression, params);
+export function setExpression(request: SetExpressionRequest): ControlResult {
+  return getActingControl().setExpression(request);
 }
 
-export function clearExpression(params?: { fadeOut?: number }): ActingCommandResult {
-  return getActingApi().clear_expression(params);
+export function clearExpression(request?: ClearExpressionRequest): ControlResult {
+  return getActingControl().clearExpression(request);
 }
 
-export function getActingState(): ActingState {
-  return getRuntime().getActingState();
+export function getActingState(): PuppetFlowControlState {
+  return getActingControl().getState();
 }
 
-export function subscribeActing(listener: (state: ActingState) => void): () => void {
+export function getActingCapabilities(): PuppetFlowCapabilities {
+  return getActingControl().getCapabilities();
+}
+
+export function subscribeActing(listener: StudioActingListener): () => void {
   actingListenerSet.add(listener);
 
-  if (runtime) {
-    actingListenerUnsubs.set(listener, runtime.onActingUpdate(listener));
-    listener(runtime.getActingState());
+  if (actingConnection && runtime === actingConnection.runtime) {
+    bindActingListener(listener, actingConnection);
   } else {
     void ensureRuntime().then(() => {
       if (
         actingListenerSet.has(listener) &&
-        runtime &&
+        actingConnection &&
+        runtime === actingConnection.runtime &&
         !actingListenerUnsubs.has(listener)
       ) {
-        actingListenerUnsubs.set(listener, runtime.onActingUpdate(listener));
-        listener(runtime.getActingState());
+        bindActingListener(listener, actingConnection);
       }
     });
   }

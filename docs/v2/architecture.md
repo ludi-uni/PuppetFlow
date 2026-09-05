@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Phase B complete; Phase C canonical Host ownership complete
+**Status:** Phase B complete; Phase C canonical Host ownership complete; Studio Acting/Expression control migrated
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
@@ -171,7 +171,14 @@ AITuberの`ActingSession`はKEEPします。`ActingTransport`はControl client�
 
 ## Studio 2.0 direction
 
-StudioはControl clientとしてRuntime状態を表示・操作します。UIの候補は次です。
+StudioのActing/Expression UIは、Studioが現在所有する一つのRuntimeに対応するcanonical
+`@puppetflow/control`をfacade経由で利用します。Runtimeの演技更新通知は接続層で
+`control.getState()`のsnapshotへ変換し、再起動時は旧購読を解除して新Controlへ付け替えます。
+操作カタログは`getCapabilities()`とStudioのready状態から決定します。
+
+これはActing/Expression境界だけの移行です。Studio自身によるRuntime生成、preset、state、
+channel、timeline、mapper、sourceの直接操作は後続Phaseに残ります。Node HostやNode専用VMCを
+frontendへ導入していません。UIの候補は次です。
 
 ```text
 Simple    Preset + semantic controls
