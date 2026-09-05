@@ -63,6 +63,10 @@ export function createProgram(actions: CliActions = defaultActions): Command {
   addRunOptions(sharedHost)
     .option("--control-port <port>", "Control HTTP port", parsePort)
     .option(
+      "--avatar-input-ws-url <url>",
+      "AITuber avatar lip-sync WebSocket source URL",
+    )
+    .option(
       "--control-origin <origin>",
       "Allowed browser Origin (repeatable)",
       collect,
@@ -73,6 +77,7 @@ export function createProgram(actions: CliActions = defaultActions): Command {
         ...toRunOptions(options),
         controlPort: options.controlPort,
         controlOrigins: options.controlOrigin,
+        avatarInputWsUrl: options.avatarInputWsUrl,
       });
     });
 

@@ -11,6 +11,7 @@ import type { RunCliOptions } from "../config/run-config.js";
 export interface SharedHostCliOptions extends RunCliOptions {
   controlPort?: number;
   controlOrigins?: string[];
+  avatarInputWsUrl?: string;
 }
 
 export async function sharedHostCommand(options: SharedHostCliOptions): Promise<void> {
@@ -20,6 +21,7 @@ export async function sharedHostCommand(options: SharedHostCliOptions): Promise<
   const launchConfig = await resolveRunLaunchConfig(options);
   const host = createPuppetFlowHost({
     launchConfig,
+    avatarInputWsUrl: options.avatarInputWsUrl,
     acting: {
       profile: DEFAULT_ACTING_BONE_PROFILE,
       expressionProfile: DEFAULT_EXPRESSION_PROFILE,

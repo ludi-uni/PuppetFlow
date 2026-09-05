@@ -169,6 +169,12 @@ PuppetFlow decides: HOW TO MOVE
 
 AITuberの`ActingSession`はKEEPします。`ActingTransport`はControl clientへ整理します。現在のold `pf.exe` supervisorとMCP host moduleが別々のRuntime/outputを起動できる問題は、Host移行後に一つのownership pathへ収束させます。speech、TTS、audio playback、anchor calculationをPuppetFlowへ移しません。
 
+Phase Eのshared構成では、AITuberの`ActingSession`が実音声playback anchorを保持したまま
+`@puppetflow/control-client`へcanonical commandを送り、既存LipSync sessionのWebSocket stateは
+共有CLIの専用`avatar-lip-sync` Sourceから同じHost Runtimeへ入ります。shared選択時はAITuber内で
+`pf.exe`、acting MCP child、Runtime、VMC senderを起動しません。旧HTTP/MCP transportは明示的な
+compatibility modeとして残り、shared失敗時のfallbackには使いません。
+
 ## Studio 2.0 direction
 
 StudioのActing/Expression UIは、Studioが現在所有する一つのRuntimeに対応するcanonical

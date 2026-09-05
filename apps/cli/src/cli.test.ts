@@ -131,12 +131,15 @@ describe("pf motion commands", () => {
       "8790",
       "--control-origin",
       "http://127.0.0.1:1422",
+      "--avatar-input-ws-url",
+      "ws://127.0.0.1:3002/puppetflow/ws",
     ]);
     expect(sharedHost).toHaveBeenCalledWith(
       expect.objectContaining({
         preset: "Idle",
         controlPort: 8790,
         controlOrigins: ["http://127.0.0.1:1422"],
+        avatarInputWsUrl: "ws://127.0.0.1:3002/puppetflow/ws",
       }),
     );
   });
