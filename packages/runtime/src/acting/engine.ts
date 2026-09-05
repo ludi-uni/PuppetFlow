@@ -19,9 +19,11 @@ import type {
   ActingExpressionProfile,
   ActingExpressionState,
   ActingRuntimeApi,
+  ActingRuntimeCapabilities,
   ActingState,
   ExpressionCommandResult,
 } from "./types.js";
+import { ACTING_ACTION_NAMES, ACTING_EXPRESSION_NAMES } from "./types.js";
 
 export interface ActingEngineOptions extends ActingSchedulerOptions {
   profile: ActingBoneProfile;
@@ -93,6 +95,19 @@ export class ActingEngine implements ActingRuntimeApi {
     return cloneExpressionState(
       this.expressionEngine?.get_expression_state() ?? EMPTY_EXPRESSION_STATE,
     );
+  }
+
+  getCapabilities(): ActingRuntimeCapabilities {
+    const expressionProfile = this.options.expressionProfile;
+    return {
+      actions: [...ACTING_ACTION_NAMES],
+      expressions:
+        expressionProfile === undefined
+          ? []
+          : ACTING_EXPRESSION_NAMES.filter(
+              (name) => name === "neutral" || expressionProfile.expressions[name],
+            ),
+    };
   }
 
   reset(): void {

@@ -102,6 +102,11 @@ export interface ActingState {
   expression?: ActingExpressionState;
 }
 
+export interface ActingRuntimeCapabilities {
+  actions: readonly ActingActionName[];
+  expressions: readonly ActingExpressionName[];
+}
+
 export interface ActingBoneProfile {
   id: string;
   bones: readonly {

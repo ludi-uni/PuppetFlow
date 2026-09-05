@@ -37,6 +37,7 @@ export {
   type ActingExpressionState,
   type ActingExpressionTarget,
   type ActingRuntimeApi,
+  type ActingRuntimeCapabilities,
   type ExpressionApi,
   type ExpressionCommandResult,
   type ActingPrimitiveContext,

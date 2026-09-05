@@ -541,6 +541,16 @@ importers:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
 
+  packages/control:
+    dependencies:
+      '@puppetflow/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
   packages/core:
     devDependencies:
       tsup:

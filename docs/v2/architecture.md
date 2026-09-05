@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Target design; Acting MCP / Control / Node Host path implemented
+**Status:** Target design; canonical Acting/Expression Control contract implemented
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
@@ -22,6 +22,12 @@ Application composition root → PuppetFlowHost
 エラーにします。`@puppetflow/runtime-launcher/node`の`createPuppetFlowHost`は
 既存`buildRuntime`でRuntimeを一つ生成し、start/stop/disposeを所有します。
 ControlにRuntime・store・lifecycle handleは渡しません。
+
+Phase 2ではcanonicalな外部境界として`@puppetflow/control`を追加しました。
+このpackageはcamelCaseのsemantic DTO、safe failure、detached state snapshot、
+profile由来capabilitiesを定義し、既存`PuppetFlowRuntime.getActingApi()`へ委譲します。
+既存`@puppetflow/runtime`内Controlは先行Host/MCP互換のため残し、client migrationは
+後続Phaseで行います。
 
 MCPの`hosts/puppetflow-runtime-host.mjs`は公開Host factoryを呼ぶcomposition rootで、
 `host.control`だけをtool層へ渡します。従来のsnake_case API・7 toolsを維持し、
@@ -50,26 +56,23 @@ Studio・CLI・別processの既存Runtimeへ接続する通信経路は今回追
 
 ## `PuppetFlowControl` contract
 
-現在の実型は既存`ActingRuntimeApi`を継承する`PuppetFlowControl`です。以下は将来の拡張案であり、今回の実装APIではありません。`applyInput`・capabilities・全client移行は未実装です。
+canonicalな実型は`@puppetflow/control`にあります。Phase 2は既存Acting/Expression APIだけを対象にし、transport、Runtime lifecycle、MotionFrame、adapter、input storeを公開しません。
 
 ```ts
 interface PuppetFlowControl {
-  act(request: ActRequest): ControlCommandResult;
-  sequence(request: SequenceRequest): ControlCommandResult;
-  interrupt(): ControlCommandResult;
+  act(request: ActRequest): ControlResult;
+  sequence(request: SequenceRequest): ControlResult;
+  interrupt(): ControlResult;
 
-  setExpression(request: SetExpressionRequest): ControlCommandResult;
-  clearExpression(request?: ClearExpressionRequest): ControlCommandResult;
-
-  // State / Channel / Timeline入力。direct motion/bone入力は含めない。
-  applyInput(patch: ControlInputPatch): ControlCommandResult;
+  setExpression(request: SetExpressionRequest): ControlResult;
+  clearExpression(request?: ClearExpressionRequest): ControlResult;
 
   getState(): PuppetFlowControlState;
   getCapabilities(): PuppetFlowCapabilities;
 }
 ```
 
-`ControlInputPatch`の初期対象は`state`、`channels`、`timeline`だけです。現行`source-core`の`motion` direct override、bone quaternion、OSC/VMC payloadはControl contractへ持ち込みません。必要性が残る場合は、motion logicをbypassしない明確なRuntime機能として別途設計します。
+`ActRequest`はaction、side、intensity、speedだけを持ちます。Expression requestはexpression、intensity、duration、fadeIn、fadeOutを持ちます。現行`source-core`の`motion` direct override、bone quaternion、OSC/VMC payloadはControl contractへ持ち込みません。
 
 ### Contract rules
 

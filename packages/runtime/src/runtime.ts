@@ -61,6 +61,7 @@ import {
 import {
   ActingEngine,
   type ActingRuntimeApi,
+  type ActingRuntimeCapabilities,
   type ActingState,
 } from "./acting/index.js";
 import {
@@ -257,6 +258,10 @@ export class PuppetFlowRuntime {
 
   getActingApi(): ActingRuntimeApi | null {
     return this.actingEngine ?? null;
+  }
+
+  getActingCapabilities(): ActingRuntimeCapabilities | null {
+    return this.actingEngine?.getCapabilities() ?? null;
   }
 
   getActingState(): ActingState {
