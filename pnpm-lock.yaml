@@ -946,6 +946,9 @@ importers:
       '@puppetflow/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@puppetflow/source-core':
+        specifier: workspace:*
+        version: link:../source-core
       '@puppetflow/source-http':
         specifier: workspace:*
         version: link:../source-http

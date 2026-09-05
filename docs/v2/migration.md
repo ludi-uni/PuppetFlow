@@ -1,7 +1,15 @@
 # PuppetFlow 2.0 migration plan
 
 **Scope:** `PuppetFlow`の既存実装を保持しながら、`v2` branchで責務境界を段階的に切り替える。
-**Phase 1 status:** audit/documentation only。コード移動と外部repository変更はまだ行わない。
+**Current status:** Acting MCP向けにB/C/Fの必要部分を実装。Controlは既存Acting APIを共有し、Node HostがRuntime・source・出力・lifecycleを所有する。Studio/CLI/AITuber transport全体の移行とcapabilitiesは未完了。
+
+ローカル再現はPuppetFlowで`pnpm --filter '@puppetflow/runtime-launcher...' build`、
+隣接`PuppetFlow_Acting_MCP`で`pnpm install --frozen-lockfile`と`pnpm build`を実行し、
+`PUPPETFLOW_ROOT`をこのcheckoutへ設定します。既存の
+`node dist/main.js --host-module hosts/puppetflow-runtime-host.mjs`をMCP clientから起動します。
+MCPは公開Host exportを解決し、古いbuildにHostがなければ起動を失敗させます。
+`pnpm test:integration`は実entrypointからControl・Runtime・UDP capture・終了を検証します。
+Viewer目視は別の受入項目です。
 
 ## Migration principles
 

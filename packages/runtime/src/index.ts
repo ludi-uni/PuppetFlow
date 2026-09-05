@@ -26,6 +26,7 @@ export {
   type MotionUpdateListener,
   type PluginOutputSnapshot,
 } from "./runtime.js";
+export { createPuppetFlowControl, type PuppetFlowControl } from "./control.js";
 export type { StatefulEntrySnapshot } from "@puppetflow/stateful-core";
 export {
   calculateRateHz,

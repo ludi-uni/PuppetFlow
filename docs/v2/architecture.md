@@ -1,45 +1,38 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Phase 1 proposal
+**Status:** Target design; Acting MCP / Control / Node Host path implemented
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
 ## Target shape
 
 ```text
-                         External clients
+AI / AITuber → MCP client → Acting MCP → PuppetFlowControl → PuppetFlowRuntime
+                                                               │
+                                      combined output adapter → Viewer
 
-              Studio       AITuber       AI Agent
-                │             │             │
-                └─────────────┼─────────────┘
-                              │
-                    HTTP / IPC / MCP adapters
-                              │
-                              ▼
-                    PuppetFlowControl
-                    (one semantic contract)
-                              │
-                              ▼
-                       PuppetFlowHost
-                 ┌────────────┼────────────┐
-                 │            │            │
-             lifecycle     Control      adapters
-                 │         implementation   │
-                 ▼            │            ▼
-           PuppetFlowRuntime │       VMC / Live2D /
-                 │            │       VRM / WS / Logger
-                 └────────────┘
-                              │
-       State / Channel / Timeline / Acting / Expression
-       PFScript / Behavior / Motion Graph / Extensions
-                              │
-                              ▼
-                    MotionFrame Pipeline
-                    Mixer / filters / retarget
-                              │
-                              ▼
-                         output adapters
+Application composition root → PuppetFlowHost
+                                ├─ owns one Runtime and its lifecycle
+                                ├─ exposes that Runtime's Control
+                                └─ owns sources and output adapters
 ```
+
+実装済みの経路は同一プロセスのActing MCPです。`@puppetflow/runtime`の
+`createPuppetFlowControl(runtime)`は既存ActingEngineへ委譲し、停止中の操作・観測は
+エラーにします。`@puppetflow/runtime-launcher/node`の`createPuppetFlowHost`は
+既存`buildRuntime`でRuntimeを一つ生成し、start/stop/disposeを所有します。
+ControlにRuntime・store・lifecycle handleは渡しません。
+
+MCPの`hosts/puppetflow-runtime-host.mjs`は公開Host factoryを呼ぶcomposition rootで、
+`host.control`だけをtool層へ渡します。従来のsnake_case API・7 toolsを維持し、
+独自の演技状態を持ちません。Node HostのVMC出力は旧状態を一時保持し、
+Acting frameの骨・表情と合わせて一回送信します。表情は同名の旧blendshapeに優先し、
+lip syncは別channelとして保持します。Runtimeの全パイプライン統合は行っていません。
+
+このstandalone起動ではstdin EOF・終了signalでcomposition rootが所有Hostをdisposeします。
+MCP adapter単体や他のclientの切断は、注入された他の所有者のRuntimeを停止しません。
+Studio・CLI・別processの既存Runtimeへ接続する通信経路は今回追加していません。
+同じViewerへの別Studio／旧pf.exe送信は、このstandalone構成と同時に起動しないでください。
 
 `PuppetFlowHost`だけが`PuppetFlowRuntime`を生成・所有・start/stopします。外部clientはRuntime object、store、adapter、socket、tick loopを受け取りません。
 
@@ -57,7 +50,7 @@
 
 ## `PuppetFlowControl` contract
 
-Phase Bで実型を確定します。以下はtransport-independentな最小形です。requestはすべてJSONで表現可能なDTOとし、内部の`snake_case`/legacy型はHost内で変換します。
+現在の実型は既存`ActingRuntimeApi`を継承する`PuppetFlowControl`です。以下は将来の拡張案であり、今回の実装APIではありません。`applyInput`・capabilities・全client移行は未実装です。
 
 ```ts
 interface PuppetFlowControl {

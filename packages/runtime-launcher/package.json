@@ -35,6 +35,7 @@
     "@puppetflow/runtime": "workspace:*",
     "@puppetflow/source-http": "workspace:*",
     "@puppetflow/source-mqtt": "workspace:*",
+    "@puppetflow/source-core": "workspace:*",
     "@puppetflow/source-websocket": "workspace:*"
   },
   "devDependencies": {
