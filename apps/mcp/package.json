@@ -1,0 +1,29 @@
+{
+  "name": "@puppetflow/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "puppetflow-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "prebuild": "pnpm --filter \"@puppetflow/control-client...\" build",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. apps/mcp",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@puppetflow/control": "workspace:*",
+    "@puppetflow/control-client": "workspace:*",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@puppetflow/behavior-packs": "workspace:*",
+    "@puppetflow/runtime-launcher": "workspace:*"
+  }
+}

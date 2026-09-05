@@ -1,15 +1,16 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Shared Host Acting/Expression integration implemented for Studio and MCP
+**Status:** Shared Host integration implemented for Studio, AITuber, and workspace MCP
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
 ## Target shape
 
 ```text
-AI / AITuber → MCP client → Acting MCP → PuppetFlowControl → PuppetFlowRuntime
-                                                               │
-                                      combined output adapter → Viewer
+AI / MCP client → workspace MCP ─┐
+Studio / AITuber → control client ├→ shared Host → PuppetFlowControl → PuppetFlowRuntime
+                                 │                                      │
+                                 └──────────────── combined output → Viewer
 
 Application composition root → PuppetFlowHost
                                 ├─ owns one Runtime and its lifecycle
@@ -17,7 +18,7 @@ Application composition root → PuppetFlowHost
                                 └─ owns sources and output adapters
 ```
 
-実装済みの経路は同一プロセスのActing MCPです。
+実装済みの正式経路は、共有Hostと別processのworkspace MCPをHTTPで接続します。
 `@puppetflow/runtime-launcher/node`の`createPuppetFlowHost`は既存`buildRuntime`で
 Runtimeを一つ生成し、start/stop/disposeを所有します。Hostが公開する`control`は
 canonical `@puppetflow/control`型だけです。Runtime・store・lifecycle handleは公開しません。
@@ -29,16 +30,15 @@ profile由来capabilitiesを定義し、既存RuntimeのActing APIへ委譲し�
 拒否し、stateはempty snapshotを返します。capabilitiesは構成情報なので開始前も取得できます。
 既存`@puppetflow/runtime`内Controlはdeprecated compatibility APIとしてPhase Gまで残します。
 
-MCPの`hosts/puppetflow-runtime-host.mjs`は公開Host factoryを呼ぶcomposition rootで、
-canonical `host.control`をthin transport adapterで既存snake_case APIへ変換します。7 toolsを維持し、
-独自の演技状態を持ちません。Node HostのVMC出力は旧状態を一時保持し、
+正式な`apps/mcp`は`@puppetflow/control-client`で起動済み共有Hostへ接続し、既存7 toolsを維持します。
+Runtime・Host・VMC sender・任意module loaderを持たず、shape検査、canonical DTO変換、MCP結果変換だけを
+担当します。Node HostのVMC出力は旧状態を一時保持し、
 Acting frameの骨・表情と合わせて一回送信します。表情は同名の旧blendshapeに優先し、
 lip syncは別channelとして保持します。Runtimeの全パイプライン統合は行っていません。
 
-このstandalone起動ではstdin EOF・終了signalでcomposition rootが所有Hostをdisposeします。
-MCP adapter単体や他のclientの切断は、注入された他の所有者のRuntimeを停止しません。
-Studio・CLI・別processの既存Runtimeへ接続する通信経路は今回追加していません。
-同じViewerへの別Studio／旧pf.exe送信は、このstandalone構成と同時に起動しないでください。
+workspace MCPのstdin EOF・終了signalはMCPのstdioとControl clientだけを閉じ、共有Hostを停止しません。
+旧siblingの`--host-module` standalone起動はcompatibility経路として残りますが、v2の正式経路ではなく、
+同じViewerへshared Hostと同時送信しないでください。
 
 `PuppetFlowHost`だけが`PuppetFlowRuntime`を生成・所有・start/stopします。外部clientはRuntime object、store、adapter、socket、tick loopを受け取りません。
 
@@ -100,7 +100,7 @@ PuppetFlowHost
   └─ PuppetFlowControl implementation
 ```
 
-Hostは`@puppetflow/runtime`の既存lifecycleを使い、別のtick loopやservice meshを作りません。現行`runtime-launcher`はHost内部bootstrapへ寄せます。CLI、Studio、MCP host moduleは、同一Host processを起動するか、Hostが提供するControl endpointへ接続します。
+Hostは`@puppetflow/runtime`の既存lifecycleを使い、別のtick loopやservice meshを作りません。現行`runtime-launcher`はHost内部bootstrapへ寄せます。共有CLIだけがHostを起動し、Studio shared、AITuber shared、workspace MCPはHostのControl endpointへ接続します。
 
 ### Runtime execution order
 
@@ -146,7 +146,9 @@ MCPに置かないもの:
 - character-specific bone/profile math
 - Runtimeと重複するsemantic validation
 
-現在の`PuppetFlow_Acting_MCP/src`はこの形に近いので再利用します。一方、`hosts/puppetflow-runtime-host.mjs`はMCP実装ではなくHost実装へ移す対象です。Phase 1ではsibling repositoryを削除・archiveしません。
+`apps/mcp/src`がこのthin adapterの正式実装です。既存siblingのschema/result処理を移植しましたが、
+`hosts/puppetflow-runtime-host.mjs`と任意`--host-module` loaderは取り込んでいません。sibling repositoryは
+compatibility用として残し、Phase Gの参照確認前には削除しません。
 
 ## AITuber integration boundary
 

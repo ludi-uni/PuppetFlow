@@ -1,15 +1,14 @@
 # PuppetFlow 2.0 migration plan
 
 **Scope:** `PuppetFlow`の既存実装を保持しながら、`v2` branchで責務境界を段階的に切り替える。
-**Current status:** Phase B、Node Host内Phase C、Studio 4A/4B、共有制御Phase 4C完了。Phase 4Dで共有CLIのVMCを単一合成senderへ接続し、実UDPでExpression/wave/clearと停止を確認した。Phase Eは、認証強制下のAvatar入力、`/operator/message`、実TTS、ブラウザaudioの`playing`から`ended`、同一Host state、MCP観測、Body/Expression/LipSyncのUDPまで受入済み。物理音声deviceの録音と外部Viewer描画は未確認。Studio全設定共有、AITuberの非Acting/LipSync機能、旧standalone整理、portable自動起動も未完了。
+**Current status:** Phase B、Node Host内Phase C、Studio 4A/4B、共有制御Phase 4C完了。Phase 4Dで共有CLIのVMCを単一合成senderへ接続し、Phase Eで認証付きAvatar入力と実発話・共有出力を受入済み。Phase Fでは既存7 toolsを`apps/mcp`へ統合し、起動済み共有Host専用のstdio clientとして受入済み。物理音声device録音、外部Viewer、Studio全設定共有、AITuberの非Acting/LipSync機能、旧standalone整理、portable自動起動は未完了。
 
-ローカル再現はPuppetFlowで`pnpm --filter '@puppetflow/runtime-launcher...' build`、
-隣接`PuppetFlow_Acting_MCP`で`pnpm install --frozen-lockfile`と`pnpm build`を実行し、
-`PUPPETFLOW_ROOT`をこのcheckoutへ設定します。既存の
-`node dist/main.js --host-module hosts/puppetflow-runtime-host.mjs`をMCP clientから起動します。
-MCPは公開Host exportを解決し、古いbuildにHostがなければ起動を失敗させます。
-`pnpm test:integration`は実entrypointからControl・Runtime・UDP capture・終了を検証します。
-Viewer目視は別の受入項目です。
+正式なshared MCPはPuppetFlow checkout内で`pnpm --filter @puppetflow/mcp build`し、MCP clientから
+`node apps/mcp/dist/main.js`を起動します。実行時設定は`PUPPETFLOW_SHARED_HOST_URL`、
+`PUPPETFLOW_SHARED_HOST_TOKEN`、任意の`PUPPETFLOW_SHARED_HOST_TIMEOUT_MS`です。MCPは起動済みHostへ
+接続するだけで、Runtime・Host・VMCを生成しません。旧siblingの
+`node dist/main.js --host-module hosts/puppetflow-runtime-host.mjs`はstandalone compatibility手順であり、
+v2 sharedの推奨手順ではありません。Viewer目視は別の受入項目です。
 
 ## Migration principles
 
@@ -28,7 +27,7 @@ Viewer目視は別の受入項目です。
 | **C** | PuppetFlow Host ownership                | Host bootstrap、one Runtime、lifecycle、adapter/source attachment、canonical Control                                 | **Node Host内で完了:** 一つのRuntimeを生成しcanonical Controlだけを公開する。共有実行先へのclient統一は未完。                                |
 | **D** | Studio → Control / facade migration      | Acting ControlとStudio内部の設定・入力・snapshot・購読を既存facadeへ集約                                             | **内部カプセル化完了:** UI/hook/utilityはRuntime/store/engineを取得しない。Runtime ownershipはStudioに残る。                                 |
 | **E** | AITuber → Control transport migration    | shared `ActingTransport`を共通Control client化し、認証付きLipSync Sourceを同じHostへ接続。speech anchor/timingを維持 | **shared受入完了:** 旧supervisor/MCP childを起動せず、実発話のBody/Expression/LipSyncが一つのHostへ入る。旧transport整理と未共有機能は残る。 |
-| **F** | MCP thin adapter化                       | sibling logicを`apps/mcp`またはworkspace packageへ段階的に統合、host moduleからRuntime生成を除去                     | MCPはshape validation → Control call → result serializationだけ。capabilitiesはHostから取得する。                                            |
+| **F** | MCP thin adapter化                       | siblingの7 tools・schema・result/error・stdioを`apps/mcp`へ統合し、shared Control clientへ直接接続                   | **完了:** MCPはshape validation → Control client → result serializationだけ。Runtime/Host/VMC/module loaderを所有しない。                    |
 | **G** | legacy transport / duplicate API cleanup | 旧Behavior HTTP、重複acting HTTP、旧pf.exe/WS bridgeを受入条件に沿って整理                                           | 使われているcompatibility pathだけが残り、semantic contractの分岐がない。                                                                    |
 | **H** | Studio 2.0 UX cleanup                    | Simple/Preset、Timeline、PFScript中心。Blocklyをoptional editor/pluginへ隔離                                         | Block Editorがcore前提でなく、削除・plugin維持の判断根拠がある。                                                                             |
 | **I** | v2 stabilization                         | contract golden tests、runtime lifecycle、adapter/motion output、docs更新                                            | one Host/one Runtime/one semantic Control、Focused checksと必要なlive gateがpass。                                                           |
@@ -114,4 +113,6 @@ PuppetFlowControlState
 PuppetFlowCapabilities
 ```
 
-Phase 4C後の次のownership境界は、Preset/Mapper/Source等の共有設定APIを本当に必要な操作だけに限定して設計し、旧standalone/legacy senderとの排他を運用へ組み込むことです。AITuber移行とMCP Phase F全体はまだ完了扱いにしません。
+Phase F後の次のownership境界はPhase Gです。旧siblingのstandalone host module、Runtime package内の
+compatibility Control、旧Behavior/acting HTTP、AITuberのlegacy supervisor/transportについて、実利用者を
+再確認してから個別に削除判断します。この文書更新だけで削除・移行済みとは扱いません。

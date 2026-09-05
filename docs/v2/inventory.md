@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**更新状況:** Phase E Acceptance complete through authenticated Avatar input, `/operator/message`, browser audio playback, shared state, MCP observation, and UDP. Physical speaker capture and external Viewer rendering remain unconfirmed.
+**更新状況:** Phase F workspace MCP integration complete after Phase E Acceptance. `apps/mcp` is the v2 implementation; the sibling remains compatibility-only. Physical speaker capture and external Viewer rendering remain unconfirmed.
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 
@@ -12,8 +12,8 @@
 - fetch 後の `origin/main` は `0ac2c78c40d9f8cb01462df379b01abd8b42895a`。ローカル `main` は既存コミットを1つ先行しており、`main` と `origin/main` は一致していない。
 - このPhaseでは、その既存コミットを `main` へ追加pushせず、`main` 自体も変更しない。
 - 作業開始時点の未commit変更（preset関連14ファイル）と未追跡の `docs/superpowers/**` 2ファイルは保持し、今回のcommitには含めない。
-- リポジトリの規模は `packages` 40、`apps` 5、`examples` 5。Runtimeの主要実装は `packages/runtime/src`、Studioの主要実装は `apps/studio/src` にある。
-- `D:\99.AITuber\PuppetFlow_Acting_MCP` はPhase 3開始時にcleanな`master` / `a525660`で、Hostのcanonical Control化に必要なthin compatibility adapterだけを別commitにする。`D:\99.AITuber\aituber_runtime` はこのPhaseでは変更しない。
+- Phase Fで`apps/mcp`を追加した。Runtimeの主要実装は`packages/runtime/src`、Studioは`apps/studio/src`、正式MCPは`apps/mcp/src`にある。
+- `D:\99.AITuber\PuppetFlow_Acting_MCP`の移植元はcleanな`master` / `bb0ff6398d8e47ce7c1f69942f8bbbab26e29c9d`。repository自体は変更せずcompatibility用に保持する。
 
 ## 現行の実行経路
 
@@ -36,14 +36,18 @@ AITuber legacy path
 
 AITuber semantic acting path
   └─ ActingSession
-       └─ ActingTransport (HTTP または client-owned stdio MCP)
-            └─ PuppetFlow_Acting_MCP host module
-                 └─ createPuppetFlowHost()
-                      ├─ owns one PuppetFlowRuntime + ActingEngine + VMC
-                      └─ exposes canonical Control through a thin MCP adapter
+       └─ shared ActingTransport → @puppetflow/control-client → shared Host
+
+AI / MCP client
+  └─ apps/mcp/dist/main.js
+       └─ @puppetflow/control-client → shared Host
+
+legacy compatibility
+  └─ sibling PuppetFlow_Acting_MCP --host-module
+       └─ standalone PuppetFlowHost
 ```
 
-MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、AITuber legacy pathの移行は後続Phaseに残ります。
+正式MCPはRuntimeを生成せず、共有HostだけがRuntimeと出力を所有します。Studio local、通常CLI、AITuber legacy pathの整理は後続Phaseに残ります。
 
 ## Classification table
 
@@ -67,8 +71,8 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 | Plugin system                               | `extension-core`, `extension-bundled`, `plugin-*`                           | Behavior plugin、Motion Pack、generator、runtime registry                                       | **KEEP / REWORK**                    | Runtime extension pointとして維持する。公式 `blink`/`idle` はKEEP、legacy `gaze`/`attention`/`emotion`は既定pathから外し、将来の整理対象とする。MCP用plugin frameworkは作らない。 |
 | Micro behavior                              | `packages/micro-behavior/src`, `http-server.ts`                             | 短いkeyframe動作、queue/cooldown、現在は専用HTTP APIも提供                                      | **KEEP / REWORK**                    | 実装は再利用候補。request入口をControlへ統合し、専用HTTPが別semantic contractになる状態とAITuber側の重複engineを整理する。                                                        |
 | HTTP control                                | `micro-behavior/http-server.ts`、AITuber `ActingRuntimeClient`              | 現在はmicro-behavior HTTPと別形式のacting HTTPが存在。`source-http`は入力polling                | **REWORK**                           | HTTPはControlを包むadapterにする。`source-http`をcontrol APIと呼ばない。旧個別endpointは受入後に必要性を再評価する。                                                              |
-| MCP integration                             | sibling `PuppetFlow_Acting_MCP/src`                                         | MCP schema、tool handler、safe result、stdio protocol                                           | **KEEP / REWORK**                    | thin adapterとして保持し、共有Control contractへ接続する。MCPでsemantic validation・Runtime・VMCを所有しない。                                                                    |
-| `PuppetFlow_Acting_MCP` host module         | sibling `hosts/puppetflow-runtime-host.mjs`                                 | 公開Hostを構成しcanonical Controlを既存snake_case tool contractへ変換                           | **REWORK / PARTIAL**                 | Runtime生成はHostへ委譲済み。MCP全体のcanonical contract移行とpackage統合はPhase Fに残る。                                                                                        |
+| MCP integration                             | `apps/mcp`                                                                  | 7 tools、shape schema、safe result/error、stdio、shared Control client                          | **KEEP / IMPLEMENTED**               | Phase Fの正式実装。Runtime/Host/VMC/module loaderを所有せず、Hostのcanonical Controlへ委譲する。                                                                                  |
+| `PuppetFlow_Acting_MCP` host module         | sibling `hosts/puppetflow-runtime-host.mjs`                                 | standaloneで公開Hostを構成する旧起動方式                                                        | **COMPATIBILITY / Phase G候補**      | 移植元commit `bb0ff6398d8e47ce7c1f69942f8bbbab26e29c9d`。削除せず、今後の修正正本にはしない。                                                                                     |
 | MCP-owned Runtime                           | sibling host moduleから公開Host factoryを呼び出す                           | composition rootがHost lifecycleを所有し、Runtime objectには触れない                            | **REMOVED FROM MCP**                 | one Runtimeの生成、source/output attachment、cleanupは`PuppetFlowHost`だけが行う。                                                                                                |
 | AITuber `ActingSession`                     | `aituber_runtime/apps/avatar-runtime/src/acting/acting-session.ts`          | TTS start/end、実再生anchor、start/early/middle/late/end、utterance cleanup                     | **KEEP**                             | 「WHEN」とcaller orchestrationの責務。PuppetFlowへ移さない。                                                                                                                      |
 | AITuber `ActingTransport` / client          | `acting-transport.ts`, `acting-runtime-client.ts`                           | sharedは共通Control client、旧HTTP/MCPは明示compatibility mode                                  | **Phase E shared完了 / legacy KEEP** | sharedではHost世代、timeout、順序、結果不明を共通clientへ委譲し、失敗時にlegacyへfallbackしない。                                                                                 |
@@ -79,18 +83,18 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 | Shared Control HTTP / client                | `runtime-launcher/control-http-server`, `@puppetflow/control-client`        | loopback auth、instance identity、canonical command/state通信                                   | **NEW / IMPLEMENTED**                | Studio shared modeとMCP shared adapterが同じHostへ接続。全Studio設定APIの共有化は未実装。                                                                                         |
 | Shared CLI VMC output                       | `PuppetFlowHost` launchConfig VMC composition                               | MotionState mappingとActing/Expression frameを一回合成してUDP送信                               | **IMPLEMENTED / ACCEPTED**           | Expressionが同名基底値に優先。口等の非Expression値を保持し、clear後はzero送信から基底値へ復帰する。                                                                               |
 
-## Sibling MCPの責務分解
+## MCPの責務分解
 
-`PuppetFlow_Acting_MCP` は削除せず、現在の実装を次のように分解します。
+`apps/mcp`がv2の正式実装です。`PuppetFlow_Acting_MCP`は削除せず、旧起動方式のcompatibility repositoryとして残します。
 
-| 分類                      | 現状                                                               | 2.0方針                                                                                     |
-| ------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| MCP-specific logic        | `src/server.ts`, `tools.ts`, `schemas.ts`, `results.ts`, stdio起動 | **KEEP**。本体側の`apps/mcp`またはworkspace packageへ移せるthin adapter。                   |
-| PuppetFlow Host ownership | `hosts/puppetflow-runtime-host.mjs`が担当している                  | **REWORK**。HostをPuppetFlow本体側へ移し、MCPから分離する。                                 |
-| Runtime creation          | host moduleが`PuppetFlowRuntime`/`ActingEngine`を生成              | **DELETE from MCP**。MCP processはRuntimeを生成しない。                                     |
-| protocol translation      | MCP入力、`look_at` alias、結果serialization                        | **KEEP / REWORK**。shared Control DTOへ1回だけ変換し、transport固有のsemanticを増やさない。 |
-| semantic validation       | MCPはshape/finite値を検査し、action rangeはRuntimeへ委譲           | **REWORK**。shape以外はHost/Runtimeをsource of truthにする。                                |
-| motion logic              | quaternion、scheduler、VMC encoderはMCP本体には無い                | **DELETE from MCP**。今後も追加しない。                                                     |
+| 分類                      | 現状                                                               | 2.0方針                                                                                 |
+| ------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| MCP-specific logic        | `apps/mcp/src`                                                     | **KEEP / IMPLEMENTED**。7 tools、schema、safe result/error、stdioを今後ここで修正する。 |
+| PuppetFlow Host ownership | shared Host service                                                | **分離済み**。MCPはURL/tokenで接続し、Host lifecycleを操作しない。                      |
+| Runtime creation          | `apps/mcp`には存在しない                                           | **REMOVED**。検証用testだけが外部Host fixtureを起動する。                               |
+| protocol translation      | MCP入力、`look_at` alias、結果serialization                        | **KEEP**。shared Control DTOへ1回だけ変換し、既存外部契約を維持する。                   |
+| semantic validation       | MCPはshape/finite値を検査し、action/expression supportはHostへ委譲 | **IMPLEMENTED**。固定profile/registryをMCPへ追加しない。                                |
+| motion logic              | quaternion、scheduler、VMC encoderはMCP本体には無い                | **DELETE from MCP**。今後も追加しない。                                                 |
 
 ## AITuber側の責務分解
 

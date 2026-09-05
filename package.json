@@ -17,7 +17,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/**\" run build && pnpm --filter @puppetflow/cli run build",
+    "build": "pnpm -r --filter \"./packages/**\" run build && pnpm --filter @puppetflow/cli --filter @puppetflow/mcp run build",
     "build:presets": "pnpm --filter @puppetflow/preset build && pnpm --filter @puppetflow/preset build:official-presets",
     "test": "vitest run",
     "typecheck:apps": "pnpm --filter \"./apps/**\" exec tsc --noEmit --pretty false",
