@@ -53,12 +53,15 @@ export interface UseMotionPipelineOptions {
   emotionPluginEnabled: boolean;
   notify: (message: string, kind?: StatusKind) => void;
   onRuntimeReady?: () => void;
+  /** Shared Acting mode deliberately does not create a local Studio Runtime. */
+  enabled?: boolean;
 }
 
 export function useMotionPipeline({
   emotionPluginEnabled,
   notify,
   onRuntimeReady,
+  enabled = true,
 }: UseMotionPipelineOptions) {
   const [ready, setReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
@@ -118,6 +121,9 @@ export function useMotionPipeline({
   const customMicroBehaviors = useCustomMicroBehaviors({ ready, notify });
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     let disposed = false;
     let unsubscribe = () => {};
     void ensureRuntime()
@@ -191,10 +197,10 @@ export function useMotionPipeline({
       disposed = true;
       unsubscribe();
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!ready) {
+    if (!enabled || !ready) {
       return;
     }
     applyStudioRuntimeInputs({
@@ -223,6 +229,7 @@ export function useMotionPipeline({
     emotionChannel,
     emotionPluginEnabled,
     ready,
+    enabled,
   ]);
 
   const handleResetChannels = useCallback(() => {

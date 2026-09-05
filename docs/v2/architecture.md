@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Phase B complete; Phase C canonical Node Host ownership complete; Studio Runtime access encapsulated
+**Status:** Shared Host Acting/Expression integration implemented for Studio and MCP
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
@@ -193,6 +193,12 @@ PFScript  advanced / developer control
 既存Graph、Preset、Mapper、Pipeline、Actingの知見は維持します。Blockly Block Editorは現状のBehavior AST変換器をすぐ削除せず、coreではなくoptional editor/plugin candidateとして隔離します。Phase 1ではUI rewriteも物理削除もしません。
 
 ## Explicit non-goals
+
+Phase 4C adds one loopback-only shared Host service and a browser/Node-safe asynchronous
+Control client. Studio shared mode and the MCP shared adapter use the same Host instance;
+client disconnect never owns Host shutdown. HTTP exposes only connection metadata,
+canonical state/capabilities, and the five canonical commands. Preset, Mapper, Source,
+Timeline, and Micro Behavior remain local-only Studio features.
 
 - generic distributed actor framework、message bus、service mesh
 - event sourcing、複数RPC standardの同時導入

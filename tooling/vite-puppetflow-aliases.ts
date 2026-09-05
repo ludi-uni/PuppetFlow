@@ -13,6 +13,7 @@ const workspacePackages = [
   "adapter-websocket",
   "core",
   "control",
+  "control-client",
   "modifier",
   "modifier-core",
   "motion-graph",

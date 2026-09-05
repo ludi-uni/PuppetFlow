@@ -32,11 +32,12 @@ const state: PuppetFlowControlState = {
     fadeRemaining: 0,
   },
 };
-const mockAct = vi.fn<(request: ActRequest) => ControlResult | undefined>();
-const mockSequence = vi.fn<(request: SequenceRequest) => ControlResult | undefined>();
-const mockInterrupt = vi.fn<() => ControlResult | undefined>();
+const mockAct = vi.fn<(request: ActRequest) => Promise<ControlResult | undefined>>();
+const mockSequence =
+  vi.fn<(request: SequenceRequest) => Promise<ControlResult | undefined>>();
+const mockInterrupt = vi.fn<() => Promise<ControlResult | undefined>>();
 const mockSetExpression =
-  vi.fn<(request: SetExpressionRequest) => ControlResult | undefined>();
+  vi.fn<(request: SetExpressionRequest) => Promise<ControlResult | undefined>>();
 const mockClearExpression = vi.fn<UseActingResult["clearExpression"]>();
 
 const fullCapabilities = {

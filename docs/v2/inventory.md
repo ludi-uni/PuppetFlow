@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**更新状況:** Phase C canonical Node Host ownership complete; Studio Runtime access encapsulated
+**更新状況:** Phase 4C shared Host Acting/Expression integration implemented
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 
@@ -76,6 +76,7 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 | Block Editor (Blockly)                      | `apps/studio/src/scratch`, `ScratchEditor`                                  | BlocklyをBehavior ASTへ変換                                                                     | **PLUGIN candidate / REWORK** | 動く実装と変換器は保存するが、2.0 core requirementにはしない。Simple/Preset、Timeline、PFScriptを主軸にし、必要なら任意editor pluginとして隔離する。                              |
 | `PuppetFlowControl`                         | `packages/control`にcanonical contractを実装                                | Acting/Expressionの外部semantic control boundaryとRuntime availability判定                      | **NEW / IMPLEMENTED**         | camelCase DTO、safe result、停止中empty state、開始前capabilitiesを提供する。Runtime lifecycleは所有しない。                                                                      |
 | `PuppetFlowHost`                            | `packages/runtime-launcher/src/puppetflow-host.ts`                          | one Runtime、canonical Control、adapters、sources、lifecycleの所有                              | **NEW / IMPLEMENTED**         | public APIはcanonical Controlとstart/stop/disposeだけ。Runtime内部objectは公開しない。                                                                                            |
+| Shared Control HTTP / client                | `runtime-launcher/control-http-server`, `@puppetflow/control-client`        | loopback auth、instance identity、canonical command/state通信                                   | **NEW / IMPLEMENTED**         | Studio shared modeとMCP shared adapterが同じHostへ接続。全Studio設定APIの共有化は未実装。                                                                                         |
 
 ## Sibling MCPの責務分解
 

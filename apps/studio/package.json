@@ -18,6 +18,7 @@
     "@puppetflow/behavior-packs": "workspace:*",
     "@puppetflow/cli-config": "workspace:*",
     "@puppetflow/control": "workspace:*",
+    "@puppetflow/control-client": "workspace:*",
     "@puppetflow/extension-bundled": "workspace:*",
     "@puppetflow/extension-core": "workspace:*",
     "@puppetflow/motion-mapper": "workspace:*",

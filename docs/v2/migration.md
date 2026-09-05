@@ -1,7 +1,7 @@
 # PuppetFlow 2.0 migration plan
 
 **Scope:** `PuppetFlow`の既存実装を保持しながら、`v2` branchで責務境界を段階的に切り替える。
-**Current status:** Phase B完了。Phase CはNode Host内のone-Runtime ownershipとcanonical Control公開まで完了。Phase 4AでStudio Acting/Expressionをcanonical Controlへ移行し、Phase 4BでUI/hook/editor utilityから生Runtime取得口を除去した。Studio Runtime ownership、共有Host接続、CLI、AITuber、MCP Phase F全体は未完了。
+**Current status:** Phase B、Node Host内Phase C、Studio 4A/4B完了。Phase 4Cで共有HostのActing/Expression HTTP、Studio shared mode、MCP shared adapterを実装し、両clientが同じRuntimeを操作・観測できる経路を追加した。Studio全設定の共有化、AITuber、旧standalone整理、MCP Phase F全体は未完了。
 
 ローカル再現はPuppetFlowで`pnpm --filter '@puppetflow/runtime-launcher...' build`、
 隣接`PuppetFlow_Acting_MCP`で`pnpm install --frozen-lockfile`と`pnpm build`を実行し、
@@ -114,4 +114,4 @@ PuppetFlowControlState
 PuppetFlowCapabilities
 ```
 
-Phase 4B後の次のownership境界は、browser-safeなStudio facadeと共有Hostの間で必要なcommand、snapshot、subscription、configuration ownership、reconnect semanticsを決めることです。Node Hostをfrontendへ直接importせず、HTTP/IPC等の方式は別途決定します。Phase FのMCP全体migrationはまだ完了扱いにしません。
+Phase 4C後の次のownership境界は、Preset/Mapper/Source等の共有設定APIを本当に必要な操作だけに限定して設計し、旧standalone/legacy senderとの排他を運用へ組み込むことです。AITuber移行とMCP Phase F全体はまだ完了扱いにしません。

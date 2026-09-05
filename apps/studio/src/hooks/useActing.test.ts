@@ -141,8 +141,8 @@ describe("useActing", () => {
     vi.mocked(runtimeClearExpression).mockReturnValue(result());
     await renderHook();
 
-    act(() => {
-      current?.act({
+    await act(async () => {
+      await current?.act({
         action: "wave",
         side: "right",
         intensity: 0.6,
@@ -150,16 +150,16 @@ describe("useActing", () => {
         duration: 2,
         blendDuration: 0.2,
       });
-      current?.sequence({ actions: [{ action: "nod", duration: 0.5 }] });
-      current?.interrupt();
-      current?.setExpression({
+      await current?.sequence({ actions: [{ action: "nod", duration: 0.5 }] });
+      await current?.interrupt();
+      await current?.setExpression({
         expression: "happy",
         intensity: 0.5,
         duration: 1.5,
         fadeIn: 0.1,
         fadeOut: 0.2,
       });
-      current?.clearExpression({ fadeOut: 0.2 });
+      await current?.clearExpression({ fadeOut: 0.2 });
     });
 
     expect(runtimeAct).toHaveBeenCalledWith({
@@ -191,7 +191,9 @@ describe("useActing", () => {
     });
     await renderHook();
 
-    act(() => current?.act({ action: "wave" }));
+    await act(async () => {
+      await current?.act({ action: "wave" });
+    });
     act(() => notify?.({ ...readySnapshot, state: { ...initialState } }));
 
     expect(current?.status).toBe("Action is unavailable for this profile");

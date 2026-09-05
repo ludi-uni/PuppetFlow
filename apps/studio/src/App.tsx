@@ -9,6 +9,8 @@ import { useMapperConfig } from "./hooks/useMapperConfig";
 import { useStudioMode } from "./hooks/useStudioMode";
 import { useStudioStatus } from "./hooks/useStudioStatus";
 import { useStudioNextStep } from "./hooks/useStudioNextStep";
+import { getSharedHostConfig, getStudioExecutionMode } from "./execution-mode";
+import { ActingTab } from "./features/shared/tabs/ActingTab";
 import {
   getCurrentPreset,
   getPresetBehaviorPluginIds,
@@ -21,7 +23,7 @@ import {
   serializeCustomMicroBehaviorsForExport,
 } from "./utils/custom-micro-behaviors";
 
-export function App() {
+function LocalStudio() {
   const {
     studioMode,
     tab,
@@ -404,4 +406,34 @@ export function App() {
       />
     </main>
   );
+}
+
+function SharedStudio() {
+  const sharedHost = getSharedHostConfig();
+  const acting = useActing({ sharedHost });
+
+  return (
+    <main className="studio">
+      <header className="studio-header">
+        <div>
+          <h1>PuppetFlow Studio</h1>
+          <p>Shared Host mode — Acting / Expression only</p>
+        </div>
+      </header>
+      <section className="config-summary" aria-label="Shared Host connection">
+        <p>Shared Host endpoint: {acting.sharedEndpoint ?? "not configured"}</p>
+        <p>Connection: {acting.ready ? "ready" : "disconnected"}</p>
+        <p>Host instance: {acting.hostInstanceId ?? "unavailable"}</p>
+        <p className="hint">
+          Preset, Mapper, Source, Timeline, and Micro Behavior editing are unavailable
+          in shared mode.
+        </p>
+      </section>
+      <ActingTab {...acting} />
+    </main>
+  );
+}
+
+export function App() {
+  return getStudioExecutionMode() === "shared" ? <SharedStudio /> : <LocalStudio />;
 }

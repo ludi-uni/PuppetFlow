@@ -21,9 +21,12 @@ import { WebSocketSource } from "@puppetflow/source-websocket";
 
 import { createAvatarLipSyncSource } from "./avatar-lip-sync-source.js";
 import { buildRuntime } from "./build-runtime.js";
+import type { RuntimeLaunchConfig } from "./types.js";
 
 export interface PuppetFlowHostOptions {
-  presetJson: string;
+  presetJson?: string;
+  /** Existing CLI launch configuration; the shared service still owns one Host. */
+  launchConfig?: RuntimeLaunchConfig;
   acting: ActingEngineOptions;
   vmc?: NodeVmcAdapterConfig | false;
   avatarInputWsUrl?: string;
@@ -41,16 +44,21 @@ export interface PuppetFlowHost {
 export function createPuppetFlowHost(options: PuppetFlowHostOptions): PuppetFlowHost {
   let startupFailure: { error: unknown } | undefined;
   let startPromise: Promise<void> | undefined;
-  const runtime = buildRuntime({
-    presetJson: options.presetJson,
-    adapters: {
-      vmc: { enabled: false },
-      live2d: { enabled: false },
-      vrm: { enabled: false },
-      websocket: { enabled: false },
-      logger: { enabled: false },
+  if (!options.launchConfig && !options.presetJson) {
+    throw new Error("PuppetFlowHost requires presetJson or launchConfig");
+  }
+  const runtime = buildRuntime(
+    options.launchConfig ?? {
+      presetJson: options.presetJson!,
+      adapters: {
+        vmc: { enabled: false },
+        live2d: { enabled: false },
+        vrm: { enabled: false },
+        websocket: { enabled: false },
+        logger: { enabled: false },
+      },
     },
-  });
+  );
   runtime.attachActingEngine(new ActingEngine(options.acting));
   for (const source of options.sources ?? []) runtime.attachSource(source);
   if (options.avatarInputWsUrl?.trim()) {

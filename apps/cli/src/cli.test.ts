@@ -112,4 +112,32 @@ describe("pf motion commands", () => {
       output: "dist/Curious.pfpreset",
     });
   });
+
+  it("parses explicit shared Host options without changing local run", async () => {
+    const sharedHost = vi.fn(async () => {});
+    const program = createProgram({
+      run: vi.fn(async () => {}),
+      record: vi.fn(async () => {}),
+      replay: vi.fn(async () => {}),
+      sharedHost,
+    });
+    await program.parseAsync([
+      "node",
+      "pf",
+      "shared-host",
+      "--preset",
+      "Idle",
+      "--control-port",
+      "8790",
+      "--control-origin",
+      "http://127.0.0.1:1422",
+    ]);
+    expect(sharedHost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preset: "Idle",
+        controlPort: 8790,
+        controlOrigins: ["http://127.0.0.1:1422"],
+      }),
+    );
+  });
 });

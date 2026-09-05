@@ -10,6 +10,10 @@ import { compileCommand, type CompileCliOptions } from "./commands/compile.js";
 import { validateCommand, type ValidateCliOptions } from "./commands/validate.js";
 import { runCommand } from "./commands/run.js";
 import type { RunCliOptions } from "./config/run-config.js";
+import {
+  sharedHostCommand,
+  type SharedHostCliOptions,
+} from "./commands/shared-host.js";
 
 export interface CliActions {
   run(options: RunCliOptions): Promise<void>;
@@ -17,6 +21,7 @@ export interface CliActions {
   replay(options: ReplayCliOptions): Promise<void>;
   validate?(options: ValidateCliOptions): Promise<void>;
   compile?(options: CompileCliOptions): Promise<void>;
+  sharedHost?(options: SharedHostCliOptions): Promise<void>;
 }
 
 const defaultActions: CliActions = {
@@ -25,6 +30,7 @@ const defaultActions: CliActions = {
   replay: replayCommand,
   validate: validateCommand,
   compile: compileCommand,
+  sharedHost: sharedHostCommand,
 };
 
 export function createProgram(actions: CliActions = defaultActions): Command {
@@ -48,6 +54,25 @@ export function createProgram(actions: CliActions = defaultActions): Command {
         ...toRunOptions(options),
         output,
         durationMs: options.duration,
+      });
+    });
+
+  const sharedHost = program
+    .command("shared-host")
+    .description("Start one loopback-only shared PuppetFlow Host");
+  addRunOptions(sharedHost)
+    .option("--control-port <port>", "Control HTTP port", parsePort)
+    .option(
+      "--control-origin <origin>",
+      "Allowed browser Origin (repeatable)",
+      collect,
+      [],
+    )
+    .action(async (options) => {
+      await (actions.sharedHost ?? sharedHostCommand)({
+        ...toRunOptions(options),
+        controlPort: options.controlPort,
+        controlOrigins: options.controlOrigin,
       });
     });
 
