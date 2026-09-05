@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 target architecture
 
-**Status:** Phase B complete; Phase C canonical Host ownership complete; Studio Acting/Expression control migrated
+**Status:** Phase B complete; Phase C canonical Node Host ownership complete; Studio Runtime access encapsulated
 **Branch:** `v2`
 **Principle:** PuppetFlowのmotion実装を残し、外部制御とRuntime ownershipを一本化する。
 
@@ -176,9 +176,13 @@ StudioのActing/Expression UIは、Studioが現在所有する一つのRuntime�
 `control.getState()`のsnapshotへ変換し、再起動時は旧購読を解除して新Controlへ付け替えます。
 操作カタログは`getCapabilities()`とStudioのready状態から決定します。
 
-これはActing/Expression境界だけの移行です。Studio自身によるRuntime生成、preset、state、
-channel、timeline、mapper、sourceの直接操作は後続Phaseに残ります。Node HostやNode専用VMCを
-frontendへ導入していません。UIの候補は次です。
+Studio UI、hooks、editor utilitiesはRuntime本体やstoreを取得せず、既存`runtime.ts` facadeの
+名前付き設定、入力、snapshot、購読だけを利用します。State、Channel、Timeline、Pipeline観測、
+Micro Behavior、Preset、Mapper、SourceのRuntimeアクセスは同facade内へ集約済みです。
+
+Studio自身によるRuntime生成とlifecycle ownershipはまだ残ります。共有Node Hostとの通信方式、
+別process化、複数clientの同一実行先は後続Phaseで決定します。Node HostやNode専用VMCをfrontendへ
+導入していません。UIの候補は次です。
 
 ```text
 Simple    Preset + semantic controls

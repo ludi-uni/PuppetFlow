@@ -9,10 +9,11 @@ import {
 import { useCustomMicroBehaviors } from "./useCustomMicroBehaviors";
 import { resolvePhonemeInputSource } from "../utils/phoneme-source";
 import {
+  applyStudioRuntimeInputs,
   ensureRuntime,
   getActivePluginIds,
-  getRuntime,
   getSourceConfig,
+  pushTimelinePhoneme,
   subscribeMotionPipeline,
   type MotionPipelineUpdate,
 } from "../runtime";
@@ -112,21 +113,20 @@ export function useMotionPipeline({
 
   const onRuntimeReadyRef = useRef(onRuntimeReady);
   onRuntimeReadyRef.current = onRuntimeReady;
+  const runtimeReadyRef = useRef(false);
 
   const customMicroBehaviors = useCustomMicroBehaviors({ ready, notify });
 
   useEffect(() => {
+    let disposed = false;
     let unsubscribe = () => {};
     void ensureRuntime()
       .then(() => {
-        const instance = getRuntime();
-        setTargetMotion(instance.getTargetMotion());
-        setRenderedMotion(instance.getRenderedMotion());
-        setMicroBehaviorSnapshot(instance.getMicroBehaviorSnapshot());
-        onRuntimeReadyRef.current?.();
+        if (disposed) return;
 
         unsubscribe = subscribeMotionPipeline(
           ({
+            ready: runtimeReady,
             target,
             rendered,
             pluginOutputs: outputs,
@@ -135,7 +135,11 @@ export function useMotionPipeline({
             timelineCurrentMs: currentMs,
             statefulSnapshot: statefulEntries,
             microBehavior,
+            activePluginIds: pluginIds,
+            stateSnapshot: nextStateSnapshot,
           }) => {
+            if (disposed) return;
+            setReady(runtimeReady);
             setTargetMotion(target);
             setRenderedMotion(rendered);
             setPipelineOutputs(outputs);
@@ -144,11 +148,21 @@ export function useMotionPipeline({
             setChannelSnapshot(channels);
             setActiveTimelineEvents(events);
             setTimelineCurrentMs(currentMs);
-            setActivePluginIds(
-              getRuntime()
-                .getPlugins()
-                .map((plugin) => plugin.id),
+            setActivePluginIds(pluginIds);
+            setStateSnapshot(
+              Object.fromEntries(
+                INPUT_SLIDERS.map((slider) => [
+                  slider.key,
+                  Number(nextStateSnapshot[slider.key] ?? slider.defaultValue),
+                ]),
+              ),
             );
+
+            if (runtimeReady && !runtimeReadyRef.current) {
+              setStartupError(null);
+              onRuntimeReadyRef.current?.();
+            }
+            runtimeReadyRef.current = runtimeReady;
 
             if (isReceivingExternalInput(getSourceConfig())) {
               const volume = channels.volume;
@@ -164,47 +178,43 @@ export function useMotionPipeline({
                 setEmotionChannel(emotion);
               }
             }
-
-            setStateSnapshot(
-              Object.fromEntries(
-                INPUT_SLIDERS.map((slider) => [
-                  slider.key,
-                  Number(getRuntime().state.get(slider.key) ?? slider.defaultValue),
-                ]),
-              ),
-            );
           },
         );
-        setReady(true);
       })
       .catch((error: unknown) => {
+        if (disposed) return;
         setStartupError(
           error instanceof Error ? error.message : "ランタイムの起動に失敗しました。",
         );
       });
-    return () => unsubscribe();
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!ready) {
       return;
     }
-    void ensureRuntime().then((runtime) => {
-      for (const slider of INPUT_SLIDERS) {
-        runtime.state.set(slider.key, inputs[slider.key] ?? slider.defaultValue);
-      }
-      for (const slider of CHANNEL_SLIDERS) {
-        runtime.channels.set(
+    applyStudioRuntimeInputs({
+      state: Object.fromEntries(
+        INPUT_SLIDERS.map((slider) => [
           slider.key,
-          channelInputs[slider.key] ?? slider.defaultValue,
-        );
-      }
-      runtime.channels.set("phoneme", phonemeChannel);
-      if (emotionPluginEnabled && emotionChannel) {
-        runtime.channels.set("emotion", emotionChannel);
-      } else {
-        runtime.channels.delete("emotion");
-      }
+          inputs[slider.key] ?? slider.defaultValue,
+        ]),
+      ),
+      channels: {
+        ...Object.fromEntries(
+          CHANNEL_SLIDERS.map((slider) => [
+            slider.key,
+            channelInputs[slider.key] ?? slider.defaultValue,
+          ]),
+        ),
+        phoneme: phonemeChannel,
+        ...(emotionPluginEnabled && emotionChannel ? { emotion: emotionChannel } : {}),
+      },
+      removeChannels: emotionPluginEnabled && emotionChannel ? [] : ["emotion"],
     });
   }, [
     inputs,
@@ -223,16 +233,13 @@ export function useMotionPipeline({
   }, [notify]);
 
   const handlePushTimelinePhoneme = useCallback(() => {
-    const runtime = getRuntime();
-    const startMs = runtime.getTimelineCurrentMs();
-    runtime.timeline.push({
-      startMs,
-      endMs: startMs + TIMELINE_PHONEME_MS,
-      type: "phoneme",
-      value: { phoneme: phonemeChannel, strength: 1 },
-    });
+    const range = pushTimelinePhoneme(phonemeChannel, TIMELINE_PHONEME_MS);
+    if (!range) {
+      notify("Runtimeが利用できないためTimelineへ送信できませんでした。", "error");
+      return;
+    }
     notify(
-      `Timeline に音素 ${phonemeChannel} を送信（${startMs}–${startMs + TIMELINE_PHONEME_MS} ms）`,
+      `Timeline に音素 ${phonemeChannel} を送信（${range.startMs}–${range.endMs} ms）`,
       "success",
     );
   }, [notify, phonemeChannel]);

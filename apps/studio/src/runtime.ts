@@ -12,7 +12,11 @@ import {
   type SetExpressionRequest,
 } from "@puppetflow/control";
 import type { MotionState, StateValue } from "@puppetflow/core";
-import type { MicroBehaviorSnapshot } from "@puppetflow/micro-behavior";
+import type {
+  BehaviorId,
+  MicroBehaviorDefinition,
+  MicroBehaviorSnapshot,
+} from "@puppetflow/micro-behavior";
 import { loadPreset } from "@puppetflow/preset";
 import {
   ActingEngine,
@@ -59,6 +63,7 @@ class StaleRuntimeStartup extends Error {
 }
 
 let runtime: PuppetFlowRuntime | null = null;
+let startingRuntime: PuppetFlowRuntime | null = null;
 let actingConnection: StudioActingConnection | null = null;
 let startupGeneration = 0;
 let startupPromise: Promise<PuppetFlowRuntime> | null = null;
@@ -83,11 +88,13 @@ if (persistedSources) {
   sourceConfig = { ...persistedSources };
 }
 
-const pipelineListenerSet = new Set<(update: MotionPipelineUpdate) => void>();
-const pipelineListenerUnsubs = new Map<
-  (update: MotionPipelineUpdate) => void,
-  () => void
->();
+type StudioPipelineListener = (update: MotionPipelineUpdate) => void;
+type RuntimePipelineUpdate = Parameters<
+  Parameters<PuppetFlowRuntime["onMotionPipelineUpdate"]>[0]
+>[0];
+
+const pipelineListenerSet = new Set<StudioPipelineListener>();
+const pipelineListenerUnsubs = new Map<StudioPipelineListener, () => void>();
 export interface StudioActingSnapshot {
   state: PuppetFlowControlState;
   capabilities: PuppetFlowCapabilities;
@@ -112,7 +119,7 @@ function isTauriEnvironment(): boolean {
   );
 }
 
-export function attachMapperOutputs(
+function attachMapperOutputs(
   instance: PuppetFlowRuntime,
   config: MotionMapperEditorConfig = mapperConfig,
   tauriEnvironment = isTauriEnvironment(),
@@ -169,14 +176,138 @@ function buildRuntime(): PuppetFlowRuntime {
   return instance;
 }
 
-function bindPipelineListeners(instance: PuppetFlowRuntime): void {
+function detachPipelineListeners(): void {
   for (const unsub of pipelineListenerUnsubs.values()) {
     unsub();
   }
   pipelineListenerUnsubs.clear();
+}
+
+function pipelineUpdate(
+  instance: PuppetFlowRuntime,
+  update: RuntimePipelineUpdate,
+): MotionPipelineUpdate {
+  return {
+    ...update,
+    target: { ...update.target, custom: { ...update.target.custom } },
+    rendered: { ...update.rendered, custom: { ...update.rendered.custom } },
+    channels: { ...update.channels },
+    activeTimelineEvents: update.activeTimelineEvents.map((event) => ({
+      ...event,
+      value: detachSnapshotValue(event.value),
+    })),
+    pluginOutputs: update.pluginOutputs.map((entry) => ({
+      pluginId: entry.pluginId,
+      output: {
+        ...entry.output,
+        ...(entry.output.custom === undefined
+          ? {}
+          : { custom: { ...entry.output.custom } }),
+      },
+    })),
+    statefulSnapshot: update.statefulSnapshot.map((entry) => ({
+      ...entry,
+      state: detachSnapshotValue(entry.state),
+    })),
+    microBehavior: {
+      status: { ...update.microBehavior.status },
+      queue: { ...update.microBehavior.queue },
+      cooldowns: update.microBehavior.cooldowns.map((entry) => ({ ...entry })),
+    },
+    activePluginIds: instance.getPlugins().map((plugin) => plugin.id),
+    stateSnapshot: numericStateSnapshot(instance),
+    ready: true,
+  };
+}
+
+function detachSnapshotValue(
+  value: unknown,
+  seen = new WeakMap<object, unknown>(),
+): unknown {
+  if (value === null || typeof value !== "object") return value;
+  const existing = seen.get(value);
+  if (existing !== undefined) return existing;
+
+  if (Array.isArray(value)) {
+    const copy: unknown[] = [];
+    seen.set(value, copy);
+    for (const entry of value) copy.push(detachSnapshotValue(entry, seen));
+    return copy;
+  }
+  if (value instanceof Date) return new Date(value.getTime());
+  if (value instanceof Map) {
+    const copy = new Map<unknown, unknown>();
+    seen.set(value, copy);
+    for (const [key, entry] of value) {
+      copy.set(detachSnapshotValue(key, seen), detachSnapshotValue(entry, seen));
+    }
+    return copy;
+  }
+  if (value instanceof Set) {
+    const copy = new Set<unknown>();
+    seen.set(value, copy);
+    for (const entry of value) copy.add(detachSnapshotValue(entry, seen));
+    return copy;
+  }
+
+  const copy: Record<string, unknown> = {};
+  seen.set(value, copy);
+  for (const [key, entry] of Object.entries(value)) {
+    copy[key] = detachSnapshotValue(entry, seen);
+  }
+  return copy;
+}
+
+function unavailablePipelineUpdate(instance: PuppetFlowRuntime): MotionPipelineUpdate {
+  return {
+    target: null,
+    rendered: null,
+    pluginOutputs: [],
+    channels: {},
+    activeTimelineEvents: [],
+    timelineCurrentMs: instance.getTimelineCurrentMs(),
+    statefulSnapshot: [],
+    microBehavior: {
+      status: { activeBehavior: null, remaining: 0 },
+      queue: { queueLength: 0 },
+      cooldowns: [],
+    },
+    activePluginIds: instance.getPlugins().map((plugin) => plugin.id),
+    stateSnapshot: numericStateSnapshot(instance),
+    ready: false,
+  };
+}
+
+function numericStateSnapshot(instance: PuppetFlowRuntime): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(instance.state.getAll()).filter(
+      (entry): entry is [string, number] => typeof entry[1] === "number",
+    ),
+  );
+}
+
+function bindPipelineListener(
+  listener: StudioPipelineListener,
+  instance: PuppetFlowRuntime,
+): void {
+  const unsubscribe = instance.onMotionPipelineUpdate((update) => {
+    if (
+      !pipelineListenerSet.has(listener) ||
+      runtime !== instance ||
+      !instance.isRunning()
+    ) {
+      return;
+    }
+    listener(pipelineUpdate(instance, update));
+  });
+  pipelineListenerUnsubs.set(listener, unsubscribe);
+}
+
+function bindPipelineListeners(instance: PuppetFlowRuntime): void {
+  detachPipelineListeners();
 
   for (const listener of pipelineListenerSet) {
-    pipelineListenerUnsubs.set(listener, instance.onMotionPipelineUpdate(listener));
+    bindPipelineListener(listener, instance);
   }
 }
 
@@ -243,36 +374,41 @@ function restoreState(
 
 async function createAndStartRuntime(generation: number): Promise<PuppetFlowRuntime> {
   const instance = buildRuntime();
+  startingRuntime = instance;
   const control = createPuppetFlowControl(instance);
   const connection: StudioActingConnection = {
     runtime: instance,
     control,
     capabilities: control.getCapabilities(),
   };
-  await instance.start();
+  try {
+    await instance.start();
 
-  if (generation !== startupGeneration) {
-    await instance.stop();
-    throw new StaleRuntimeStartup();
+    if (generation !== startupGeneration) {
+      await instance.stop();
+      throw new StaleRuntimeStartup();
+    }
+
+    runtime = instance;
+    actingConnection = connection;
+    bindPipelineListeners(instance);
+    bindActingListeners(connection);
+    return instance;
+  } finally {
+    if (startingRuntime === instance) startingRuntime = null;
   }
-
-  runtime = instance;
-  actingConnection = connection;
-  bindPipelineListeners(instance);
-  bindActingListeners(connection);
-  return instance;
 }
 
-export function getRuntime(): PuppetFlowRuntime {
-  if (!runtime) {
-    throw new Error("Runtime is not ready yet. Call ensureRuntime() first.");
-  }
-
-  return runtime;
+function trackStartup(start: Promise<PuppetFlowRuntime>): Promise<PuppetFlowRuntime> {
+  const tracked = start.finally(() => {
+    if (startupPromise === tracked) startupPromise = null;
+  });
+  startupPromise = tracked;
+  return tracked;
 }
 
-export async function restartRuntime(): Promise<PuppetFlowRuntime> {
-  startupGeneration++;
+export async function restartRuntime(): Promise<void> {
+  const generation = ++startupGeneration;
 
   let savedState: Record<string, StateValue> = {};
   if (runtime) {
@@ -283,16 +419,43 @@ export async function restartRuntime(): Promise<PuppetFlowRuntime> {
     if (connection?.runtime === instance) {
       publishActingSnapshot(connection, false);
     }
+    for (const listener of pipelineListenerSet) {
+      listener(unavailablePipelineUpdate(instance));
+    }
+    detachPipelineListeners();
     detachActingListeners();
-    await stopping;
     runtime = null;
+    const replacement = trackStartup(
+      stopping.then(() => {
+        if (generation !== startupGeneration) throw new StaleRuntimeStartup();
+        return createAndStartRuntime(generation);
+      }),
+    );
+    try {
+      const instance = await replacement;
+      restoreState(instance, savedState);
+      return;
+    } catch (error) {
+      actingConnection = null;
+      if (error instanceof StaleRuntimeStartup && shuttingDown) {
+        throw new Error("Runtime is shutting down");
+      }
+      throw error;
+    }
   }
 
-  startupPromise = null;
+  const pendingStartup = startupPromise;
+  if (pendingStartup) {
+    try {
+      await pendingStartup;
+    } catch (error) {
+      if (!(error instanceof StaleRuntimeStartup)) throw error;
+    }
+  }
+
   try {
-    const instance = await ensureRuntime();
+    const instance = await ensureRuntimeInstance();
     restoreState(instance, savedState);
-    return instance;
   } catch (error) {
     actingConnection = null;
     throw error;
@@ -302,11 +465,16 @@ export async function restartRuntime(): Promise<PuppetFlowRuntime> {
 export async function shutdownRuntime(): Promise<void> {
   shuttingDown = true;
   startupGeneration++;
+  const pendingStartup = startupPromise;
   startupPromise = null;
 
   if (!runtime) {
+    const pendingInstance = startingRuntime;
+    const stopping = pendingInstance?.stop();
+    detachPipelineListeners();
     detachActingListeners();
     actingConnection = null;
+    await Promise.all([stopping, pendingStartup?.catch(() => undefined)]);
     return;
   }
 
@@ -316,13 +484,17 @@ export async function shutdownRuntime(): Promise<void> {
   if (connection?.runtime === instance) {
     publishActingSnapshot(connection, false);
   }
+  for (const listener of pipelineListenerSet) {
+    listener(unavailablePipelineUpdate(instance));
+  }
+  detachPipelineListeners();
   detachActingListeners();
   runtime = null;
   actingConnection = null;
   await stopping;
 }
 
-export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
+async function ensureRuntimeInstance(): Promise<PuppetFlowRuntime> {
   if (shuttingDown) {
     throw new Error("Runtime is shutting down");
   }
@@ -334,34 +506,38 @@ export async function ensureRuntime(): Promise<PuppetFlowRuntime> {
   const generation = startupGeneration;
 
   if (!startupPromise) {
-    startupPromise = createAndStartRuntime(generation).finally(() => {
-      startupPromise = null;
-    });
+    trackStartup(createAndStartRuntime(generation));
   }
+  const pendingStartup = startupPromise;
+  if (!pendingStartup) throw new Error("Runtime startup was not created");
 
   try {
-    return await startupPromise;
+    return await pendingStartup;
   } catch (error) {
     if (error instanceof StaleRuntimeStartup) {
       if (shuttingDown) {
         throw new Error("Runtime is shutting down");
       }
-      return ensureRuntime();
+      return ensureRuntimeInstance();
     }
 
     throw error;
   }
 }
 
-export async function switchPreset(presetName: PresetName): Promise<PuppetFlowRuntime> {
-  currentPreset = presetName;
-  customPresetJson = null;
-  return restartRuntime();
+export async function ensureRuntime(): Promise<void> {
+  await ensureRuntimeInstance();
 }
 
-export async function loadCustomPreset(json: string): Promise<PuppetFlowRuntime> {
+export async function switchPreset(presetName: PresetName): Promise<void> {
+  currentPreset = presetName;
+  customPresetJson = null;
+  await restartRuntime();
+}
+
+export async function loadCustomPreset(json: string): Promise<void> {
   customPresetJson = json;
-  return restartRuntime();
+  await restartRuntime();
 }
 
 export function getCurrentPreset(): PresetName {
@@ -390,22 +566,18 @@ export function getPresetPluginIds(presetName: PresetName): string[] {
   return ids;
 }
 
-export async function setSourceConfig(
-  config: SourceConfig,
-): Promise<PuppetFlowRuntime> {
+export async function setSourceConfig(config: SourceConfig): Promise<void> {
   sourceConfig = config;
-  return restartRuntime();
+  await restartRuntime();
 }
 
 export function getSourceConfig(): SourceConfig {
   return { ...sourceConfig };
 }
 
-export async function setMapperConfig(
-  config: MotionMapperEditorConfig,
-): Promise<PuppetFlowRuntime> {
+export async function setMapperConfig(config: MotionMapperEditorConfig): Promise<void> {
   mapperConfig = cloneMapperConfig(config);
-  return restartRuntime();
+  await restartRuntime();
 }
 
 export function getMapperConfig(): MotionMapperEditorConfig {
@@ -432,8 +604,8 @@ export function getBehaviorPluginIdsFromPresetJson(json: string): string[] {
 }
 
 export type MotionPipelineUpdate = {
-  target: MotionState;
-  rendered: MotionState;
+  target: MotionState | null;
+  rendered: MotionState | null;
   pluginOutputs: PluginOutputSnapshot[];
   channels: Record<string, string | number | boolean>;
   activeTimelineEvents: Array<{
@@ -445,21 +617,28 @@ export type MotionPipelineUpdate = {
   timelineCurrentMs: number;
   statefulSnapshot: StatefulEntrySnapshot[];
   microBehavior: MicroBehaviorSnapshot;
+  activePluginIds: string[];
+  stateSnapshot: Record<string, number>;
+  ready: boolean;
 };
 
-export function subscribeMotionPipeline(
-  listener: (update: MotionPipelineUpdate) => void,
-): () => void {
+export function subscribeMotionPipeline(listener: StudioPipelineListener): () => void {
   pipelineListenerSet.add(listener);
 
   if (runtime) {
-    pipelineListenerUnsubs.set(listener, runtime.onMotionPipelineUpdate(listener));
+    bindPipelineListener(listener, runtime);
   } else {
-    void ensureRuntime().then(() => {
-      if (pipelineListenerSet.has(listener) && runtime) {
-        pipelineListenerUnsubs.set(listener, runtime.onMotionPipelineUpdate(listener));
-      }
-    });
+    void ensureRuntimeInstance()
+      .then((instance) => {
+        if (
+          pipelineListenerSet.has(listener) &&
+          runtime === instance &&
+          !pipelineListenerUnsubs.has(listener)
+        ) {
+          bindPipelineListener(listener, instance);
+        }
+      })
+      .catch(() => undefined);
   }
 
   return () => {
@@ -467,6 +646,68 @@ export function subscribeMotionPipeline(
     pipelineListenerUnsubs.get(listener)?.();
     pipelineListenerUnsubs.delete(listener);
   };
+}
+
+export interface StudioRuntimeInputs {
+  state: Readonly<Record<string, StateValue>>;
+  channels: Readonly<Record<string, StateValue>>;
+  removeChannels?: readonly string[];
+}
+
+export function applyStudioRuntimeInputs(inputs: StudioRuntimeInputs): boolean {
+  const instance = runtime;
+  if (!instance?.isRunning()) return false;
+
+  for (const [key, value] of Object.entries(inputs.state)) {
+    instance.state.set(key, value);
+  }
+  for (const [key, value] of Object.entries(inputs.channels)) {
+    instance.channels.set(key, value);
+  }
+  for (const key of inputs.removeChannels ?? []) {
+    instance.channels.delete(key);
+  }
+  return true;
+}
+
+export function pushTimelinePhoneme(
+  phoneme: string,
+  durationMs: number,
+): { startMs: number; endMs: number } | null {
+  const instance = runtime;
+  if (!instance?.isRunning()) return null;
+
+  const startMs = instance.getTimelineCurrentMs();
+  const endMs = startMs + durationMs;
+  instance.timeline.push({
+    startMs,
+    endMs,
+    type: "phoneme",
+    value: { phoneme, strength: 1 },
+  });
+  return { startMs, endMs };
+}
+
+export function setCustomMicroBehaviorDefinitions(
+  definitions: readonly MicroBehaviorDefinition[],
+): boolean {
+  const instance = runtime;
+  if (!instance?.isRunning()) return false;
+  instance.microBehavior.setCustomDefinitions(definitions);
+  return true;
+}
+
+export function testCustomMicroBehavior(definition: MicroBehaviorDefinition): boolean {
+  const instance = runtime;
+  if (!instance?.isRunning()) return false;
+  instance.microBehavior.registerDefinition(definition);
+  return instance.microBehavior.request({ behavior: definition.id });
+}
+
+export function requestMicroBehavior(behavior: BehaviorId): boolean {
+  const instance = runtime;
+  if (!instance?.isRunning()) return false;
+  return instance.microBehavior.request({ behavior });
 }
 
 function getActingControl(): PuppetFlowControl {
@@ -510,16 +751,18 @@ export function subscribeActing(listener: StudioActingListener): () => void {
   if (actingConnection && runtime === actingConnection.runtime) {
     bindActingListener(listener, actingConnection);
   } else {
-    void ensureRuntime().then(() => {
-      if (
-        actingListenerSet.has(listener) &&
-        actingConnection &&
-        runtime === actingConnection.runtime &&
-        !actingListenerUnsubs.has(listener)
-      ) {
-        bindActingListener(listener, actingConnection);
-      }
-    });
+    void ensureRuntimeInstance()
+      .then(() => {
+        if (
+          actingListenerSet.has(listener) &&
+          actingConnection &&
+          runtime === actingConnection.runtime &&
+          !actingListenerUnsubs.has(listener)
+        ) {
+          bindActingListener(listener, actingConnection);
+        }
+      })
+      .catch(() => undefined);
   }
 
   return () => {

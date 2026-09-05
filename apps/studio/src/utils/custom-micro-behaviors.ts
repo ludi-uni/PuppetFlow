@@ -8,7 +8,7 @@ import {
   parseMicroBehaviorsFile,
   serializeMicroBehaviorsFile,
 } from "@puppetflow/micro-behavior";
-import { getRuntime } from "../runtime";
+import { setCustomMicroBehaviorDefinitions } from "../runtime";
 
 const STORAGE_KEY = "puppetflow.studio.customMicroBehaviors.v1";
 
@@ -49,7 +49,7 @@ export function saveCustomMicroBehaviors(
 export function syncCustomMicroBehaviorsToRuntime(
   definitions: readonly MicroBehaviorDefinition[],
 ): void {
-  getRuntime().microBehavior.setCustomDefinitions(definitions);
+  setCustomMicroBehaviorDefinitions(definitions);
 }
 
 export function serializeCustomMicroBehaviorsForExport(

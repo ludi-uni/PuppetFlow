@@ -2,7 +2,7 @@ import type { BehaviorId, MicroBehaviorDefinition } from "@puppetflow/micro-beha
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { StatusKind } from "../components/StatusBanner";
 import { MICRO_BEHAVIOR_STARTER_TEMPLATES } from "../constants/micro-behavior-params";
-import { getRuntime } from "../runtime";
+import { requestMicroBehavior, testCustomMicroBehavior } from "../runtime";
 import {
   createCustomMicroBehaviorTemplate,
   DEFAULT_MICRO_BEHAVIORS_FILE_NAME,
@@ -235,6 +235,10 @@ export function useCustomMicroBehaviors({
   ]);
 
   const handleTestCustomBehavior = useCallback(() => {
+    if (!ready) {
+      notify("Runtimeが利用できないためBehaviorを実行できませんでした。", "error");
+      return;
+    }
     const parsed = resolveDefinitionFromEditor(editorDraft, editorJson);
     if (!parsed.ok) {
       setEditorError(parsed.error);
@@ -244,19 +248,22 @@ export function useCustomMicroBehaviors({
 
     setEditorError(null);
     const { definition } = parsed;
-    getRuntime().microBehavior.registerDefinition(definition);
-    const accepted = getRuntime().microBehavior.request({ behavior: definition.id });
+    const accepted = testCustomMicroBehavior(definition);
     notify(
       accepted
         ? `カスタム Behavior「${definition.id}」を実行しました。`
         : `カスタム Behavior「${definition.id}」は Cooldown 中のため無視されました。`,
       accepted ? "success" : "info",
     );
-  }, [editorDraft, editorJson, notify]);
+  }, [editorDraft, editorJson, notify, ready]);
 
   const handleTriggerBehavior = useCallback(
     (behavior: BehaviorId) => {
-      const accepted = getRuntime().microBehavior.request({ behavior });
+      if (!ready) {
+        notify("Runtimeが利用できないためBehaviorを実行できませんでした。", "error");
+        return;
+      }
+      const accepted = requestMicroBehavior(behavior);
       notify(
         accepted
           ? `Micro Behavior「${behavior}」を実行しました。`
@@ -264,7 +271,7 @@ export function useCustomMicroBehaviors({
         accepted ? "success" : "info",
       );
     },
-    [notify],
+    [notify, ready],
   );
 
   const applyDefinitions = useCallback(

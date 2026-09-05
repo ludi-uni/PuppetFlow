@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**更新状況:** Phase C canonical Host ownership complete; Studio Acting/Expression control migrated
+**更新状況:** Phase C canonical Node Host ownership complete; Studio Runtime access encapsulated
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 
@@ -58,7 +58,7 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 | ExpressionEngine                            | `packages/runtime/src/acting/expression-engine.ts`, `expression-profile.ts` | expressionの名前解決、fade、blend shape値生成                                                   | **KEEP / REWORK**             | expression timing/mappingはRuntime側に残す。ControlはcamelCaseのsemantic DTOから呼び、transportごとのvalidationを持たせない。                                                     |
 | Behavior / PFScript                         | `packages/behavior/src`, `packages/pfscript-core/src`                       | DSL parse/lower/execute、条件、stateful call、MotionPack invocation                             | **KEEP**                      | PFScriptは高度なmotion authoringとして維持し、外部clientが直接実行するAPIにはしない。                                                                                             |
 | Preset system                               | `packages/preset/src`, `packages/behavior-packs`                            | Preset v3 parse/load、`behaviorPfScript` materialization、overlap warning、plugin/extension構成 | **KEEP / REWORK**             | `behaviorPfScript`正本、v3、公式preset資産は維持。load/config ownershipをHostへ集約する。新v4はPhase 1の対象外。                                                                  |
-| Studio                                      | `apps/studio/src/runtime.ts`, `hooks/useActing.ts`, `ActingTab.tsx`         | Runtime生成、lifecycle、state/channel/timeline操作、preset編集、mapper、Acting UI               | **KEEP / REWORK / PARTIAL**   | Acting/Expressionは同じStudio Runtimeのcanonical Control、snapshot、capabilitiesへ移行済み。Runtime ownershipとその他の直接操作は後続Phase。                                      |
+| Studio                                      | `apps/studio/src/runtime.ts`と各hook/editor utility                         | Runtime生成、lifecycle、入力、観測、preset編集、mapper、Acting UI                               | **KEEP / REWORK / PARTIAL**   | UI/hook/utilityからRuntime取得口を除去し、入力・設定・snapshot・購読をfacadeへ集約済み。Studio自身のRuntime ownershipと共有Host接続は後続Phase。                                  |
 | CLI                                         | `apps/cli/src/commands/run.ts`, `record.ts`, `replay.ts`                    | headless起動、record/replay、VMC/source設定                                                     | **KEEP / REWORK**             | ユーザー向けCLIは維持する。通常の実行はHostのbootstrapにし、record/replayも同じownership規則に寄せる。                                                                            |
 | `runtime-launcher`                          | `packages/runtime-launcher/src/puppetflow-host.ts`, `build-runtime.ts`      | Hostが一つのRuntime、source/output、lifecycleを所有しcanonical Controlを公開                    | **REWORK / IMPLEMENTED**      | Host public contractはControlとstart/stop/disposeだけ。Studio/CLIなど既存`buildRuntime` consumerの移行は後続Phase。                                                               |
 | VMC adapters                                | `packages/adapter-vmc/src`                                                  | MotionState/FrameをOSC/VMCへencode、mapping、UDP/Tauri transport                                | **KEEP / REWORK**             | encoder、mapping、testsは再利用する。HostがVMC senderを所有し、legacyとframeの二重送出を解消する。                                                                                |
@@ -106,7 +106,7 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 
 ### 先に境界を直すべき箇所
 
-1. Runtimeを直接生成する入口はStudio、CLIなどに残る。StudioのActing/Expressionだけはcanonical Control経由へ移行済みだが、Runtime ownershipはまだStudioにある。
+1. Runtimeを直接生成する入口はStudio、CLIなどに残る。Studio内部のRuntimeアクセスはfacadeへ集約済みだが、Runtime ownership自体はまだStudioにある。
 2. `PuppetFlowRuntime`がinternal composition APIと外部操作APIを同じpublic classに載せている。
 3. legacy `MotionState` adapter pathとcanonical `MotionFrame` pathが併存し、`NodeVmcAdapter`は両interfaceを実装する。`runtime-launcher`は同じadapterを両pathへattachする。
 4. `BehaviorHttpServer`、AITuber HTTP client、MCP toolが異なる入口・結果形状を持つ。HTTP input sourceは別責務なのに同じ「HTTP」と呼ばれる。

@@ -5,7 +5,6 @@ import type {
   PuppetFlowCapabilities,
   PuppetFlowControlState,
 } from "@puppetflow/control";
-import type { PuppetFlowRuntime } from "@puppetflow/runtime";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,7 +58,7 @@ describe("useActing", () => {
   let notify: ((snapshot: StudioActingSnapshot) => void) | undefined;
 
   beforeEach(() => {
-    vi.mocked(ensureRuntime).mockResolvedValue({} as PuppetFlowRuntime);
+    vi.mocked(ensureRuntime).mockResolvedValue();
     vi.mocked(subscribeActing).mockImplementation((listener) => {
       notify = listener;
       listener(readySnapshot);
@@ -109,8 +108,8 @@ describe("useActing", () => {
   });
 
   it("does not subscribe or update after unmount during cold startup", async () => {
-    let resolveRuntime: ((runtime: PuppetFlowRuntime) => void) | undefined;
-    const pending = new Promise<PuppetFlowRuntime>((resolve) => {
+    let resolveRuntime: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
       resolveRuntime = resolve;
     });
     vi.mocked(ensureRuntime).mockReturnValue(pending);
@@ -119,7 +118,7 @@ describe("useActing", () => {
     act(() => root?.unmount());
     root = undefined;
     await act(async () => {
-      resolveRuntime?.({} as PuppetFlowRuntime);
+      resolveRuntime?.();
       await pending;
     });
 
