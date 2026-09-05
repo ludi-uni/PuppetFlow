@@ -3,9 +3,10 @@ import type { StudioMode } from "../constants/studio-mode";
 
 interface HelpGuideProps {
   mode: StudioMode;
+  blocklyEnabled?: boolean;
 }
 
-export function HelpGuide({ mode }: HelpGuideProps) {
+export function HelpGuide({ mode, blocklyEnabled = false }: HelpGuideProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,6 +33,13 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                   <strong>キャラの雰囲気</strong> — プリセットを選んで基本の動きを決める
                 </li>
                 <li>
+                  <strong>演技・表情</strong> — 現在利用できる演技と表情を試す
+                </li>
+                <li>
+                  <strong>キャラへの送信</strong> — VSeeFace（VRM）や
+                  nijiexpose（Inochi2D / nijigenerate）など Viewer を選ぶ
+                </li>
+                <li>
                   <strong>動きのつなぎ</strong> — 興味・元気などと表情・姿勢を結びつける
                 </li>
                 <li>
@@ -39,10 +47,6 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                 </li>
                 <li>
                   <strong>動作確認</strong> — スライダーで試す
-                </li>
-                <li>
-                  <strong>キャラへの送信</strong> — VSeeFace（VRM）や
-                  nijiexpose（Inochi2D / nijigenerate）など Viewer を選ぶ
                 </li>
               </ol>
               <p className="hint">
@@ -63,10 +67,12 @@ export function HelpGuide({ mode }: HelpGuideProps) {
                   状態一覧で各段階を監視。 口を動かすには Graph で mouthX / mouthY
                   へのマッピングが必要です
                 </li>
-                <li>
-                  <strong>Scratch (Blockly)</strong> — If / Assign に加え、Natural
-                  Motion カテゴリで呼吸・追従・視線・瞬きの stateful ブロック
-                </li>
+                {blocklyEnabled ? (
+                  <li>
+                    <strong>Blockly Editor</strong> — If / Assign に加え、Natural Motion
+                    カテゴリで呼吸・追従・視線・瞬きの stateful ブロック
+                  </li>
+                ) : null}
                 <li>
                   <strong>PFScript</strong> — 上級者向け DSL。コンパイルして behavior /
                   behaviorPfScript を Preset に保存

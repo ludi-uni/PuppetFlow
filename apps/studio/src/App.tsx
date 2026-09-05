@@ -34,8 +34,10 @@ function LocalStudio() {
     setTab,
     goToTab,
     tabs,
+    blocklyEnabled,
     isSimpleMode,
     handleStudioModeChange,
+    setBlocklyEnabled,
   } = useStudioMode();
   const { status, notify, dismissStatus, behaviorPreviewJson, setBehaviorPreviewJson } =
     useStudioStatus();
@@ -251,6 +253,22 @@ function LocalStudio() {
     customMicroBehaviorCount,
   ]);
 
+  const handleBlocklyEnabledChange = useCallback(
+    (enabled: boolean) => {
+      if (
+        !enabled &&
+        tab === "scratch" &&
+        !window.confirm(
+          "Blocklyを無効にすると、Presetへ未適用の編集内容が失われる可能性があります。無効にしますか？",
+        )
+      ) {
+        return;
+      }
+      setBlocklyEnabled(enabled);
+    },
+    [setBlocklyEnabled, tab],
+  );
+
   if (startupError) {
     return (
       <main className="studio">
@@ -274,6 +292,7 @@ function LocalStudio() {
         studioMode={studioMode}
         isSimpleMode={isSimpleMode}
         tab={tab}
+        blocklyEnabled={blocklyEnabled}
         tabs={tabs}
         status={status}
         nextStepGuide={nextStepGuide}
@@ -285,6 +304,7 @@ function LocalStudio() {
         appliedMapperConfig={appliedMapperConfig}
         httpHealth={httpHealth}
         onStudioModeChange={handleStudioModeChange}
+        onBlocklyEnabledChange={handleBlocklyEnabledChange}
         onDismissStatus={dismissStatus}
         onGoToNextStepTab={() => goToTab(nextStepGuide.tab)}
         onSelectTab={setTab}
@@ -294,6 +314,7 @@ function LocalStudio() {
       <StudioTabPanel
         tab={tab}
         isSimpleMode={isSimpleMode}
+        blocklyEnabled={blocklyEnabled}
         notify={notify}
         pipeline={{
           renderedMotion,

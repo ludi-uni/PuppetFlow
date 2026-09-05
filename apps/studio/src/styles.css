@@ -1244,6 +1244,26 @@ button:disabled {
   overflow: hidden;
 }
 
+.editor-settings {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.editor-settings summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.editor-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
 .mode-btn {
   border: none;
   border-radius: 0;

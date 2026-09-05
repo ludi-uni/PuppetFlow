@@ -20,6 +20,7 @@ export interface StudioPersistedConfig {
   version: 1;
   studioMode?: StudioMode;
   tabs?: Partial<Record<StudioMode, TabId>>;
+  blocklyEnabled?: boolean;
   mapper?: MotionMapperEditorConfig;
   sources?: SourceConfig;
   sourceDraft?: SourceDraftFields;
@@ -45,6 +46,8 @@ function readStorage(): StudioPersistedConfig {
       version: 1,
       studioMode: parsed.studioMode,
       tabs: parsed.tabs,
+      blocklyEnabled:
+        typeof parsed.blocklyEnabled === "boolean" ? parsed.blocklyEnabled : undefined,
       mapper: parseMapperConfig(parsed.mapper),
       sources: parseSourceConfig(parsed.sources),
       sourceDraft: parseSourceDraft(parsed.sourceDraft),
@@ -94,6 +97,7 @@ export function patchStudioPersistedConfig(
     version: 1,
     studioMode: patch.studioMode ?? cached.studioMode,
     tabs: patch.tabs ? { ...cached.tabs, ...patch.tabs } : cached.tabs,
+    blocklyEnabled: patch.blocklyEnabled ?? cached.blocklyEnabled,
     mapper: patch.mapper ?? cached.mapper,
     sources: patch.sources ?? cached.sources,
     sourceDraft: patch.sourceDraft ?? cached.sourceDraft,
@@ -118,6 +122,14 @@ export function loadPersistedTab(mode: StudioMode): TabId | undefined {
 
 export function savePersistedTab(mode: StudioMode, tab: TabId): void {
   patchStudioPersistedConfig({ tabs: { [mode]: tab } });
+}
+
+export function loadPersistedBlocklyEnabled(): boolean {
+  return cached.blocklyEnabled ?? false;
+}
+
+export function savePersistedBlocklyEnabled(enabled: boolean): void {
+  patchStudioPersistedConfig({ blocklyEnabled: enabled });
 }
 
 export function loadPersistedMapperConfig(): MotionMapperEditorConfig | null {

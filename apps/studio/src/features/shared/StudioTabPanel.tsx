@@ -23,6 +23,7 @@ import { ActingTab } from "./tabs/ActingTab";
 export interface StudioTabPanelProps {
   tab: TabId;
   isSimpleMode: boolean;
+  blocklyEnabled: boolean;
   notify: (message: string, kind?: StatusKind) => void;
   pipeline: {
     renderedMotion: MotionState;
@@ -136,6 +137,7 @@ export interface StudioTabPanelProps {
 export function StudioTabPanel({
   tab,
   isSimpleMode,
+  blocklyEnabled,
   notify,
   pipeline,
   preset,
@@ -210,7 +212,7 @@ export function StudioTabPanel({
     );
   }
 
-  if (tab === "scratch") {
+  if (tab === "scratch" && !isSimpleMode && blocklyEnabled) {
     return (
       <ScratchTab
         isSimpleMode={isSimpleMode}
@@ -380,7 +382,7 @@ export function StudioTabPanel({
     );
   }
 
-  if (tab === "acting" && !isSimpleMode) {
+  if (tab === "acting") {
     return <ActingTab {...acting} />;
   }
 

@@ -13,6 +13,7 @@ export interface StudioChromeProps {
   studioMode: StudioMode;
   isSimpleMode: boolean;
   tab: TabId;
+  blocklyEnabled: boolean;
   tabs: Array<{ id: TabId; label: string; description?: string }>;
   status: { kind: StatusKind; message: string } | null;
   nextStepGuide: NextStepGuide;
@@ -24,6 +25,7 @@ export interface StudioChromeProps {
   appliedMapperConfig: MotionMapperEditorConfig;
   httpHealth: HttpHealth;
   onStudioModeChange: (mode: StudioMode) => void;
+  onBlocklyEnabledChange: (enabled: boolean) => void;
   onDismissStatus: () => void;
   onGoToNextStepTab: () => void;
   onSelectTab: (tab: TabId) => void;
@@ -34,6 +36,7 @@ export function StudioChrome({
   studioMode,
   isSimpleMode,
   tab,
+  blocklyEnabled,
   tabs,
   status,
   nextStepGuide,
@@ -45,6 +48,7 @@ export function StudioChrome({
   appliedMapperConfig,
   httpHealth,
   onStudioModeChange,
+  onBlocklyEnabledChange,
   onDismissStatus,
   onGoToNextStepTab,
   onSelectTab,
@@ -76,9 +80,26 @@ export function StudioChrome({
         </div>
         <div className="studio-header-actions">
           <StudioModeToggle mode={studioMode} onChange={onStudioModeChange} />
-          <HelpGuide mode={studioMode} />
+          <HelpGuide mode={studioMode} blocklyEnabled={blocklyEnabled} />
         </div>
       </header>
+
+      {!isSimpleMode ? (
+        <details className="editor-settings">
+          <summary>エディター設定</summary>
+          <label>
+            <input
+              type="checkbox"
+              checked={blocklyEnabled}
+              onChange={(event) => onBlocklyEnabledChange(event.target.checked)}
+            />{" "}
+            Blocklyエディターを有効にする
+          </label>
+          <p className="hint">
+            有効にするとエキスパートのタブから既存Blocklyエディターを開けます。
+          </p>
+        </details>
+      ) : null}
 
       {status ? (
         <StatusBanner

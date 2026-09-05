@@ -1,7 +1,10 @@
+/** @vitest-environment jsdom */
+
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_MAPPER_CONFIG } from "../mapper-config";
 import {
   loadPersistedMapperConfig,
+  loadPersistedBlocklyEnabled,
   loadPersistedSourceConfig,
   loadPersistedSourceDraft,
   loadPersistedStudioMode,
@@ -10,6 +13,7 @@ import {
   reloadStudioPersistedConfigFromStorage,
   resetStudioPersistedConfigForTests,
   savePersistedMapperConfig,
+  savePersistedBlocklyEnabled,
   savePersistedSourceConfig,
   savePersistedSourceDraft,
   savePersistedStudioMode,
@@ -29,6 +33,18 @@ describe("studio-config-storage", () => {
     expect(loadPersistedStudioMode()).toBe("expert");
     expect(loadPersistedTab("expert")).toBe("pfscript");
     expect(loadPersistedTab("simple")).toBe("mapper");
+  });
+
+  it("keeps Blockly disabled by default and persists explicit opt-in", () => {
+    expect(loadPersistedBlocklyEnabled()).toBe(false);
+
+    savePersistedTab("expert", "pfscript");
+    savePersistedBlocklyEnabled(true);
+
+    expect(loadPersistedBlocklyEnabled()).toBe(true);
+    const reloaded = reloadStudioPersistedConfigFromStorage();
+    expect(reloaded.blocklyEnabled).toBe(true);
+    expect(reloaded.tabs?.expert).toBe("pfscript");
   });
 
   it("persists mapper and source settings", () => {

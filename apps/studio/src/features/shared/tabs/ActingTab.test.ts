@@ -95,9 +95,9 @@ describe("ActingTab", () => {
       (button) => button.textContent === text,
     );
 
-  it("registers Acting as an expert-only tab", () => {
+  it("registers Acting in both Simple and Expert navigation", () => {
     expect(getTabsForMode("expert").map((tab) => tab.id)).toContain("acting");
-    expect(getTabsForMode("simple").map((tab) => tab.id)).not.toContain("acting");
+    expect(getTabsForMode("simple").map((tab) => tab.id)).toContain("acting");
   });
 
   it("uses capabilities and readiness for available controls", () => {

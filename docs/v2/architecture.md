@@ -195,17 +195,19 @@ Studio UI、hooks、editor utilitiesはRuntime本体やstoreを取得せず、�
 名前付き設定、入力、snapshot、購読だけを利用します。State、Channel、Timeline、Pipeline観測、
 Micro Behavior、Preset、Mapper、SourceのRuntimeアクセスは同facade内へ集約済みです。
 
-Studio自身によるRuntime生成とlifecycle ownershipはまだ残ります。共有Node Hostとの通信方式、
-別process化、複数clientの同一実行先は後続Phaseで決定します。Node HostやNode専用VMCをfrontendへ
-導入していません。UIの候補は次です。
+local Studio自身によるRuntime生成とlifecycle ownershipはまだ残ります。shared modeは起動済みの
+共有Node HostへControl clientで接続し、Acting/Expressionと状態観測だけを提供します。Node Hostや
+Node専用VMCをfrontendへ導入していません。Phase H後のUI導線は次です。
 
 ```text
-Simple    Preset + semantic controls
-Timeline  visual motion / timeline composition
-PFScript  advanced / developer control
+Simple    Preset -> Acting / Expression -> Mapper -> existing helpers
+Expert    Pipeline / Micro Behaviors / PFScript / Graph / Preset / Plugins / Sources / Mapper / Acting
+Optional  Blockly Editor (explicit opt-in in Expert settings)
 ```
 
-既存Graph、Preset、Mapper、Pipeline、Actingの知見は維持します。Blockly Block Editorは現状のBehavior AST変換器をすぐ削除せず、coreではなくoptional editor/plugin candidateとして隔離します。Phase 1ではUI rewriteも物理削除もしません。
+新規Simpleの初期表示はPresetです。保存済みの有効なmode/tabは維持し、Blockly無効時の旧`scratch`
+選択は安全な既定tabへ正規化します。Blockly Block EditorとBehavior AST変換器、Preset内データは削除せず、
+既定OFFの任意editorとしてExpertだけから遅延読み込みします。これは別配布plugin化の完了を意味しません。
 
 ## Explicit non-goals
 
