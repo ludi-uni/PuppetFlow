@@ -21,7 +21,11 @@ import { WebSocketSource } from "@puppetflow/source-websocket";
 
 import { createAvatarLipSyncSource } from "./avatar-lip-sync-source.js";
 import { buildRuntime } from "./build-runtime.js";
-import type { RuntimeLaunchConfig } from "./types.js";
+import {
+  buildMotionMapperProfileFromLaunch,
+  customMappingsFromLaunch,
+} from "./mapper-launch.js";
+import type { OscAdapterLaunchConfig, RuntimeLaunchConfig } from "./types.js";
 
 export interface PuppetFlowHostOptions {
   presetJson?: string;
@@ -47,8 +51,23 @@ export function createPuppetFlowHost(options: PuppetFlowHostOptions): PuppetFlow
   if (!options.launchConfig && !options.presetJson) {
     throw new Error("PuppetFlowHost requires presetJson or launchConfig");
   }
+  const launchVmc = options.launchConfig
+    ? nodeVmcConfigFromLaunch(options.launchConfig.adapters?.vmc)
+    : false;
+  if (options.launchConfig && options.vmc !== undefined && launchVmc !== false) {
+    throw new Error("Specify VMC output through launchConfig or options.vmc, not both");
+  }
+  const launchConfig = options.launchConfig
+    ? {
+        ...options.launchConfig,
+        adapters: {
+          ...options.launchConfig.adapters,
+          vmc: { enabled: false },
+        },
+      }
+    : undefined;
   const runtime = buildRuntime(
-    options.launchConfig ?? {
+    launchConfig ?? {
       presetJson: options.presetJson!,
       adapters: {
         vmc: { enabled: false },
@@ -79,9 +98,10 @@ export function createPuppetFlowHost(options: PuppetFlowHostOptions): PuppetFlow
       ),
     );
   }
-  if (options.vmc !== false && options.vmc !== undefined) {
+  const vmc = options.vmc === undefined ? launchVmc : options.vmc;
+  if (vmc !== false && vmc !== undefined) {
     const output = createVmcOutput(
-      options.vmc,
+      vmc,
       (error) => {
         startupFailure ??= { error };
       },
@@ -127,6 +147,23 @@ export function createPuppetFlowHost(options: PuppetFlowHostOptions): PuppetFlow
   };
 }
 
+function nodeVmcConfigFromLaunch(
+  config: OscAdapterLaunchConfig | undefined,
+): NodeVmcAdapterConfig | false {
+  if (config?.enabled === false) return false;
+  const selected = config ?? {};
+  const { customParams, customTransforms } = customMappingsFromLaunch(selected);
+  return {
+    host: selected.host,
+    port: selected.port,
+    profile: buildMotionMapperProfileFromLaunch("vmc", selected),
+    customParams,
+    customTransforms,
+    outputRateHz: selected.outputRateHz,
+    timestampMode: selected.timestampMode,
+  };
+}
+
 function createVmcOutput(
   config: NodeVmcAdapterConfig,
   recordStartupFailure: (error: unknown) => void,
@@ -134,9 +171,21 @@ function createVmcOutput(
 ): MotionFrameAdapter & {
   update(motion: MotionState, deltaTime: number): Promise<void>;
 } {
-  const adapter = new NodeVmcAdapter(config);
+  if (
+    config.outputRateHz !== undefined &&
+    (!Number.isFinite(config.outputRateHz) || config.outputRateHz <= 0)
+  ) {
+    throw new RangeError("outputRateHz must be a positive finite number");
+  }
+  const adapter = new NodeVmcAdapter({ ...config, outputRateHz: undefined });
   const profile = resolveVmcProfile(config);
+  const now = config.now ?? Date.now;
+  const intervalMs = config.outputRateHz === undefined ? 0 : 1000 / config.outputRateHz;
   let mappedBlendShapes: Record<string, number> = {};
+  let lastSentAt: number | null = null;
+  let lastObservedBlends: Record<string, number> = {};
+  let pendingBlends: Record<string, number> | undefined;
+  let pendingTerminalZero: Record<string, number> | undefined;
   return {
     id: adapter.id,
     async initialize(): Promise<void> {
@@ -156,13 +205,47 @@ function createVmcOutput(
     },
     updateFrame(frame: MotionFrame, deltaTime: number): Promise<void> {
       if (hasStartupFailure()) return Promise.resolve();
+      const frameBlends = { ...frame.blendShapes };
+      if (!sameBlendShapes(frameBlends, lastObservedBlends)) {
+        if (
+          Object.entries(frameBlends).some(
+            ([name, value]) => value === 0 && (lastObservedBlends[name] ?? 0) !== 0,
+          )
+        ) {
+          pendingTerminalZero = frameBlends;
+        }
+        pendingBlends = frameBlends;
+        lastObservedBlends = frameBlends;
+      }
+      const currentTime = now();
+      if (lastSentAt !== null && currentTime - lastSentAt < intervalMs) {
+        return Promise.resolve();
+      }
+      const selectedBlends = pendingTerminalZero ?? pendingBlends ?? frameBlends;
+      if (pendingTerminalZero) {
+        pendingTerminalZero = undefined;
+        if (sameBlendShapes(selectedBlends, pendingBlends ?? {})) {
+          pendingBlends = undefined;
+        }
+      } else {
+        pendingBlends = undefined;
+      }
+      lastSentAt = currentTime;
       return adapter.updateFrame(
-        { ...frame, blendShapes: { ...mappedBlendShapes, ...frame.blendShapes } },
+        { ...frame, blendShapes: { ...mappedBlendShapes, ...selectedBlends } },
         deltaTime,
       );
     },
     dispose: () => adapter.dispose(),
   };
+}
+
+function sameBlendShapes(
+  left: Record<string, number>,
+  right: Record<string, number>,
+): boolean {
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => left[key] === right[key]);
 }
 
 function wrapRequiredMotionOutput(
