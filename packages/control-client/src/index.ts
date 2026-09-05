@@ -63,20 +63,30 @@ export class PuppetFlowControlClient {
     capabilities: PuppetFlowCapabilities;
     snapshot: ControlSnapshot;
   }> {
+    if (this.closed) {
+      throw new PuppetFlowControlTransportError("PuppetFlow Control client is closed");
+    }
+    const connectionGeneration = ++this.generation;
     const info = await this.request<ControlConnectionInfo>("GET", "/v1/connection");
+    if (this.closed || this.generation !== connectionGeneration) {
+      throw new PuppetFlowControlTransportError("PuppetFlow Control client is closed");
+    }
     if (info.protocolVersion !== CONTROL_PROTOCOL_VERSION)
       throw new PuppetFlowControlTransportError(
         "Unsupported PuppetFlow Control protocol version",
       );
     if (!info.ready || !info.hostInstanceId)
       throw new PuppetFlowControlTransportError("PuppetFlow Host is not ready");
-    this.closed = false;
-    this.generation++;
     this.hostInstanceId = info.hostInstanceId;
     const [capabilities, snapshot] = await Promise.all([
       this.getCapabilities(),
       this.getSnapshot(),
     ]);
+    if (this.closed || this.generation !== connectionGeneration) {
+      throw new PuppetFlowControlTransportError(
+        "PuppetFlow Control connection changed",
+      );
+    }
     return { info, capabilities, snapshot };
   }
 

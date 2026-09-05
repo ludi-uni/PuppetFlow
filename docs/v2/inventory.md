@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**更新状況:** Phase 4C shared Host Acting/Expression integration implemented
+**更新状況:** Phase 4D shared VMC output accepted; Studio token removed from build inputs
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 
@@ -77,6 +77,7 @@ MCP経路のRuntime生成・所有はHostへ集約済みです。Studio、CLI、
 | `PuppetFlowControl`                         | `packages/control`にcanonical contractを実装                                | Acting/Expressionの外部semantic control boundaryとRuntime availability判定                      | **NEW / IMPLEMENTED**         | camelCase DTO、safe result、停止中empty state、開始前capabilitiesを提供する。Runtime lifecycleは所有しない。                                                                      |
 | `PuppetFlowHost`                            | `packages/runtime-launcher/src/puppetflow-host.ts`                          | one Runtime、canonical Control、adapters、sources、lifecycleの所有                              | **NEW / IMPLEMENTED**         | public APIはcanonical Controlとstart/stop/disposeだけ。Runtime内部objectは公開しない。                                                                                            |
 | Shared Control HTTP / client                | `runtime-launcher/control-http-server`, `@puppetflow/control-client`        | loopback auth、instance identity、canonical command/state通信                                   | **NEW / IMPLEMENTED**         | Studio shared modeとMCP shared adapterが同じHostへ接続。全Studio設定APIの共有化は未実装。                                                                                         |
+| Shared CLI VMC output                       | `PuppetFlowHost` launchConfig VMC composition                               | MotionState mappingとActing/Expression frameを一回合成してUDP送信                               | **IMPLEMENTED / ACCEPTED**    | Expressionが同名基底値に優先。口等の非Expression値を保持し、clear後はzero送信から基底値へ復帰する。                                                                               |
 
 ## Sibling MCPの責務分解
 

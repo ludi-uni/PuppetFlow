@@ -90,4 +90,29 @@ describe("PuppetFlowControlClient", () => {
     });
     expect(fetch).toHaveBeenCalledTimes(beforeCommand + 1);
   });
+
+  it("does not continue a delayed connection after close", async () => {
+    let resolveConnection: ((response: Response) => void) | undefined;
+    const fetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveConnection = resolve;
+        }),
+    );
+    const client = new PuppetFlowControlClient({
+      baseUrl: "http://127.0.0.1:8788",
+      token: "secret",
+      fetch,
+    });
+    const connecting = client.connect();
+    client.close();
+    resolveConnection?.(
+      new Response(
+        JSON.stringify({ protocolVersion: 1, hostInstanceId: "host-a", ready: true }),
+      ),
+    );
+
+    await expect(connecting).rejects.toThrow(/closed/i);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
 });

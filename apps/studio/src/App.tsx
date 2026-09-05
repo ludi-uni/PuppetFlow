@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { StudioChrome } from "./features/shared/StudioChrome";
 import { StudioTabPanel } from "./features/shared/StudioTabPanel";
 import { usePresetState } from "./hooks/usePresetState";
@@ -9,7 +9,11 @@ import { useMapperConfig } from "./hooks/useMapperConfig";
 import { useStudioMode } from "./hooks/useStudioMode";
 import { useStudioStatus } from "./hooks/useStudioStatus";
 import { useStudioNextStep } from "./hooks/useStudioNextStep";
-import { getSharedHostConfig, getStudioExecutionMode } from "./execution-mode";
+import {
+  getSharedHostEndpoint,
+  getStudioExecutionMode,
+  type SharedHostConfig,
+} from "./execution-mode";
 import { ActingTab } from "./features/shared/tabs/ActingTab";
 import {
   getCurrentPreset,
@@ -409,7 +413,9 @@ function LocalStudio() {
 }
 
 function SharedStudio() {
-  const sharedHost = getSharedHostConfig();
+  const baseUrl = getSharedHostEndpoint();
+  const [tokenInput, setTokenInput] = useState("");
+  const [sharedHost, setSharedHost] = useState<SharedHostConfig | null>(null);
   const acting = useActing({ sharedHost });
 
   return (
@@ -421,9 +427,40 @@ function SharedStudio() {
         </div>
       </header>
       <section className="config-summary" aria-label="Shared Host connection">
-        <p>Shared Host endpoint: {acting.sharedEndpoint ?? "not configured"}</p>
+        <p>Shared Host endpoint: {baseUrl ?? "not configured"}</p>
         <p>Connection: {acting.ready ? "ready" : "disconnected"}</p>
         <p>Host instance: {acting.hostInstanceId ?? "unavailable"}</p>
+        <label htmlFor="shared-host-token">
+          Connection token
+          <input
+            id="shared-host-token"
+            type="password"
+            autoComplete="off"
+            value={tokenInput}
+            onChange={(event) => setTokenInput(event.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!baseUrl || !tokenInput.trim()}
+          onClick={() => {
+            if (!baseUrl || !tokenInput.trim()) return;
+            setSharedHost({ baseUrl, token: tokenInput });
+            setTokenInput("");
+          }}
+        >
+          Connect
+        </button>
+        <button
+          type="button"
+          disabled={!sharedHost}
+          onClick={() => {
+            setSharedHost(null);
+            setTokenInput("");
+          }}
+        >
+          Disconnect
+        </button>
         <p className="hint">
           Preset, Mapper, Source, Timeline, and Micro Behavior editing are unavailable
           in shared mode.

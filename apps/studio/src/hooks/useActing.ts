@@ -74,6 +74,11 @@ export function useActing({
 
     if (sharedHost !== undefined) {
       if (!sharedHost) {
+        setClient(null);
+        setReady(false);
+        setState(EMPTY_ACTING_STATE);
+        setCapabilities(EMPTY_CAPABILITIES);
+        setHostInstanceId(undefined);
         setStatus("Shared Host URL and token are required.");
         return;
       }

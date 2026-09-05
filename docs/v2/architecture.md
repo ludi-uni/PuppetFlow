@@ -200,6 +200,13 @@ client disconnect never owns Host shutdown. HTTP exposes only connection metadat
 canonical state/capabilities, and the five canonical commands. Preset, Mapper, Source,
 Timeline, and Micro Behavior remain local-only Studio features.
 
+Phase 4D routes shared CLI `launchConfig.adapters.vmc` through the Host's composed VMC
+output. MotionState mappings are retained, then Acting/Expression MotionFrame values are
+merged once before the single sender; frame values win on a name collision. Output rate,
+timestamp mode, destination, standard/custom mappings, and Host-owned cleanup are preserved.
+Studio shared tokens are entered after launch and exist only in the current React/client
+session; they are no longer read from Vite build-time token variables.
+
 - generic distributed actor framework、message bus、service mesh
 - event sourcing、複数RPC standardの同時導入
 - MCP専用plugin framework

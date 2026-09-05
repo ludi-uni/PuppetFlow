@@ -1,7 +1,7 @@
 # PuppetFlow 2.0 migration plan
 
 **Scope:** `PuppetFlow`の既存実装を保持しながら、`v2` branchで責務境界を段階的に切り替える。
-**Current status:** Phase B、Node Host内Phase C、Studio 4A/4B完了。Phase 4Cで共有HostのActing/Expression HTTP、Studio shared mode、MCP shared adapterを実装し、両clientが同じRuntimeを操作・観測できる経路を追加した。Studio全設定の共有化、AITuber、旧standalone整理、MCP Phase F全体は未完了。
+**Current status:** Phase B、Node Host内Phase C、Studio 4A/4B、共有制御Phase 4C完了。Phase 4Dで共有CLIのVMCを単一合成senderへ接続し、実UDPでExpression/wave/clearと停止を確認した。Studio tokenはbuild入力から除去しmemory-only明示接続へ変更した。外部Viewer描画、Studio全設定共有、AITuber、旧standalone整理は未完了。
 
 ローカル再現はPuppetFlowで`pnpm --filter '@puppetflow/runtime-launcher...' build`、
 隣接`PuppetFlow_Acting_MCP`で`pnpm install --frozen-lockfile`と`pnpm build`を実行し、
