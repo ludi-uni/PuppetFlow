@@ -28,7 +28,9 @@ Phase 2ではcanonicalな外部境界として`@puppetflow/control`を追加し�
 profile由来capabilitiesを定義し、既存RuntimeのActing APIへ委譲します。Runtimeの
 `isRunning()`はread-only availability signalとしてのみ使い、停止中のcommandはsafe resultで
 拒否し、stateはempty snapshotを返します。capabilitiesは構成情報なので開始前も取得できます。
-既存`@puppetflow/runtime`内Controlはdeprecated compatibility APIとしてPhase Gまで残します。
+Phase Gで利用者が残っていないことをローカル3 repositoryと現行起動設定まで確認し、
+`@puppetflow/runtime`内の旧snake_case Control実装・型・factory exportを削除しました。
+外部semantic boundaryは`@puppetflow/control`だけです。
 
 正式な`apps/mcp`は`@puppetflow/control-client`で起動済み共有Hostへ接続し、既存7 toolsを維持します。
 Runtime・Host・VMC sender・任意module loaderを持たず、shape検査、canonical DTO変換、MCP結果変換だけを

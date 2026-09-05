@@ -20,17 +20,17 @@ v2 sharedの推奨手順ではありません。Viewer目視は別の受入項�
 
 ## Phases
 
-| Phase | 内容                                     | 主な成果物                                                                                                           | Exit gate                                                                                                                                    |
-| ----- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A** | Architecture + inventory                 | `docs/v2/inventory.md`, `architecture.md`, `migration.md`、分類とownership決定                                       | Runtime owner、Control boundary、AITuber timing、MCP責務が文書上で一意になる。                                                               |
-| **B** | PuppetFlowControl contract               | `@puppetflow/control`のDTO、uniform result/error、capabilities、focused tests                                        | **完了:** HTTP/MCP/Studioが共有できる型があり、direct motion/bone/VMC入力を含まない。                                                        |
-| **C** | PuppetFlow Host ownership                | Host bootstrap、one Runtime、lifecycle、adapter/source attachment、canonical Control                                 | **Node Host内で完了:** 一つのRuntimeを生成しcanonical Controlだけを公開する。共有実行先へのclient統一は未完。                                |
-| **D** | Studio → Control / facade migration      | Acting ControlとStudio内部の設定・入力・snapshot・購読を既存facadeへ集約                                             | **内部カプセル化完了:** UI/hook/utilityはRuntime/store/engineを取得しない。Runtime ownershipはStudioに残る。                                 |
-| **E** | AITuber → Control transport migration    | shared `ActingTransport`を共通Control client化し、認証付きLipSync Sourceを同じHostへ接続。speech anchor/timingを維持 | **shared受入完了:** 旧supervisor/MCP childを起動せず、実発話のBody/Expression/LipSyncが一つのHostへ入る。旧transport整理と未共有機能は残る。 |
-| **F** | MCP thin adapter化                       | siblingの7 tools・schema・result/error・stdioを`apps/mcp`へ統合し、shared Control clientへ直接接続                   | **完了:** MCPはshape validation → Control client → result serializationだけ。Runtime/Host/VMC/module loaderを所有しない。                    |
-| **G** | legacy transport / duplicate API cleanup | 旧Behavior HTTP、重複acting HTTP、旧pf.exe/WS bridgeを受入条件に沿って整理                                           | 使われているcompatibility pathだけが残り、semantic contractの分岐がない。                                                                    |
-| **H** | Studio 2.0 UX cleanup                    | Simple/Preset、Timeline、PFScript中心。Blocklyをoptional editor/pluginへ隔離                                         | Block Editorがcore前提でなく、削除・plugin維持の判断根拠がある。                                                                             |
-| **I** | v2 stabilization                         | contract golden tests、runtime lifecycle、adapter/motion output、docs更新                                            | one Host/one Runtime/one semantic Control、Focused checksと必要なlive gateがpass。                                                           |
+| Phase | 内容                                     | 主な成果物                                                                                                               | Exit gate                                                                                                                                    |
+| ----- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A** | Architecture + inventory                 | `docs/v2/inventory.md`, `architecture.md`, `migration.md`、分類とownership決定                                           | Runtime owner、Control boundary、AITuber timing、MCP責務が文書上で一意になる。                                                               |
+| **B** | PuppetFlowControl contract               | `@puppetflow/control`のDTO、uniform result/error、capabilities、focused tests                                            | **完了:** HTTP/MCP/Studioが共有できる型があり、direct motion/bone/VMC入力を含まない。                                                        |
+| **C** | PuppetFlow Host ownership                | Host bootstrap、one Runtime、lifecycle、adapter/source attachment、canonical Control                                     | **Node Host内で完了:** 一つのRuntimeを生成しcanonical Controlだけを公開する。共有実行先へのclient統一は未完。                                |
+| **D** | Studio → Control / facade migration      | Acting ControlとStudio内部の設定・入力・snapshot・購読を既存facadeへ集約                                                 | **内部カプセル化完了:** UI/hook/utilityはRuntime/store/engineを取得しない。Runtime ownershipはStudioに残る。                                 |
+| **E** | AITuber → Control transport migration    | shared `ActingTransport`を共通Control client化し、認証付きLipSync Sourceを同じHostへ接続。speech anchor/timingを維持     | **shared受入完了:** 旧supervisor/MCP childを起動せず、実発話のBody/Expression/LipSyncが一つのHostへ入る。旧transport整理と未共有機能は残る。 |
+| **F** | MCP thin adapter化                       | siblingの7 tools・schema・result/error・stdioを`apps/mcp`へ統合し、shared Control clientへ直接接続                       | **完了:** MCPはshape validation → Control client → result serializationだけ。Runtime/Host/VMC/module loaderを所有しない。                    |
+| **G** | legacy transport / duplicate API cleanup | 未使用Runtime Controlを削除。旧Behavior HTTP、AITuber legacy HTTP/MCP/Supervisor、Avatar WS、旧siblingは利用者付きで維持 | **部分完了:** canonical入口の重複は削除済み。利用中compatibility経路の移行・廃止判断は別作業。                                               |
+| **H** | Studio 2.0 UX cleanup                    | Simple/Preset、Timeline、PFScript中心。Blocklyをoptional editor/pluginへ隔離                                             | Block Editorがcore前提でなく、削除・plugin維持の判断根拠がある。                                                                             |
+| **I** | v2 stabilization                         | contract golden tests、runtime lifecycle、adapter/motion output、docs更新                                                | one Host/one Runtime/one semantic Control、Focused checksと必要なlive gateがpass。                                                           |
 
 ## Dependency and sequencing notes
 
@@ -113,6 +113,6 @@ PuppetFlowControlState
 PuppetFlowCapabilities
 ```
 
-Phase F後の次のownership境界はPhase Gです。旧siblingのstandalone host module、Runtime package内の
-compatibility Control、旧Behavior/acting HTTP、AITuberのlegacy supervisor/transportについて、実利用者を
-再確認してから個別に削除判断します。この文書更新だけで削除・移行済みとは扱いません。
+Phase GでRuntime package内の旧Controlは削除しました。次は、旧Behavior/acting HTTP、AITuberのlegacy
+supervisor/transport、旧sibling standaloneについて、下記inventoryの利用者を先に移行または廃止決定してから
+個別に削除します。現時点で全legacyや全Runtime ownershipが整理済みとは扱いません。
