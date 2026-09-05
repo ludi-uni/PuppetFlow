@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createProgram } from "./cli.js";
+import { resolveAvatarInputCredential } from "./commands/shared-host.js";
 
 describe("pf motion commands", () => {
   it("parses record and replay options without changing run command inputs", async () => {
@@ -142,5 +143,25 @@ describe("pf motion commands", () => {
         avatarInputWsUrl: "ws://127.0.0.1:3002/puppetflow/ws",
       }),
     );
+  });
+});
+
+describe("shared Host Avatar input credential", () => {
+  it("keeps the Avatar credential separate from the Control token", () => {
+    expect(
+      resolveAvatarInputCredential({
+        PUPPETFLOW_CONTROL_TOKEN: "control-only",
+        PUPPETFLOW_AVATAR_INPUT_SERVICE_TOKEN: "avatar-only",
+      }),
+    ).toEqual({ service: "puppetflow-host", token: "avatar-only" });
+  });
+
+  it("does not silently enable authentication without its credential", () => {
+    expect(() =>
+      resolveAvatarInputCredential({
+        PUPPETFLOW_AVATAR_INPUT_SERVICE: "puppetflow-host",
+      }),
+    ).toThrow(/SERVICE_TOKEN/);
+    expect(resolveAvatarInputCredential({})).toBeUndefined();
   });
 });

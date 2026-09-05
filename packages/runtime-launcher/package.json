@@ -38,10 +38,12 @@
     "@puppetflow/source-http": "workspace:*",
     "@puppetflow/source-mqtt": "workspace:*",
     "@puppetflow/source-core": "workspace:*",
-    "@puppetflow/source-websocket": "workspace:*"
+    "@puppetflow/source-websocket": "workspace:*",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
     "@puppetflow/behavior-packs": "workspace:*",
+    "@types/ws": "^8.18.1",
     "tsup": "^8.5.0"
   }
 }

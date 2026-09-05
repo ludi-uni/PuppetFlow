@@ -2,6 +2,7 @@ export { attachNodeAdapters } from "./attach-node-adapters.js";
 export { attachSources } from "./attach-sources.js";
 export { buildRuntime } from "./build-runtime.js";
 export { createAvatarLipSyncSource } from "./avatar-lip-sync-source.js";
+export { createAuthenticatedAvatarSocketFactory } from "./avatar-input-websocket.js";
 export {
   DEFAULT_ACTING_BONE_PROFILE,
   DEFAULT_EXPRESSION_PROFILE,
@@ -12,6 +13,7 @@ export type {
   AvatarLipSyncSource,
   AvatarPollingSource,
 } from "./avatar-lip-sync-source.js";
+export type { AvatarInputCredential } from "./avatar-input-websocket.js";
 export type { PuppetFlowHost, PuppetFlowHostOptions } from "./puppetflow-host.js";
 export type {
   SharedHostService,

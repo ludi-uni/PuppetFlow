@@ -1,6 +1,6 @@
 # PuppetFlow 2.0 現行 architecture inventory
 
-**更新状況:** Phase E AITuber shared Host acting/LipSync connection implemented; real shared CLI + actual sessions + fixture playback anchor were accepted through UDP. `/operator/message` real audio playback and external Viewer remain unconfirmed.
+**更新状況:** Phase E Acceptance complete through authenticated Avatar input, `/operator/message`, browser audio playback, shared state, MCP observation, and UDP. Physical speaker capture and external Viewer rendering remain unconfirmed.
 **監査日:** 2026-09-05 (JST)
 **対象:** `ludi-uni/PuppetFlow` の `v2` branch、および移行境界を確認するための sibling repository
 

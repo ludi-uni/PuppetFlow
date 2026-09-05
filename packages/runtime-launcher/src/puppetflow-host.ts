@@ -20,6 +20,10 @@ import {
 import { WebSocketSource } from "@puppetflow/source-websocket";
 
 import { createAvatarLipSyncSource } from "./avatar-lip-sync-source.js";
+import {
+  createAuthenticatedAvatarSocketFactory,
+  type AvatarInputCredential,
+} from "./avatar-input-websocket.js";
 import { buildRuntime } from "./build-runtime.js";
 import {
   buildMotionMapperProfileFromLaunch,
@@ -34,6 +38,8 @@ export interface PuppetFlowHostOptions {
   acting: ActingEngineOptions;
   vmc?: NodeVmcAdapterConfig | false;
   avatarInputWsUrl?: string;
+  avatarInputCredential?: AvatarInputCredential;
+  onAvatarInputUnavailable?: (reason: string) => void;
   sources?: readonly StateSource[];
   motionAdapters?: readonly MotionFrameAdapter[];
 }
@@ -83,7 +89,19 @@ export function createPuppetFlowHost(options: PuppetFlowHostOptions): PuppetFlow
   if (options.avatarInputWsUrl?.trim()) {
     runtime.attachSource(
       createAvatarLipSyncSource(
-        new WebSocketSource({ url: options.avatarInputWsUrl.trim() }),
+        new WebSocketSource({
+          url: options.avatarInputWsUrl.trim(),
+          readyOnFirstPayload: true,
+          onConnectionError: (error) =>
+            options.onAvatarInputUnavailable?.(error.message),
+          ...(options.avatarInputCredential === undefined
+            ? {}
+            : {
+                socketFactory: createAuthenticatedAvatarSocketFactory(
+                  options.avatarInputCredential,
+                ),
+              }),
+        }),
       ),
     );
   }

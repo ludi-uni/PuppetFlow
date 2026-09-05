@@ -10,6 +10,7 @@ class MockWebSocket {
   onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: ((event: { code: number; reason: string }) => void) | null = null;
 
   constructor(readonly url: string) {
     MockWebSocket.instances.push(this);
@@ -254,5 +255,56 @@ describe("WebSocketSource", () => {
     await source.dispose();
 
     expect(await initializationStatus(initialization)).toBe("resolved");
+  });
+
+  it("waits for authenticated input instead of treating open as ready", async () => {
+    const source = new WebSocketSource({
+      url: "ws://127.0.0.1:9000",
+      readyOnFirstPayload: true,
+    });
+    const initialization = source.initialize();
+    await Promise.resolve();
+
+    expect(await initializationStatus(initialization)).toBe("pending");
+    MockWebSocket.instances[0]?.onmessage?.({
+      data: JSON.stringify({ type: "state", state: { weightA: 0.5 } }),
+    });
+    expect(await initializationStatus(initialization)).toBe("resolved");
+  });
+
+  it("rejects authenticated-input readiness when the server closes before a payload", async () => {
+    const errors: string[] = [];
+    const source = new WebSocketSource({
+      url: "ws://127.0.0.1:9000",
+      readyOnFirstPayload: true,
+      onConnectionError: (error) => errors.push(error.message),
+    });
+    const initialization = source.initialize();
+    await Promise.resolve();
+
+    MockWebSocket.instances[0]?.onclose?.({ code: 1008, reason: "Unauthorized" });
+    await expect(initialization).rejects.toThrow(/before.*payload/i);
+    await source.dispose();
+    const retry = source.initialize();
+    await Promise.resolve();
+    MockWebSocket.instances[1]?.onclose?.({ code: 1008, reason: "Unauthorized" });
+    await expect(retry).rejects.toThrow(/before.*payload/i);
+    expect(errors).toEqual([
+      "WebSocket closed before an input payload was received (1008)",
+    ]);
+  });
+
+  it("uses the supplied socket factory without changing the browser default", async () => {
+    const created: string[] = [];
+    const source = new WebSocketSource({
+      url: "ws://127.0.0.1:9000",
+      socketFactory: (url) => {
+        created.push(url);
+        return new MockWebSocket(url);
+      },
+    });
+
+    await source.initialize();
+    expect(created).toEqual(["ws://127.0.0.1:9000"]);
   });
 });

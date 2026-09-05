@@ -990,10 +990,16 @@ importers:
       '@puppetflow/source-websocket':
         specifier: workspace:*
         version: link:../source-websocket
+      ws:
+        specifier: ^8.18.2
+        version: 8.21.0
     devDependencies:
       '@puppetflow/behavior-packs':
         specifier: workspace:*
         version: link:../behavior-packs
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)

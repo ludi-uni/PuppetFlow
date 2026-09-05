@@ -6,6 +6,7 @@ import type {
 
 const LIP_SYNC_STALE_MS = 500;
 const AVATAR_RECONNECT_MS = 1000;
+const AVATAR_RECONNECT_MAX_MS = 30_000;
 const AVATAR_CONNECT_TIMEOUT_MS = 5000;
 const AVATAR_LIP_SYNC_KEYS = [
   ["MouthA", "weightA"],
@@ -49,6 +50,7 @@ export function createAvatarLipSyncSource(
   let lastInputAt = 0;
   let lastLipSyncAt: number | undefined;
   let lastTarget: SourceUpdateTarget | undefined;
+  let reconnectDelayMs = AVATAR_RECONNECT_MS;
 
   function connect(): void {
     const attempt = {
@@ -68,6 +70,7 @@ export function createAvatarLipSyncSource(
           if (active && connection === attempt) {
             attempt.connected = true;
             lastInputAt = now();
+            reconnectDelayMs = AVATAR_RECONNECT_MS;
           }
         },
         () => {
@@ -147,17 +150,21 @@ export function createAvatarLipSyncSource(
         (attempt.connected
           ? time - lastInputAt >= AVATAR_RECONNECT_MS
           : time - attempt.startedAt >= AVATAR_CONNECT_TIMEOUT_MS);
-      if (retry && time - attempt.startedAt >= AVATAR_RECONNECT_MS) {
+      if (retry && time - attempt.startedAt >= reconnectDelayMs) {
         connection = undefined;
         attempt.controller.abort();
         await source.dispose();
-        if (active) connect();
+        if (active) {
+          reconnectDelayMs = Math.min(AVATAR_RECONNECT_MAX_MS, reconnectDelayMs * 2);
+          connect();
+        }
       }
     },
     async dispose() {
       active = false;
       connection?.controller.abort();
       connection = undefined;
+      reconnectDelayMs = AVATAR_RECONNECT_MS;
       lastLipSyncAt = undefined;
       if (lastTarget) {
         clearLipSync(lastTarget);

@@ -175,6 +175,11 @@ Phase Eのshared構成では、AITuberの`ActingSession`が実音声playback anc
 `pf.exe`、acting MCP child、Runtime、VMC senderを起動しません。旧HTTP/MCP transportは明示的な
 compatibility modeとして残り、shared失敗時のfallbackには使いません。
 
+Avatar入力を認証強制で使う場合、HostはControl tokenとは別のinternal service credentialを
+Node側WebSocket handshakeの`Authorization`と`X-Internal-Service`へ設定します。redirectは追従せず、
+最初の有効state payloadを受け取るまで入力利用可能とは判断しません。入力失敗はControlのreadyを
+落とさず、口はstale処理でzeroへ戻り、再接続は指数backoffします。
+
 ## Studio 2.0 direction
 
 StudioのActing/Expression UIは、Studioが現在所有する一つのRuntimeに対応するcanonical
