@@ -44,6 +44,18 @@ export function encodeBonePoseMessage(
   boneName: string,
   transform: BoneTransform,
 ): Uint8Array | null {
+  return encodeTransformMessage("/VMC/Ext/Bone/Pos", boneName, transform);
+}
+
+export function encodeRootPoseMessage(transform: BoneTransform): Uint8Array | null {
+  return encodeTransformMessage("/VMC/Ext/Root/Pos", "root", transform);
+}
+
+function encodeTransformMessage(
+  address: "/VMC/Ext/Bone/Pos" | "/VMC/Ext/Root/Pos",
+  name: string,
+  transform: BoneTransform,
+): Uint8Array | null {
   const position = transform.position;
   const rotation = transform.rotation;
   if (!position || !rotation) {
@@ -64,9 +76,9 @@ export function encodeBonePoseMessage(
   }
 
   return concatChunks([
-    encodeString("/VMC/Ext/Bone/Pos"),
+    encodeString(address),
     encodeString(",sfffffff"),
-    encodeString(boneName),
+    encodeString(name),
     ...values.map(encodeFloat),
   ]);
 }

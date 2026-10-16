@@ -16,6 +16,7 @@ import {
   encodeBlendShapeApplyMessage,
   encodeBlendShapeMessage,
   encodeBonePoseMessage,
+  encodeRootPoseMessage,
 } from "./osc-encoder.js";
 import { encodeOscBundle } from "./osc-bundle.js";
 import { DEFAULT_VMC_HOST, DEFAULT_VMC_PORT, type VmcTimestampMode } from "./types.js";
@@ -133,7 +134,10 @@ export class NodeOscAdapter implements Adapter, MotionFrameAdapter {
 
     const messages: Uint8Array[] = [];
     for (const [boneName, transform] of Object.entries(frame.bones ?? {})) {
-      const message = encodeBonePoseMessage(boneName, transform);
+      const message =
+        boneName === "Root"
+          ? encodeRootPoseMessage(transform)
+          : encodeBonePoseMessage(boneName, transform);
       if (message) {
         messages.push(message);
       }

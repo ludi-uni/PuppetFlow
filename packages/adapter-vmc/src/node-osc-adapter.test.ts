@@ -104,6 +104,33 @@ describe("NodeOscAdapter.updateFrame", () => {
     expect(readBundleAddresses(packetAt(sent, 0))).toEqual(["/VMC/Ext/Bone/Pos"]);
   });
 
+  it("encodes canonical Root through VMC Root/Pos", async () => {
+    const { sent, transport } = createTransport();
+    const adapter = new NodeOscAdapter({ id: "test", profile: VMC_PROFILE, transport });
+
+    await adapter.updateFrame(
+      {
+        timestamp: 0,
+        bones: {
+          Root: {
+            position: { x: 0.1, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+          },
+          Hips: {
+            position: { x: 0, y: 0.9, z: 0 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+          },
+        },
+      },
+      1 / 60,
+    );
+
+    expect(readBundleAddresses(packetAt(sent, 0))).toEqual([
+      "/VMC/Ext/Root/Pos",
+      "/VMC/Ext/Bone/Pos",
+    ]);
+  });
+
   it("does not send an empty frame or Blend/Apply", async () => {
     const { sent, transport } = createTransport();
     const adapter = new NodeOscAdapter({ id: "test", profile: VMC_PROFILE, transport });

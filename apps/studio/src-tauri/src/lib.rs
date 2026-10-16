@@ -60,10 +60,15 @@ fn build_motion_frame_content(
     let mut content = bones
         .into_iter()
         .map(|bone| {
+            let (address, name) = if bone.name == "Root" {
+                ("/VMC/Ext/Root/Pos", "root".to_string())
+            } else {
+                ("/VMC/Ext/Bone/Pos", bone.name)
+            };
             OscPacket::Message(OscMessage {
-                addr: "/VMC/Ext/Bone/Pos".to_string(),
+                addr: address.to_string(),
                 args: vec![
-                    OscType::String(bone.name),
+                    OscType::String(name),
                     OscType::Float(bone.position.x),
                     OscType::Float(bone.position.y),
                     OscType::Float(bone.position.z),
@@ -227,6 +232,43 @@ mod tests {
                 "/VMC/Ext/Blend/Apply",
             ]
         );
+    }
+
+    #[test]
+    fn encodes_root_with_canonical_address_and_name() {
+        let mut root = head_bone();
+        root.name = "Root".to_string();
+        root.position.x = 0.25;
+        let decoded = decode_bundle(build_motion_frame_content(
+            vec![root, head_bone()],
+            HashMap::new(),
+        ));
+        let OscPacket::Bundle(bundle) = decoded else {
+            panic!("motion frame must be a bundle");
+        };
+        assert_eq!(bundle.content.len(), 2);
+        let OscPacket::Message(root) = &bundle.content[0] else {
+            panic!("root must be a message");
+        };
+        assert_eq!(root.addr, "/VMC/Ext/Root/Pos");
+        assert_eq!(
+            root.args,
+            vec![
+                OscType::String("root".to_string()),
+                OscType::Float(0.25),
+                OscType::Float(1.0),
+                OscType::Float(0.0),
+                OscType::Float(0.0),
+                OscType::Float(0.0),
+                OscType::Float(0.0),
+                OscType::Float(1.0),
+            ]
+        );
+        let OscPacket::Message(head) = &bundle.content[1] else {
+            panic!("head must be a message");
+        };
+        assert_eq!(head.addr, "/VMC/Ext/Bone/Pos");
+        assert_eq!(head.args[0], OscType::String("Head".to_string()));
     }
 
     #[test]

@@ -8,6 +8,7 @@ export {
   encodeBlendShapeApplyMessage,
   encodeBlendShapeMessage,
   encodeBonePoseMessage,
+  encodeRootPoseMessage,
 } from "./osc-encoder.js";
 export {
   encodeOscBundle,
