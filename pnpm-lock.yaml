@@ -267,6 +267,9 @@ importers:
       '@puppetflow/source-mqtt':
         specifier: workspace:*
         version: link:../../packages/source-mqtt
+      '@puppetflow/source-vmc':
+        specifier: workspace:*
+        version: link:../../packages/source-vmc
       '@puppetflow/source-websocket':
         specifier: workspace:*
         version: link:../../packages/source-websocket
@@ -1012,6 +1015,9 @@ importers:
       '@puppetflow/source-mqtt':
         specifier: workspace:*
         version: link:../source-mqtt
+      '@puppetflow/source-vmc':
+        specifier: workspace:*
+        version: link:../source-vmc
       '@puppetflow/source-websocket':
         specifier: workspace:*
         version: link:../source-websocket

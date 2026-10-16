@@ -4,16 +4,25 @@ import {
   DEFAULT_MAPPER_CONFIG,
   type MotionMapperEditorConfig,
 } from "../mapper-config";
-import type { SourceConfig } from "../runtime";
+import type { SourceConfig, VmcInputLaunchConfig } from "../runtime";
+import type { VmcInputProfileId, VmcRootPolicy } from "@puppetflow/source-vmc";
 
 const STORAGE_KEY = "puppetflow.studio.config.v1";
 const LEGACY_MODE_KEY = "puppetflow.studio.mode";
+
+const VMC_INPUT_PROFILE_IDS: readonly VmcInputProfileId[] = [
+  "generic-vmc",
+  "slimevr-compatible",
+  "mocopi-compatible",
+  "custom",
+];
 
 export interface SourceDraftFields {
   httpUrl: string;
   wsUrl: string;
   mqttBroker: string;
   mqttTopic: string;
+  vmc?: VmcInputLaunchConfig;
 }
 
 export interface StudioPersistedConfig {
@@ -169,6 +178,41 @@ export function reloadStudioPersistedConfigFromStorage(): StudioPersistedConfig 
   return refreshCache();
 }
 
+function parseVmcInputConfig(raw: unknown): VmcInputLaunchConfig | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const value = raw as Partial<VmcInputLaunchConfig>;
+  const profile =
+    typeof value.profile === "string" &&
+    (VMC_INPUT_PROFILE_IDS as readonly string[]).includes(value.profile)
+      ? (value.profile as VmcInputProfileId)
+      : undefined;
+  const rootPolicy =
+    value.rootPolicy === "preserve" || value.rootPolicy === "hips-only"
+      ? (value.rootPolicy as VmcRootPolicy)
+      : undefined;
+  return {
+    ...(typeof value.enabled === "boolean" ? { enabled: value.enabled } : {}),
+    ...(typeof value.host === "string" && value.host.trim().length > 0
+      ? { host: value.host.trim() }
+      : {}),
+    ...(typeof value.port === "number" &&
+    Number.isInteger(value.port) &&
+    value.port >= 1 &&
+    value.port <= 65535
+      ? { port: value.port }
+      : {}),
+    ...(profile !== undefined ? { profile } : {}),
+    ...(typeof value.positionScale === "number" &&
+    Number.isFinite(value.positionScale) &&
+    value.positionScale > 0
+      ? { positionScale: value.positionScale }
+      : {}),
+    ...(rootPolicy !== undefined ? { rootPolicy } : {}),
+  };
+}
+
 function parseSourceConfig(raw: unknown): SourceConfig | undefined {
   if (!raw || typeof raw !== "object") {
     return undefined;
@@ -180,6 +224,7 @@ function parseSourceConfig(raw: unknown): SourceConfig | undefined {
     wsUrl: normalizeNullableString(value.wsUrl),
     mqttBroker: normalizeNullableString(value.mqttBroker),
     mqttTopic: normalizeNullableString(value.mqttTopic),
+    vmc: parseVmcInputConfig(value.vmc),
   };
 }
 
@@ -194,6 +239,7 @@ function parseSourceDraft(raw: unknown): SourceDraftFields | undefined {
     wsUrl: typeof value.wsUrl === "string" ? value.wsUrl : "",
     mqttBroker: typeof value.mqttBroker === "string" ? value.mqttBroker : "",
     mqttTopic: typeof value.mqttTopic === "string" ? value.mqttTopic : "",
+    vmc: parseVmcInputConfig(value.vmc),
   };
 }
 

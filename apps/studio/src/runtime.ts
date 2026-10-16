@@ -24,7 +24,11 @@ import {
   type PluginOutputSnapshot,
   type StatefulEntrySnapshot,
 } from "@puppetflow/runtime";
-import { attachSources, type SourceLaunchConfig } from "@puppetflow/runtime-launcher";
+import {
+  attachSources,
+  type SourceLaunchConfig,
+  type VmcInputLaunchConfig,
+} from "@puppetflow/runtime-launcher";
 import curiousPreset from "@puppetflow/behavior-packs/presets/Curious.pfpreset?raw";
 import focusedPreset from "@puppetflow/behavior-packs/presets/Focused.pfpreset?raw";
 import happyPreset from "@puppetflow/behavior-packs/presets/Happy.pfpreset?raw";
@@ -57,6 +61,8 @@ const PRESETS = {
 export type PresetName = keyof typeof PRESETS;
 
 export type SourceConfig = SourceLaunchConfig;
+
+export type { VmcInputLaunchConfig };
 
 class StaleRuntimeStartup extends Error {
   override readonly name = "StaleRuntimeStartup";

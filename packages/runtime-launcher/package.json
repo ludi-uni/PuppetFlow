@@ -38,6 +38,7 @@
     "@puppetflow/source-http": "workspace:*",
     "@puppetflow/source-mqtt": "workspace:*",
     "@puppetflow/source-core": "workspace:*",
+    "@puppetflow/source-vmc": "workspace:*",
     "@puppetflow/source-websocket": "workspace:*",
     "ws": "^8.18.2"
   },

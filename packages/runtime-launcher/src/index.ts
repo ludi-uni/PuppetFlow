@@ -9,4 +9,5 @@ export type {
   OscAdapterLaunchConfig,
   RuntimeLaunchConfig,
   SourceLaunchConfig,
+  VmcInputLaunchConfig,
 } from "./types.js";

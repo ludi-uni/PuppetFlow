@@ -2,12 +2,23 @@ import type { MotionStateKey, StateValue } from "@puppetflow/core";
 import type { VmcTimestampMode } from "@puppetflow/adapter-vmc";
 import type { ValueTransform } from "@puppetflow/motion-mapper";
 import type { MicroBehaviorDefinition } from "@puppetflow/micro-behavior";
+import type { VmcInputProfileId, VmcRootPolicy } from "@puppetflow/source-vmc";
+
+export type VmcInputLaunchConfig = {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  profile?: VmcInputProfileId;
+  positionScale?: number;
+  rootPolicy?: VmcRootPolicy;
+};
 
 export type SourceLaunchConfig = {
   httpUrl?: string | null;
   wsUrl?: string | null;
   mqttBroker?: string | null;
   mqttTopic?: string | null;
+  vmc?: VmcInputLaunchConfig;
 };
 
 export type CustomMappingLaunchEntry = {

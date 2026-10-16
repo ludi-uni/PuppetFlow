@@ -36,6 +36,7 @@
     "@puppetflow/runtime-launcher": "workspace:*",
     "@puppetflow/source-http": "workspace:*",
     "@puppetflow/source-mqtt": "workspace:*",
+    "@puppetflow/source-vmc": "workspace:*",
     "@puppetflow/source-websocket": "workspace:*",
     "@tauri-apps/api": "^2.5.0",
     "@xyflow/react": "^12.6.4",
