@@ -1084,6 +1084,22 @@ importers:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
 
+  packages/source-vmc:
+    dependencies:
+      '@puppetflow/core':
+        specifier: workspace:*
+        version: link:../core
+      '@puppetflow/motion-pipeline':
+        specifier: workspace:*
+        version: link:../motion-pipeline
+      '@puppetflow/source-core':
+        specifier: workspace:*
+        version: link:../source-core
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.15)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+
   packages/source-websocket:
     dependencies:
       '@puppetflow/core':
